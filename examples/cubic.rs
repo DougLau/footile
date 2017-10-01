@@ -5,7 +5,7 @@
 extern crate footile;
 
 use footile::Vec2;
-use footile::plotter::Plotter;
+use footile::Plotter;
 
 fn main() {
     let mut p = Plotter::new(64, 64, 0.5f32);
