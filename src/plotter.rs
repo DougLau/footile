@@ -1,15 +1,13 @@
-/// plotter.rs      Vector path plotter.
-///
-/// Copyright (c) 2017  Douglas P Lau
-///
-/// A plotter is a simple vector path plotter.  Paths are drawn
-/// using lines and splines (quadratic or cubic).
-///
+// plotter.rs      Vector path plotter.
+//
+// Copyright (c) 2017  Douglas P Lau
+//
 use super::fig::{ Fig, FillRule };
 use super::geom::{ Vec2, Vec3, float_lerp };
 use super::mask::Mask;
 
-/// Plotter struct
+/// A plotter is a simple vector path plotter.  Paths are drawn
+/// using lines and splines (quadratic or cubic).
 pub struct Plotter {
     fig       : Fig,    // drawing fig
     sfig      : Fig,    // stroking fig

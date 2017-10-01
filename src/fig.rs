@@ -1,63 +1,7 @@
-/// fig.rs    A 2D rasterizer.
-///
-/// Copyright (c) 2017  Douglas P Lau
-///
-/// This rasterizer can render figures to an 8-bit image mask.
-/// A figure can also be stroked to another figure, which can then be filled.
-///
-/// ## Creating
-///
-/// A figure is created by adding a series of points.  Each point is connected
-/// to the previous point unless the sub-figure was closed.  In this case, a new
-/// sub-figure is started.
-///
-/// ## Filling
-///
-/// A figure can be filled to an 8-bit alpha mask.  There are several steps
-/// needed for this.
-///
-/// ### Raster Scan Algorithm
-///
-/// All vertices in a figure are sorted in (y, x) order.  Iterating through the
-/// vertices, edges are added or removed as "split" or "merge" vertices are
-/// reached.  On each scan line, the edges are sorted in X order and scanned
-/// to create the raster image.  Once a left and right edge are determined,
-/// a min and max value are calculated for each edge within the scan line.
-/// The simplest case is where no edge points lie between the top and bottom of
-/// the scan line:
-/// ```text
-///             max       min
-///     - - - - -/- - - - -\- - - - -
-///             /           \
-///            /             \
-///           /               \
-///     - - -/- - - - - - - - -\- - -
-///         min                max
-/// ```
-///
-/// Pixels between the left edge min and max are interpolated from 0 to full
-/// coverage.  Likewise, pixels on the right edge are interpolated from full
-/// to 0 coverage. The case where the min point on the right edge is further
-/// left than the max point on the left edge must also be handled:
-/// ```text
-///               max
-///     - - - - -/-/- - - - - - - - -
-///             / /
-///            / /
-///           / /
-///     - - -/-/- - - - - - - - - - -
-///          min
-/// ```
-///
-/// When a vertex lies within the scan line, it is scanned an extra time.
-/// ```text
-///     - - - - -/- - - - -\- - - - -
-///     ________/___________\________ First scan to vertex
-///             \            \
-///              \            \       Then scan rest of line
-///     - - - - - \ - - - - - -\- - -
-/// ```
-///
+// fig.rs    A 2D rasterizer.
+//
+// Copyright (c) 2017  Douglas P Lau
+//
 use std::cmp;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
@@ -89,10 +33,12 @@ fn opposite(dir: FigDir) -> FigDir {
     }
 }
 
-/// Fill-rule enum
+/// Fill-rule for filling figures
 #[derive(Debug)]
 pub enum FillRule {
+    /// All points within bounds are filled
 	NonZero,
+    /// Alternate filling with figure outline
 	EvenOdd,
 }
 
@@ -117,7 +63,10 @@ struct Edge {
 	max_pix  : i32,             // maximum pixel on scan line
 }
 
-/// Figure structure
+/// A Fig is a series of 2D points which can be rendered to
+/// an image [Mask](../mask/struct.Mask.html).
+/// It can also be stroked to another figure, which can then be filled.
+///
 pub struct Fig {
 	points : Vec<Vec3>,         // all points
 	subs   : Vec<SubFig>,       // all sub-figures

@@ -1,7 +1,7 @@
-/// geom.rs    Simple geometry stuff.
-///
-/// Copyright (c) 2017  Douglas P Lau
-///
+// geom.rs    Simple geometry stuff.
+//
+// Copyright (c) 2017  Douglas P Lau
+//
 use std::cmp;
 use std::fmt;
 use std::ops;
