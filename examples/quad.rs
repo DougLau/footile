@@ -12,6 +12,6 @@ fn main() {
     p.line_to(Vec2::new(0f32, 16f32));
     p.quad_to(Vec2::new(128f32, 16f32), Vec2::new(0f32, 32f32));
     p.rasterize_stroke(true);
-    let ref mut m = p.get_mask();
+    let ref m = p.get_mask();
     m.write_pgm("./quad.pgm").unwrap();
 }

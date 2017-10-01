@@ -379,7 +379,9 @@ impl Fig {
         }
         vid
     }
-    /// Add a point to figure
+    /// Add a point.
+    ///
+    /// * `pt` Point to add (z indicates stroke width).
     pub fn add_point(&mut self, pt: Vec3) {
         let n_pts = self.points.len();
         if n_pts < u16::max_value() as usize {
@@ -394,13 +396,15 @@ impl Fig {
     fn add_point2(&mut self, pt: Vec2) {
         self.add_point(Vec3::new(pt.x, pt.y, 1f32));
     }
-    /// Close the current sub-figure (join)
+    /// Close the current sub-figure.
+    ///
+    /// * `joined` If true, join ends of sub-figure.
     pub fn close(&mut self, joined: bool) {
         let mut sub = self.sub_current();
         sub.joined = joined;
         sub.done = true;
     }
-    /// Reset the figure
+    /// Reset the figure (clear all points).
     pub fn reset(&mut self) {
         self.points.clear();
         self.subs.clear();
@@ -418,7 +422,11 @@ impl Fig {
             },
         }
     }
-    /// Fill the figure to an image mask
+    /// Fill the figure to an image mask.
+    ///
+    /// * `mask` Output mask.
+    /// * `scan_buf` Scan buffer (must be same width as mask, with height 1).
+    /// * `rule` Fill rule.
     pub fn fill(&mut self, mask: &mut Mask, scan_buf: &mut Mask, rule: FillRule)
     {
         let n_points = self.points.len() as u16;
@@ -482,7 +490,9 @@ impl Fig {
         self.stroke_side(&sub, sfig, end, FigDir::Reverse);
         sfig.close(sub.joined);
     }
-    /// Stroke the figure to another figure
+    /// Stroke onto another figure
+    ///
+    /// * `sfig` Figure to stroke onto.
     pub fn stroke(&mut self, sfig: &mut Fig) {
         let n_subs = self.subs.len();
         for i in 0..n_subs {

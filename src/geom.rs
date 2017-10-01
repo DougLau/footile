@@ -112,7 +112,7 @@ impl Vec2 {
     pub fn mag(self) -> Float {
         self.x.hypot(self.y)
     }
-    /// Normalize a Vec2
+    /// Create a copy normalized to unit length
     pub fn normalize(self) -> Self {
         let m = self.mag();
         if m > 0 as Float {
@@ -131,7 +131,7 @@ impl Vec2 {
     pub fn dist(self, other: Self) -> Float {
         self.dist_sq(other).sqrt()
     }
-    /// Find the midpoint between two Vec2
+    /// Get the midpoint of two Vec2
     pub fn midpoint(self, other: Self) -> Self {
         let x = (self.x + other.x) / 2 as Float;
         let y = (self.y + other.y) / 2 as Float;
@@ -154,6 +154,8 @@ impl Vec2 {
         (self.x * other.y) > (other.x * self.y)
     }
     /// Calculate linear interpolation of two Vec2
+    ///
+    /// * `t` Interpolation amount, from 0 to 1
     pub fn lerp(self, other: Self, t: Float) -> Self {
         let x = float_lerp(self.x, other.x, t);
         let y = float_lerp(self.y, other.y, t);
@@ -170,6 +172,10 @@ pub fn float_lerp(a: Float, b: Float, t: Float) -> Float {
 
 /// Calculate intersection point of two lines.
 ///
+/// * `a0` First point on line a.
+/// * `a1` Second point on line a.
+/// * `b0` First point on line b.
+/// * `b1` Second point on line b.
 /// Returns None if the lines are colinear.
 pub fn intersection(a0: Vec2,
                     a1: Vec2,

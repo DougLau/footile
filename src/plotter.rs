@@ -20,7 +20,11 @@ pub struct Plotter {
 }
 
 impl Plotter {
-    /// Create a plotter
+    /// Create a new plotter.
+    ///
+    /// * `width` Width in pixels.
+    /// * `height` Height in pixels.
+    /// * `tol` Tolerance threshold for curve decomposition.
     pub fn new(width: u32, height: u32, tol: f32) -> Plotter {
         Plotter {
             fig: Fig::new(),
@@ -33,27 +37,33 @@ impl Plotter {
             scale: 1f32,
         }
     }
-    /// Get the width
+    /// Get the width in pixels.
     pub fn width(&self) -> u32 {
         self.mask.width()
     }
-    /// Get the height
+    /// Get the height in pixels.
     pub fn height(&self) -> u32 {
         self.mask.height()
     }
-    /// Set the plot data size
+    /// Set the plot data size.
+    ///
+    /// * `width` Width in user units.
+    /// * `height` Height in user units.
     pub fn data_size(&mut self, width: u32, height: u32) {
         let sx = self.width() as f32 / width as f32;
         let sy = self.height() as f32 / height as f32;
         self.scale = sx.min(sy);
         self.s_width = self.scale;
     }
-    /// Reset the plotter
+    /// Reset the plotter's figure and mask.
     pub fn reset(&mut self) {
         self.fig.reset();
+        self.sfig.reset();
         self.mask.reset();
     }
-    /// Add a line
+    /// Add a line.
+    ///
+    /// * `b` Endpoint of line.
     pub fn line_to(&mut self, b: Vec2) {
         let x = self.pen.x + b.x * self.scale;
         let y = self.pen.y + b.y * self.scale;
@@ -65,10 +75,13 @@ impl Plotter {
         self.pen = p;
         self.fig.add_point(p);
     }
-    /// Add a quadratic bezier spline
+    /// Add a quadratic bezier spline.
     ///
     /// The points are A, B and C.  A is the current pen position.  B is the
     /// control point.  C is the final pen position.
+    ///
+    /// * `b` Spline control point.
+    /// * `c` Spline endpoint.
     pub fn quad_to(&mut self, b: Vec2, c: Vec2) {
         let bb = Vec3::new(
             self.pen.x + b.x * self.scale,
@@ -82,7 +95,7 @@ impl Plotter {
         );
         self.quad_to_scaled(bb, cc);
     }
-    /// Add a quadratic bezier spline
+    /// Add a quadratic bezier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.  The points are A, B and C.  A is the current pen position.  B
@@ -106,10 +119,14 @@ impl Plotter {
         let b2 = Vec2::new(b.x, b.y);
         a2.dist_sq(b2) <= self.tol_sq
     }
-    /// Add a cubic bezier spline
+    /// Add a cubic bezier spline.
     ///
     /// The points are A, B, C and D.  A is the current pen position.  B and C
     /// are the two control points.  D is the final pen position.
+    ///
+    /// * `b` First spline control point.
+    /// * `c` Second spline control point.
+    /// * `d` Spline endpoint.
     pub fn cubic_to(&mut self, b: Vec2, c: Vec2, d: Vec2) {
         let bb = Vec3::new(
             self.pen.x + b.x * self.scale,
@@ -128,7 +145,7 @@ impl Plotter {
         );
         self.cubic_to_scaled(bb, cc, dd);
     }
-    /// Add a cubic bezier spline
+    /// Add a cubic bezier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.  The points are A, B, C and D.  A is the current pen position.
@@ -149,17 +166,25 @@ impl Plotter {
             self.cubic_to_scaled(bc_cd, cd, d);
         }
     }
-    /// Close the current sub-fig
+    /// Close the current sub-fig.
+    ///
+    /// * `joined` If true, join ends of sub-figure.
     pub fn close(&mut self, joined: bool) {
         self.fig.close(joined);
         self.pen.x = 0f32;
         self.pen.y = 0f32;
     }
-    /// Set the pen stroking width
+    /// Set the pen stroking width.
+    ///
+    /// * `width` Pen stroke width.
+    /// * `pixels` Use pixel units (true), or user units (false).
     pub fn pen_width(&mut self, width: f32, pixels: bool) {
         self.s_width = if pixels { width } else { width * self.scale }
     }
-    /// Rasterize (fill) onto the mask
+    /// Rasterize (fill) onto the mask.
+    ///
+    /// * `rule` Fill rule.
+    /// * `reset` If true, reset figure after fill.
     pub fn rasterize_fill(&mut self, rule: FillRule, reset: bool) {
         self.fig.fill(&mut self.mask, &mut self.scan_buf, rule);
         if reset {
@@ -168,7 +193,9 @@ impl Plotter {
             self.fig.reset();
         }
     }
-    /// Rasterize (stroke) onto the mask
+    /// Rasterize (stroke) onto the mask.
+    ///
+    /// * `reset` If true, reset figure after fill.
     pub fn rasterize_stroke(&mut self, reset: bool) {
         self.fig.stroke(&mut self.sfig);
         self.sfig.fill(&mut self.mask, &mut self.scan_buf, FillRule::NonZero);
@@ -179,8 +206,8 @@ impl Plotter {
             self.sfig.reset();
         }
     }
-    /// Get a mutable reference to the mask
-    pub fn get_mask(&mut self) -> &mut Mask {
-        &mut self.mask
+    /// Get a reference to the mask.
+    pub fn get_mask(&mut self) -> &Mask {
+        &self.mask
     }
 }

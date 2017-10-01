@@ -16,15 +16,18 @@ pub struct Mask {
 
 impl Mask {
     /// Create a new mask
+    ///
+    /// * `width` Width in pixels.
+    /// * `height` Height in pixels.
     pub fn new(width: u32, height: u32) -> Mask {
         let pixels = vec![0; (width * height) as usize];
         Mask { width: width, height: height, pixels: pixels }
     }
-    /// Get the mask width
+    /// Get the width in pixels
     pub fn width(&self) -> u32 {
         self.width
     }
-    /// Get the mask height
+    /// Get the height in pixels
     pub fn height(&self) -> u32 {
         self.height
     }
@@ -66,6 +69,8 @@ impl Mask {
         &mut self.pixels[s..t]
     }
     /// Write the mask to a PGM (portable gray map) file
+    ///
+    /// * `filename` Name of file to write.
     pub fn write_pgm(&self, filename: &str) -> io::Result<()> {
         let fl = File::create(filename)?;
         let mut bw = io::BufWriter::new(fl);
