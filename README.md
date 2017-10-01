@@ -1,2 +1,2 @@
 # footile
-A fast 2D graphics library written in Rust
+A fast 2D vector graphics library written in Rust
