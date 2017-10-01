@@ -2,8 +2,10 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use std::ptr;
+use std::fs::File;
 use std::io;
+use std::io::Write;
+use std::ptr;
 
 /// A Mask is an 8-bit alpha image mask.
 pub struct Mask {
@@ -64,11 +66,14 @@ impl Mask {
         &mut self.pixels[s..t]
     }
     /// Write the mask to a PGM (portable gray map) file
-    pub fn write_pgm(&self, writer: &mut io::Write) -> io::Result<()> {
-        writer.write_all(format!("P5\n{} {}\n255\n", self.width, self.height)
-                        .as_bytes())?;
-        writer.write_all(&self.pixels[..])?;
-        writer.flush()?;
+    pub fn write_pgm(&self, filename: &str) -> io::Result<()> {
+        let fl = File::create(filename)?;
+        let mut bw = io::BufWriter::new(fl);
+        let mut w = bw.get_mut();
+        w.write_all(format!("P5\n{} {}\n255\n", self.width, self.height)
+         .as_bytes())?;
+        w.write_all(&self.pixels[..])?;
+        w.flush()?;
         Ok(())
     }
 }

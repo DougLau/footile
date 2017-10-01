@@ -3,8 +3,6 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 extern crate footile;
-use std::fs::File;
-use std::io::BufWriter;
 use footile::geom::Vec3;
 use footile::mask::Mask;
 use footile::fig::Fig;
@@ -21,7 +19,5 @@ fn main() {
     f.close(true);
     f.stroke(&mut s);
     s.fill(&mut m, &mut b, FillRule::NonZero);
-    let fl = File::create("./stroke.pgm").unwrap();
-    let mut bw = BufWriter::new(fl);
-    let _ = m.write_pgm(bw.get_mut());
+    m.write_pgm("./stroke.pgm").unwrap();
 }
