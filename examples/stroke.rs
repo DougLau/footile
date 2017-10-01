@@ -3,10 +3,10 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 extern crate footile;
-use footile::geom::Vec3;
-use footile::mask::Mask;
-use footile::fig::Fig;
-use footile::fig::FillRule;
+use footile::Fig;
+use footile::FillRule;
+use footile::Mask;
+use footile::Vec3;
 
 fn main() {
     let mut m = Mask::new(64, 64);

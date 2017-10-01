@@ -4,7 +4,7 @@
 //
 extern crate footile;
 
-use footile::geom::Vec2;
+use footile::Vec2;
 use footile::plotter::Plotter;
 
 fn main() {

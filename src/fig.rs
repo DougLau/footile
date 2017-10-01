@@ -64,7 +64,7 @@ struct Edge {
 }
 
 /// A Fig is a series of 2D points which can be rendered to
-/// an image [Mask](../mask/struct.Mask.html).
+/// an image [Mask](struct.Mask.html).
 /// It can also be stroked to another figure, which can then be filled.
 ///
 pub struct Fig {
