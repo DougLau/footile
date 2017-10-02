@@ -451,6 +451,26 @@ impl Fig {
         let pr1 = pp1 + vr * (p1.z / 2f32);
         (pr0, pr1)
     }
+    /// Add a stroke join
+    fn stroke_join(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
+        // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
+        //      so: stroke_width / miter_length = sin ( theta / 2 )
+        const MITER_LIMIT: f32 = 4.0f32;
+        // Minimum stroke:miter ratio
+        let sm_min = 1f32 / MITER_LIMIT;
+        let th = (a1 - a0).angle_rel(b0 - b1);
+        let sm = (th / 2f32).sin().abs();
+        if sm >= sm_min {
+            // Calculate miter point
+            if let Some(xp) = intersection(a0, a1, b0, b1) {
+                self.add_point2(xp);
+                return;
+            }
+        }
+        // Bevel join
+        self.add_point2(a1);
+        self.add_point2(b0);
+    }
     /// Stroke one side of a sub-figure to another figure
     fn stroke_side(&self, sub: &SubFig, sfig: &mut Fig, start: u16,
         dir: FigDir)
@@ -462,9 +482,7 @@ impl Fig {
             let bounds = self.stroke_boundary(v0, v1);
             let (pr0, pr1) = bounds;
             if let Some((xr0, xr1)) = xr {
-                if let Some(xp) = intersection(xr0, xr1, pr0, pr1) {
-                    sfig.add_point2(xp);
-                }
+                sfig.stroke_join(xr0, xr1, pr0, pr1);
             } else if !sub.joined {
                 sfig.add_point2(pr0);
             }

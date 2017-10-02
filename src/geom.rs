@@ -4,6 +4,7 @@
 //
 use std::cmp;
 use std::fmt;
+use std::f32;
 use std::ops;
 
 // Declare floating point type to use
@@ -161,6 +162,20 @@ impl Vec2 {
         let y = float_lerp(self.y, other.y, t);
         Vec2::new(x, y)
     }
+    /// Calculate the relative angle to another Vec2.
+    ///
+    /// The result will be between `-PI` and `+PI`.
+    pub fn angle_rel(self, other: Self) -> Float {
+        let pi = f32::consts::PI;
+        let th = self.y.atan2(self.x) - other.y.atan2(other.x);
+        if th < -pi {
+            th + 2f32 * pi
+        } else if th > pi {
+            th - 2f32 * pi
+        } else {
+            th
+        }
+    }
 }
 
 /// Calculate linear interpolation of two values
@@ -300,6 +315,7 @@ impl BBox {
 fn test_vec2() {
     let a = Vec2::new(2f32, 1f32);
     let b = Vec2::new(3f32, 4f32);
+    let c = Vec2::new(-1f32, 1f32);
     assert!(a + b == Vec2::new(5f32, 5f32));
     assert!(b - a == Vec2::new(1f32, 3f32));
     assert!(a * 2f32 == Vec2::new(4f32, 2f32));
@@ -312,6 +328,9 @@ fn test_vec2() {
     assert!(a.midpoint(b) == Vec2::new(2.5f32, 2.5f32));
     assert!(a.left() == Vec2::new(-1f32, 2f32));
     assert!(a.right() == Vec2::new(1f32, -2f32));
+    assert!(a.angle_rel(b) == -0.4636476f32);
+    assert!(c.angle_rel(Vec2::new(1f32, 1f32)) == 1.5707963f32);
+    assert!(Vec2::new(-1f32, -1f32).angle_rel(c) == 1.5707965f32);
 }
 
 #[test]
