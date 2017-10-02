@@ -3,21 +3,16 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 extern crate footile;
-use footile::Fig;
-use footile::FillRule;
-use footile::Mask;
-use footile::Vec3;
+
+use footile::{ Plotter, Vec2 };
 
 fn main() {
-    let mut m = Mask::new(64, 64);
-    let mut b = Mask::new(64, 1);
-    let mut f = Fig::new();
-    let mut s = Fig::new();
-    f.add_point(Vec3::new(16f32, 48f32, 5f32));
-    f.add_point(Vec3::new(48f32, 48f32, 5f32));
-    f.add_point(Vec3::new(32f32, 16f32, 5f32));
-    f.close(true);
-    f.stroke(&mut s);
-    s.fill(&mut m, &mut b, FillRule::NonZero);
-    m.write_pgm("./stroke.pgm").unwrap();
+    let mut p = Plotter::new(64, 64, 0.5f32);
+    p.pen_width(5f32, false);
+    p.line_to(Vec2::new(16f32, 48f32));
+    p.line_to(Vec2::new(32f32, 0f32));
+    p.line_to(Vec2::new(-16f32, -32f32));
+    p.close(true);
+    p.rasterize_stroke(true);
+    p.get_mask().write_pgm("./stroke.pgm").unwrap();
 }

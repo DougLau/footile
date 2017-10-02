@@ -3,24 +3,21 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 extern crate footile;
-use footile::Fig;
-use footile::FillRule;
-use footile::Mask;
-use footile::Vec3;
+
+use footile::{ FillRule, Plotter, Vec2 };
 
 fn main() {
-    let mut m = Mask::new(64, 64);
-    let mut b = Mask::new(64, 1);
-    let mut f = Fig::new();
-    f.add_point(Vec3::new(4f32, 4f32, 1f32));
-    f.add_point(Vec3::new(32f32, 16f32, 1f32));
-    f.add_point(Vec3::new(60f32, 4f32, 1f32));
-    f.add_point(Vec3::new(48f32, 32f32, 1f32));
-    f.add_point(Vec3::new(60f32, 60f32, 1f32));
-    f.add_point(Vec3::new(32f32, 56f32, 1f32));
-    f.add_point(Vec3::new(4f32, 60f32, 1f32));
-    f.add_point(Vec3::new(16f32, 32f32, 1f32));
-    f.close(true);
-    f.fill(&mut m, &mut b, FillRule::NonZero);
-    m.write_pgm("./figure.pgm").unwrap();
+    let mut p = Plotter::new(64, 64, 0.5f32);
+    p.pen_width(1f32, false);
+    p.line_to(Vec2::new(4f32, 4f32));
+    p.line_to(Vec2::new(28f32, 12f32));
+    p.line_to(Vec2::new(28f32, -12f32));
+    p.line_to(Vec2::new(-12f32, 28f32));
+    p.line_to(Vec2::new(12f32, 28f32));
+    p.line_to(Vec2::new(-28f32, -4f32));
+    p.line_to(Vec2::new(-28f32, 4f32));
+    p.line_to(Vec2::new(12f32, -28f32));
+    p.close(true);
+    p.rasterize_fill(FillRule::EvenOdd, true);
+    p.get_mask().write_pgm("./figure.pgm").unwrap();
 }

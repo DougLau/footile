@@ -3,8 +3,8 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 extern crate footile;
-use footile::Vec2;
-use footile::Plotter;
+
+use footile::{ Plotter, Vec2 };
 
 fn main() {
     let mut p = Plotter::new(64, 64, 0.5f32);
