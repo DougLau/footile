@@ -2,47 +2,23 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use std::cmp;
 use std::fmt;
 use std::f32;
 use std::ops;
 
-// Declare floating point type to use
-type Float = f32;
-
 /// 2-dimensional vector
 #[derive(Clone, Copy, PartialEq)]
 pub struct Vec2 {
-    pub x: Float,
-    pub y: Float,
+    pub x: f32,
+    pub y: f32,
 }
 
 /// 3-dimensional vector
 #[derive(Clone, Copy, PartialEq)]
 pub struct Vec3 {
-    pub x: Float,
-    pub y: Float,
-    pub z: Float,
-}
-
-/// 3-dimensional vector
-#[derive(Clone, Copy, PartialEq)]
-pub struct Vec3i {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
-}
-
-/// Pos trait allows point lookup by handle
-pub trait Pos {
-    fn pos(&self, hnd: u32) -> Vec3i;
-}
-
-/// Bounding box
-#[derive(Clone, Copy)]
-pub struct BBox {
-    pub center: Vec3i,
-    pub half_len: i32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 impl fmt::Debug for Vec2 {
@@ -67,27 +43,27 @@ impl ops::Sub for Vec2 {
     }
 }
 
-impl ops::Mul<Float> for Vec2 {
+impl ops::Mul<f32> for Vec2 {
     type Output = Self;
 
-    fn mul(self, s: Float) -> Self {
+    fn mul(self, s: f32) -> Self {
         Vec2::new(self.x * s, self.y * s)
     }
 }
 
 impl ops::Mul for Vec2 {
-    type Output = Float;
+    type Output = f32;
 
     /// Calculate the cross product of two Vec2
-    fn mul(self, other: Self) -> Float {
+    fn mul(self, other: Self) -> f32 {
         self.x * other.y - self.y * other.x
     }
 }
 
-impl ops::Div<Float> for Vec2 {
+impl ops::Div<f32> for Vec2 {
     type Output = Self;
 
-    fn div(self, s: Float) -> Self {
+    fn div(self, s: f32) -> Self {
         Vec2::new(self.x / s, self.y / s)
     }
 }
@@ -102,40 +78,40 @@ impl ops::Neg for Vec2 {
 
 impl Vec2 {
     /// Create a new Vec2
-    pub fn new(x: Float, y: Float) -> Self {
+    pub fn new(x: f32, y: f32) -> Self {
         Vec2 { x: x, y: y }
     }
     /// Create a zero Vec2
     pub fn zero() -> Self {
-        Vec2::new(0 as Float, 0 as Float)
+        Vec2::new(0f32, 0f32)
     }
     /// Get the magnitude of a Vec2
-    pub fn mag(self) -> Float {
+    pub fn mag(self) -> f32 {
         self.x.hypot(self.y)
     }
     /// Create a copy normalized to unit length
     pub fn normalize(self) -> Self {
         let m = self.mag();
-        if m > 0 as Float {
+        if m > 0f32 {
             self / m
         } else {
             Vec2::zero()
         }
     }
     /// Calculate the distance squared between two Vec2
-    pub fn dist_sq(self, other: Self) -> Float {
+    pub fn dist_sq(self, other: Self) -> f32 {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         dx * dx + dy * dy
     }
     /// Calculate the distance between two Vec2
-    pub fn dist(self, other: Self) -> Float {
+    pub fn dist(self, other: Self) -> f32 {
         self.dist_sq(other).sqrt()
     }
     /// Get the midpoint of two Vec2
     pub fn midpoint(self, other: Self) -> Self {
-        let x = (self.x + other.x) / 2 as Float;
-        let y = (self.y + other.y) / 2 as Float;
+        let x = (self.x + other.x) / 2f32;
+        let y = (self.y + other.y) / 2f32;
         Vec2::new(x, y)
     }
     /// Create a left-hand perpendicular Vec2
@@ -157,7 +133,7 @@ impl Vec2 {
     /// Calculate linear interpolation of two Vec2
     ///
     /// * `t` Interpolation amount, from 0 to 1
-    pub fn lerp(self, other: Self, t: Float) -> Self {
+    pub fn lerp(self, other: Self, t: f32) -> Self {
         let x = float_lerp(self.x, other.x, t);
         let y = float_lerp(self.y, other.y, t);
         Vec2::new(x, y)
@@ -165,7 +141,7 @@ impl Vec2 {
     /// Calculate the relative angle to another Vec2.
     ///
     /// The result will be between `-PI` and `+PI`.
-    pub fn angle_rel(self, other: Self) -> Float {
+    pub fn angle_rel(self, other: Self) -> f32 {
         let pi = f32::consts::PI;
         let th = self.y.atan2(self.x) - other.y.atan2(other.x);
         if th < -pi {
@@ -181,7 +157,7 @@ impl Vec2 {
 /// Calculate linear interpolation of two values
 ///
 /// The t value should be between 0 and 1.
-pub fn float_lerp(a: Float, b: Float, t: Float) -> Float {
+pub fn float_lerp(a: f32, b: f32, t: f32) -> f32 {
     b + (a - b) * t
 }
 
@@ -200,7 +176,7 @@ pub fn intersection(a0: Vec2,
     let av = a0 - a1;
     let bv = b0 - b1;
     let den = av * bv;
-    if den != 0 as Float {
+    if den != 0f32 {
         let ca = a0 * a1;
         let cb = b0 * b1;
         let xn = bv.x * ca - av.x * cb;
@@ -219,95 +195,15 @@ impl fmt::Debug for Vec3 {
 
 impl Vec3 {
     /// Create a new Vec3
-    pub fn new(x: Float, y: Float, z: Float) -> Self {
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
         Vec3 { x: x, y: y, z: z }
     }
     /// Find the midpoint between two Vec3
     pub fn midpoint(self, other: Self) -> Self {
-        let x = (self.x + other.x) / 2 as Float;
-        let y = (self.y + other.y) / 2 as Float;
-        let z = (self.z + other.z) / 2 as Float;
+        let x = (self.x + other.x) / 2f32;
+        let y = (self.y + other.y) / 2f32;
+        let z = (self.z + other.z) / 2f32;
         Vec3::new(x, y, z)
-    }
-}
-
-impl fmt::Debug for Vec3i {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({},{},{})", self.x, self.y, self.z)
-    }
-}
-
-impl Vec3i {
-    /// Create a new Vec3i
-    pub fn new(x: i32, y: i32, z: i32) -> Self {
-        Vec3i { x: x, y: y, z: z }
-    }
-    /// Find the minimum ordinal value
-    fn min_p(self) -> i32 {
-        cmp::min(cmp::min(self.x, self.y), self.z)
-    }
-    /// Find the maximum ordinal value
-    fn max_p(self) -> i32 {
-        cmp::max(cmp::max(self.x, self.y), self.z)
-    }
-    /// Calculate the distance squared between two Vec3i
-    pub fn dist_sq(self, other: Self) -> i32 {
-        let dx = other.x - self.x;
-        let dy = other.y - self.y;
-        let dz = other.z - self.z;
-        dx * dx + dy * dy + dz * dz
-    }
-}
-
-impl fmt::Debug for BBox {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}±{}", self.center, self.half_len)
-    }
-}
-
-impl BBox {
-    pub fn empty() -> BBox {
-        BBox { center: Vec3i::new(0, 0, 0), half_len: -1 }
-    }
-    pub fn new(p: Vec3i) -> BBox {
-        BBox { center: p, half_len: 1 }
-    }
-    fn min_p(&self) -> i32 {
-        if self.half_len > 0 {
-            self.center.min_p() - self.half_len
-        } else {
-            self.center.min_p()
-        }
-    }
-    fn max_p(&self) -> i32 {
-        if self.half_len > 0 {
-            self.center.max_p() + self.half_len
-        } else {
-            self.center.max_p()
-        }
-    }
-    pub fn extend(&mut self, p: Vec3i) {
-        self.center = self.move_center(p);
-        self.half_len *= 2;
-    }
-    fn move_center(&self, p: Vec3i) -> Vec3i {
-        let min_p = self.min_p();
-        if p.min_p() < min_p {
-            return Vec3i::new(min_p, min_p, min_p);
-        } else {
-            let max_p = self.max_p();
-            return Vec3i::new(max_p, max_p, max_p);
-        }
-    }
-    pub fn contains(&self, p: Vec3i) -> bool {
-        let Vec3i { x, y, z } = self.center;
-        let hl = self.half_len;
-        (p.x >= x - hl) &&
-        (p.x <  x + hl) &&
-        (p.y >= y - hl) &&
-        (p.y <  y + hl) &&
-        (p.z >= z - hl) &&
-        (p.z <  z + hl)
     }
 }
 
@@ -331,60 +227,4 @@ fn test_vec2() {
     assert!(a.angle_rel(b) == -0.4636476f32);
     assert!(c.angle_rel(Vec2::new(1f32, 1f32)) == 1.5707963f32);
     assert!(Vec2::new(-1f32, -1f32).angle_rel(c) == 1.5707965f32);
-}
-
-#[test]
-fn test_bbox() {
-    let v0 = Vec3i::new(0, 0, 0);
-    let v1 = Vec3i::new(1, 1, 1);
-    let v2 = Vec3i::new(2, 2, 2);
-    let v3 = Vec3i::new(3, 3, 3);
-    let v4 = Vec3i::new(4, 4, 4);
-    let v5 = Vec3i::new(5, 5, 5);
-    let v6 = Vec3i::new(6, 6, 6);
-    let v8 = Vec3i::new(8, 8, 8);
-    let vn1 = Vec3i::new(-1, -1, -1);
-    let mut b = BBox::new(v2);
-    assert!(b.contains(v2));
-    b.extend(v0);
-    assert!(b.center == v1);
-    assert!(b.half_len == 2);
-    assert!(b.contains(v1));
-    assert!(b.contains(v2));
-    b.extend(v4);
-    assert!(b.center == v3);
-    assert!(b.half_len == 4);
-    assert!(b.contains(v0));
-    assert!(b.contains(v1));
-    assert!(b.contains(v2));
-    assert!(b.contains(v3));
-    //
-    //    0 1 2 3 4 5 6 7 8
-    //   .       .___.   .
-    //   .       ._______.
-    //   ._______________.
-    b = BBox::new(v5);
-    b.extend(v8);
-    assert!(b.center == v6);
-    assert!(b.half_len == 2);
-    assert!(b.contains(v4));
-    assert!(b.contains(v5));
-    assert!(b.contains(v6));
-    b.extend(v0);
-    assert!(b.center == v4);
-    assert!(b.half_len == 4);
-    assert!(b.contains(v5));
-    b.extend(v8);
-    assert!(b.center == v8);
-    assert!(b.half_len == 8);
-    assert!(b.contains(v6));
-    b.extend(vn1);
-    assert!(b.center == v0);
-    assert!(b.half_len == 16);
-
-    // test negative point
-    b = BBox::new(vn1);
-    b.extend(v0);
-    assert!(b.center == v0);
-    assert!(b.half_len == 2);
 }

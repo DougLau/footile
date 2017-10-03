@@ -9,7 +9,6 @@ use std::fmt;
 use std::ops;
 use super::geom::Vec2;
 use super::geom::Vec3;
-use super::geom::intersection;
 use super::mask::Mask;
 
 /// Fixed-point type for fast calculations
@@ -20,7 +19,7 @@ struct Fixed {
 
 /// Figure direction enum
 #[derive(Clone, Copy)]
-enum FigDir {
+pub enum FigDir {
 	Forward,
 	Reverse,
 }
@@ -44,10 +43,10 @@ pub enum FillRule {
 
 /// Sub-figure structure
 struct SubFig {
-	start    : u16,		// starting point
-	n_points : u16,     // number of points
-	joined   : bool,    // joined ends flag
-	done     : bool,    // done flag
+    start    : u16,     // starting point
+    n_points : u16,     // number of points
+    joined   : bool,    // joined ends flag
+    done     : bool,    // done flag
 }
 
 /// Edge structure
@@ -224,8 +223,10 @@ impl SubFig {
     fn count(&self) -> u16 {
         if self.joined {
             self.n_points + 1u16
-        } else {
+        } else if self.n_points > 0 {
             self.n_points - 1u16
+        } else {
+            0
         }
     }
 }
@@ -301,6 +302,27 @@ impl Fig {
         subs.push(SubFig::new(0u16));
         Fig { points: points, subs: subs }
     }
+    /// Get the count of sub-figures
+    pub fn sub_count(&self) -> usize {
+        self.subs.len()
+    }
+    /// Get start of a sub-figure
+    pub fn sub_start(&self, i: usize) -> u16 {
+        self.subs[i].start
+    }
+    /// Get end of a sub-figure
+    pub fn sub_end(&self, i: usize) -> u16 {
+        let sub = &self.subs[i];
+        sub.next(sub.start, FigDir::Reverse)
+    }
+    /// Check if a sub-figure is joined
+    pub fn sub_joined(&self, i: usize) -> bool {
+        self.subs[i].joined
+    }
+    /// Get the number of points in a sub-figure
+    pub fn sub_points(&self, i: usize) -> u16 {
+        self.subs[i].count()
+    }
     /// Get the current sub-figure
     fn sub_current(&mut self) -> &mut SubFig {
         let len = self.subs.len();
@@ -329,7 +351,7 @@ impl Fig {
         unreachable!();
     }
     /// Get next vertex
-    fn next(&self, vid: u16, dir: FigDir) -> u16 {
+    pub fn next(&self, vid: u16, dir: FigDir) -> u16 {
         let sub = self.sub_at(vid);
         sub.next(vid, dir)
     }
@@ -392,17 +414,15 @@ impl Fig {
             self.sub_add_point();
         }
     }
-    /// Add a point to figure (as a Vec2)
-    fn add_point2(&mut self, pt: Vec2) {
-        self.add_point(Vec3::new(pt.x, pt.y, 1f32));
-    }
     /// Close the current sub-figure.
     ///
     /// * `joined` If true, join ends of sub-figure.
     pub fn close(&mut self, joined: bool) {
-        let mut sub = self.sub_current();
-        sub.joined = joined;
-        sub.done = true;
+        if self.points.len() > 0 {
+            let mut sub = self.sub_current();
+            sub.joined = joined;
+            sub.done = true;
+        }
     }
     /// Reset the figure (clear all points).
     pub fn reset(&mut self) {
@@ -441,7 +461,7 @@ impl Fig {
         }
     }
     /// Get boundary of stroke between two points
-    fn stroke_boundary(&self, v0: u16, v1: u16) -> (Vec2, Vec2) {
+    pub fn stroke_boundary(&self, v0: u16, v1: u16) -> (Vec2, Vec2) {
         let p0 = self.points[v0 as usize];
         let p1 = self.points[v1 as usize];
         let pp0 = Vec2::new(p0.x, p0.y);
@@ -450,72 +470,6 @@ impl Fig {
         let pr0 = pp0 + vr * (p0.z / 2f32);
         let pr1 = pp1 + vr * (p1.z / 2f32);
         (pr0, pr1)
-    }
-    /// Add a stroke join
-    fn stroke_join(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
-        // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
-        //      so: stroke_width / miter_length = sin ( theta / 2 )
-        const MITER_LIMIT: f32 = 4.0f32;
-        // Minimum stroke:miter ratio
-        let sm_min = 1f32 / MITER_LIMIT;
-        let th = (a1 - a0).angle_rel(b0 - b1);
-        let sm = (th / 2f32).sin().abs();
-        if sm >= sm_min {
-            // Calculate miter point
-            if let Some(xp) = intersection(a0, a1, b0, b1) {
-                self.add_point2(xp);
-                return;
-            }
-        }
-        // Bevel join
-        self.add_point2(a1);
-        self.add_point2(b0);
-    }
-    /// Stroke one side of a sub-figure to another figure
-    fn stroke_side(&self, sub: &SubFig, sfig: &mut Fig, start: u16,
-        dir: FigDir)
-    {
-        let mut xr: Option<(Vec2, Vec2)> = None;
-        let mut v0 = start;
-        let mut v1 = sub.next(v0, dir);
-        for _ in 0..sub.count() {
-            let bounds = self.stroke_boundary(v0, v1);
-            let (pr0, pr1) = bounds;
-            if let Some((xr0, xr1)) = xr {
-                sfig.stroke_join(xr0, xr1, pr0, pr1);
-            } else if !sub.joined {
-                sfig.add_point2(pr0);
-            }
-            xr = Some(bounds);
-            v0 = v1;
-            v1 = sub.next(v1, dir);
-        }
-        if !sub.joined {
-            if let Some((_, xr1)) = xr {
-                sfig.add_point2(xr1);
-            }
-        }
-    }
-    /// Stroke one sub-figure to another figure
-    fn stroke_sub(&mut self, i: usize, sfig: &mut Fig) {
-        let sub = &self.subs[i];
-        let start = sub.start;
-        let end = sub.next(start, FigDir::Reverse);
-        self.stroke_side(&sub, sfig, start, FigDir::Forward);
-        if sub.joined {
-            sfig.close(true);
-        }
-        self.stroke_side(&sub, sfig, end, FigDir::Reverse);
-        sfig.close(sub.joined);
-    }
-    /// Stroke onto another figure
-    ///
-    /// * `sfig` Figure to stroke onto.
-    pub fn stroke(&mut self, sfig: &mut Fig) {
-        let n_subs = self.subs.len();
-        for i in 0..n_subs {
-            self.stroke_sub(i, sfig);
-        }
     }
 }
 
@@ -611,7 +565,7 @@ impl<'a> Scanner<'a> {
     	let mut e: Option<usize> = None;
 	    self.sort_edges();
         self.n_fill = 0;
-        self.scan_buf.reset();
+        self.scan_buf.clear();
         let n_edges = self.edges.len();
         for i in 0..n_edges {
             match (e, self.edge_fill(i)) {

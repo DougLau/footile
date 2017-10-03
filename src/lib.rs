@@ -1,9 +1,6 @@
-pub use geom::BBox;
 pub use geom::Vec2;
-pub use geom::Vec3;
-pub use mask::Mask;
 pub use fig::FillRule;
-pub use plotter::Plotter;
+pub use plotter::{ JoinStyle, Plotter, PlotterBuilder };
 
 mod geom;
 mod mask;

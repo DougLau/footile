@@ -31,8 +31,8 @@ impl Mask {
     pub fn height(&self) -> u32 {
         self.height
     }
-    /// Reset the mask (clear all pixels)
-    pub fn reset(&mut self) {
+    /// Clear the mask.
+    pub fn clear(&mut self) {
         let len = self.pixels.len();
         self.fill(0, len, 0);
     }
@@ -86,7 +86,7 @@ impl Mask {
 #[test]
 fn test_mask() {
     let mut m = Mask::new(10, 10);
-    m.reset();
+    m.clear();
     assert!(m.width() == 10);
     assert!(m.height() == 10);
     assert!(m.pixels.len() == 100);

@@ -4,15 +4,16 @@
 //
 extern crate footile;
 
-use footile::{ Plotter, Vec2 };
+use footile::PlotterBuilder;
 
 fn main() {
-    let mut p = Plotter::new(64, 64, 0.5f32);
+    let mut p = PlotterBuilder::new()
+                               .width(64)
+                               .height(64)
+                               .build();
     p.pen_width(2f32, false);
-    p.line_to(Vec2::new(8f32, 16f32));
-    p.cubic_to(Vec2::new(64f32, -16f32),
-               Vec2::new(64f32, 48f32),
-               Vec2::new(0f32, 32f32));
-    p.rasterize_stroke(true);
-    p.get_mask().write_pgm("./cubic.pgm").unwrap();
+    p.move_to(8f32, 16f32);
+    p.cubic_to(64f32, -16f32, 64f32, 48f32, 0f32, 32f32);
+    p.stroke();
+    p.write_pgm("./cubic.pgm").unwrap();
 }

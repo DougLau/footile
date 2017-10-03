@@ -2,106 +2,150 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use super::fig::{ Fig, FillRule };
-use super::geom::{ Vec2, Vec3, float_lerp };
+use std::io;
+use super::fig::{ Fig, FillRule, FigDir };
+use super::geom::{ Vec2, Vec3, float_lerp, intersection };
 use super::mask::Mask;
 
-/// A plotter is a simple vector path plotter.  Paths are drawn
-/// using lines and splines (quadratic or cubic).
+/// Style for joins
+#[derive(Clone,Copy,Debug)]
+pub enum JoinStyle {
+    /// Mitered join with limit (miter length to stroke width ratio)
+    Miter(f32),
+    /// Beveled join
+    Bevel,
+    /// Rounded join
+    Round,
+}
+
+/// Plotter for rasterizing vector paths.
+///
+/// Paths are made from lines and splines (quadratic or cubic).
 pub struct Plotter {
-    fig       : Fig,    // drawing fig
-    sfig      : Fig,    // stroking fig
-    mask      : Mask,   // image mask
-    scan_buf  : Mask,   // scan line buffer
-    pen       : Vec3,   // current pen position
-    s_width   : f32,    // current stroke width
-    tol_sq    : f32,    // spline tolerance squared
-    scale     : f32,    // scale factor
+    fig        : Fig,           // drawing fig
+    sfig       : Fig,           // stroking fig
+    mask       : Mask,          // image mask
+    scan_buf   : Mask,          // scan line buffer
+    pen        : Option<Vec3>,  // current pen position and width
+    scale      : f32,           // user to pixel scale factor
+    tol_sq     : f32,           // curve decomposition tolerance squared
+    absolute   : bool,          // absolute coordinates
+    s_width    : f32,           // current stroke width
+    join_style : JoinStyle,     // current join style
+}
+
+/// Builder for plotters
+pub struct PlotterBuilder {
+    p_width  : u32,     // width in pixels
+    p_height : u32,     // height in pixels
+    u_width  : u32,     // width in user units
+    u_height : u32,     // height in user units
+    tol      : f32,     // curve decomposition tolerance
+    absolute : bool,    // absolute coordinates (false: relative)
 }
 
 impl Plotter {
-    /// Create a new plotter.
-    ///
-    /// * `width` Width in pixels.
-    /// * `height` Height in pixels.
-    /// * `tol` Tolerance threshold for curve decomposition.
-    pub fn new(width: u32, height: u32, tol: f32) -> Plotter {
-        Plotter {
-            fig: Fig::new(),
-            sfig: Fig::new(),
-            mask: Mask::new(width, height),
-            scan_buf: Mask::new(width, 1),
-            pen: Vec3::new(0f32, 0f32, 1f32),
-            s_width: 1f32,
-            tol_sq: tol * tol,
-            scale: 1f32,
-        }
-    }
-    /// Get the width in pixels.
+    /// Get width in pixels.
     pub fn width(&self) -> u32 {
         self.mask.width()
     }
-    /// Get the height in pixels.
+    /// Get height in pixels.
     pub fn height(&self) -> u32 {
         self.mask.height()
     }
-    /// Set the plot data size.
-    ///
-    /// * `width` Width in user units.
-    /// * `height` Height in user units.
-    pub fn data_size(&mut self, width: u32, height: u32) {
-        let sx = self.width() as f32 / width as f32;
-        let sy = self.height() as f32 / height as f32;
-        self.scale = sx.min(sy);
-        self.s_width = self.scale;
-    }
-    /// Reset the plotter's figure and mask.
+    /// Reset path and lift pen.
     pub fn reset(&mut self) {
         self.fig.reset();
         self.sfig.reset();
-        self.mask.reset();
+        self.pen = None;
     }
-    /// Add a line.
+    /// Clear the mask.
+    pub fn clear(&mut self) {
+        self.mask.clear();
+    }
+    /// Close the current sub-path and lift the pen.
+    pub fn close(&mut self) {
+        self.fig.close(true);
+        self.pen = None;
+    }
+    /// Set pen stroke width.
     ///
-    /// * `b` Endpoint of line.
-    pub fn line_to(&mut self, b: Vec2) {
-        let x = self.pen.x + b.x * self.scale;
-        let y = self.pen.y + b.y * self.scale;
-        let w = self.s_width;
-        self.line_to_scaled(Vec3::new(x, y, w));
+    /// All subsequent path points will be affected, until the stroke width
+    /// is changed again.
+    ///
+    /// * `width` Pen stroke width.
+    /// * `pixels` Use pixel units (true), or user units (false).
+    pub fn pen_width(&mut self, width: f32, pixels: bool) {
+        self.s_width = if pixels { width } else { width * self.scale }
     }
-    /// Add a line
+    /// Set the stroke join style.
+    ///
+    /// * `js` Join style.
+    pub fn join_style(&mut self, js: JoinStyle) {
+        self.join_style = js;
+    }
+    /// Create a point.
+    fn point(&self, x: f32, y: f32, w: f32) -> Vec3 {
+        if !self.absolute {
+            if let Some(pen) = self.pen {
+                let px = pen.x + x * self.scale;
+                let py = pen.y + y * self.scale;
+                return Vec3::new(px, py, w);
+            }
+        }
+        let px = x * self.scale;
+        let py = y * self.scale;
+        Vec3::new(px, py, w)
+    }
+    /// Move the pen to a point an lower it.
+    ///
+    /// * `bx` X-position of point.
+    /// * `by` Y-position of point.
+    pub fn move_to(&mut self, bx: f32, by: f32) {
+        let p = self.point(bx, by, self.s_width);
+        self.fig.close(false);
+        self.line_to_scaled(p);
+    }
+    /// Add a line from the pen to a point.
+    ///
+    /// If the pen is lifted, nothing is added.
+    ///
+    /// * `bx` X-position of end point.
+    /// * `by` Y-position of end point.
+    pub fn line_to(&mut self, bx: f32, by: f32) {
+        if let Some(_) = self.pen {
+            let p = self.point(bx, by, self.s_width);
+            self.line_to_scaled(p);
+        }
+    }
+    /// Add a line and move the pen.
     fn line_to_scaled(&mut self, p: Vec3) {
-        self.pen = p;
         self.fig.add_point(p);
+        self.pen = Some(p);
     }
     /// Add a quadratic bezier spline.
     ///
-    /// The points are A, B and C.  A is the current pen position.  B is the
-    /// control point.  C is the final pen position.
+    /// The points are A (current pen position), B (control point), and C
+    /// (spline end point).
     ///
-    /// * `b` Spline control point.
-    /// * `c` Spline endpoint.
-    pub fn quad_to(&mut self, b: Vec2, c: Vec2) {
-        let bb = Vec3::new(
-            self.pen.x + b.x * self.scale,
-            self.pen.y + b.y * self.scale,
-            (self.pen.z + self.s_width) / 2f32,
-        );
-        let cc = Vec3::new(
-            self.pen.x + c.x * self.scale,
-            self.pen.y + c.y * self.scale,
-            self.s_width,
-        );
-        self.quad_to_scaled(bb, cc);
+    /// If the pen is lifted, nothing is added.
+    ///
+    /// * `bx` X-position of control point.
+    /// * `by` Y-position of control point.
+    /// * `cx` X-position of end point.
+    /// * `cy` Y-position of end point.
+    pub fn quad_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32) {
+        if let Some(pen) = self.pen {
+            let bb = self.point(bx, by, (pen.z + self.s_width) / 2f32);
+            let cc = self.point(cx, cy, self.s_width);
+            self.quad_to_scaled(pen, bb, cc);
+        }
     }
     /// Add a quadratic bezier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
-    /// method.  The points are A, B and C.  A is the current pen position.  B
-    /// is the control point.  C is the final pen position.
-    fn quad_to_scaled(&mut self, b: Vec3, c: Vec3) {
-        let a     = self.pen;
+    /// method.
+    fn quad_to_scaled(&mut self, a: Vec3, b: Vec3, c: Vec3) {
         let ab    = a.midpoint(b);
         let bc    = b.midpoint(c);
         let ab_bc = ab.midpoint(bc);
@@ -109,49 +153,47 @@ impl Plotter {
         if self.is_within_tolerance(ab_bc, ac) {
             self.line_to_scaled(c);
         } else {
-            self.quad_to_scaled(ab, ab_bc);
-            self.quad_to_scaled(bc, c);
+            self.quad_to_scaled(a, ab, ab_bc);
+            self.quad_to_scaled(ab_bc, bc, c);
         }
     }
-    /// Check if two points are within the tolerance threshold
+    /// Check if two points are within the tolerance threshold.
     fn is_within_tolerance(&self, a: Vec3, b: Vec3) -> bool {
+        assert!(self.tol_sq > 0f32);
         let a2 = Vec2::new(a.x, a.y);
         let b2 = Vec2::new(b.x, b.y);
         a2.dist_sq(b2) <= self.tol_sq
     }
     /// Add a cubic bezier spline.
     ///
-    /// The points are A, B, C and D.  A is the current pen position.  B and C
-    /// are the two control points.  D is the final pen position.
+    /// The points are A (current pen position), B (first control point), C
+    /// (second control point) and D (spline end point).
     ///
-    /// * `b` First spline control point.
-    /// * `c` Second spline control point.
-    /// * `d` Spline endpoint.
-    pub fn cubic_to(&mut self, b: Vec2, c: Vec2, d: Vec2) {
-        let bb = Vec3::new(
-            self.pen.x + b.x * self.scale,
-            self.pen.y + b.y * self.scale,
-            float_lerp(self.pen.z, self.s_width, 1f32 / 3f32),
-        );
-        let cc = Vec3::new(
-            self.pen.x + c.x * self.scale,
-            self.pen.y + c.y * self.scale,
-            float_lerp(self.pen.z, self.s_width, 2f32 / 3f32),
-        );
-        let dd = Vec3::new(
-            self.pen.x + d.x * self.scale,
-            self.pen.y + d.y * self.scale,
-            self.s_width,
-        );
-        self.cubic_to_scaled(bb, cc, dd);
+    /// If the pen is lifted, nothing is added.
+    ///
+    /// * `bx` X-position of first control point.
+    /// * `by` Y-position of first control point.
+    /// * `cx` X-position of second control point.
+    /// * `cy` Y-position of second control point.
+    /// * `dx` X-position of end point.
+    /// * `dy` Y-position of end point.
+    pub fn cubic_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32, dx: f32,
+                    dy: f32)
+    {
+        if let Some(pen) = self.pen {
+            let bw = float_lerp(pen.z, self.s_width, 1f32 / 3f32);
+            let cw = float_lerp(pen.z, self.s_width, 2f32 / 3f32);
+            let bb = self.point(bx, by, bw);
+            let cc = self.point(cx, cy, cw);
+            let dd = self.point(dx, dy, self.s_width);
+            self.cubic_to_scaled(pen, bb, cc, dd);
+        }
     }
     /// Add a cubic bezier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
-    /// method.  The points are A, B, C and D.  A is the current pen position.
-    /// B and C are the two control points.  D is the final pen position.
-    fn cubic_to_scaled(&mut self, b: Vec3, c: Vec3, d: Vec3) {
-        let a     = self.pen;
+    /// method.
+    fn cubic_to_scaled(&mut self, a: Vec3, b: Vec3, c: Vec3, d: Vec3) {
         let ab    = a.midpoint(b);
         let bc    = b.midpoint(c);
         let cd    = c.midpoint(d);
@@ -162,52 +204,167 @@ impl Plotter {
         if self.is_within_tolerance(e, ad) {
             self.line_to_scaled(d);
         } else {
-            self.cubic_to_scaled(ab, ab_bc, e);
-            self.cubic_to_scaled(bc_cd, cd, d);
+            self.cubic_to_scaled(a, ab, ab_bc, e);
+            self.cubic_to_scaled(e, bc_cd, cd, d);
         }
     }
-    /// Close the current sub-fig.
-    ///
-    /// * `joined` If true, join ends of sub-figure.
-    pub fn close(&mut self, joined: bool) {
-        self.fig.close(joined);
-        self.pen.x = 0f32;
-        self.pen.y = 0f32;
-    }
-    /// Set the pen stroking width.
-    ///
-    /// * `width` Pen stroke width.
-    /// * `pixels` Use pixel units (true), or user units (false).
-    pub fn pen_width(&mut self, width: f32, pixels: bool) {
-        self.s_width = if pixels { width } else { width * self.scale }
-    }
-    /// Rasterize (fill) onto the mask.
+    /// Fill path onto the mask.  The path is not affected.
     ///
     /// * `rule` Fill rule.
-    /// * `reset` If true, reset figure after fill.
-    pub fn rasterize_fill(&mut self, rule: FillRule, reset: bool) {
+    pub fn fill(&mut self, rule: FillRule) {
         self.fig.fill(&mut self.mask, &mut self.scan_buf, rule);
-        if reset {
-            self.pen.x = 0f32;
-            self.pen.y = 0f32;
-            self.fig.reset();
-        }
     }
-    /// Rasterize (stroke) onto the mask.
-    ///
-    /// * `reset` If true, reset figure after fill.
-    pub fn rasterize_stroke(&mut self, reset: bool) {
-        self.fig.stroke(&mut self.sfig);
+    /// Stroke path onto the mask.  The path is not affected.
+    pub fn stroke(&mut self) {
+        let n_subs = self.fig.sub_count();
+        for i in 0..n_subs {
+            self.stroke_sub(i);
+        }
         self.sfig.fill(&mut self.mask, &mut self.scan_buf, FillRule::NonZero);
-        if reset {
-            self.pen.x = 0f32;
-            self.pen.y = 0f32;
-            self.fig.reset();
-            self.sfig.reset();
+    }
+    /// Stroke one sub-figure
+    fn stroke_sub(&mut self, i: usize) {
+        if self.fig.sub_points(i) > 0 {
+            let start = self.fig.sub_start(i);
+            let end = self.fig.sub_end(i);
+            let joined = self.fig.sub_joined(i);
+            self.stroke_side(i, start, FigDir::Forward);
+            if joined {
+                self.sfig.close(true);
+            }
+            self.stroke_side(i, end, FigDir::Reverse);
+            self.sfig.close(joined);
         }
     }
-    /// Get a reference to the mask.
-    pub fn get_mask(&mut self) -> &Mask {
-        &self.mask
+    /// Stroke one side of a sub-figure to another figure
+    fn stroke_side(&mut self, i: usize, start: u16, dir: FigDir) {
+        let mut xr: Option<(Vec2, Vec2)> = None;
+        let mut v0 = start;
+        let mut v1 = self.fig.next(v0, dir);
+        let joined = self.fig.sub_joined(i);
+        for _ in 0..self.fig.sub_points(i) {
+            let bounds = self.fig.stroke_boundary(v0, v1);
+            let (pr0, pr1) = bounds;
+            if let Some((xr0, xr1)) = xr {
+                self.stroke_join(xr0, xr1, pr0, pr1);
+            } else if !joined {
+                self.stroke_point(pr0);
+            }
+            xr = Some(bounds);
+            v0 = v1;
+            v1 = self.fig.next(v1, dir);
+        }
+        if !joined {
+            if let Some((_, xr1)) = xr {
+                self.stroke_point(xr1);
+            }
+        }
+    }
+    /// Add a point to stroke figure
+    fn stroke_point(&mut self, pt: Vec2) {
+        self.sfig.add_point(Vec3::new(pt.x, pt.y, 1f32));
+    }
+    /// Add a stroke join
+    fn stroke_join(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
+        match self.join_style {
+            JoinStyle::Miter(ml) => self.stroke_miter(a0, a1, b0, b1, ml),
+            _                    => self.stroke_bevel(a1, b0),
+        }
+    }
+    /// Add a miter join
+    fn stroke_miter(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2, ml: f32){
+        // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
+        //      so: stroke_width / miter_length = sin ( theta / 2 )
+        if ml > 0f32 {
+            // Minimum stroke:miter ratio
+            let sm_min = 1f32 / ml;
+            let th = (a1 - a0).angle_rel(b0 - b1);
+            let sm = (th / 2f32).sin().abs();
+            if sm >= sm_min {
+                // Calculate miter point
+                if let Some(xp) = intersection(a0, a1, b0, b1) {
+                    self.stroke_point(xp);
+                    return;
+                }
+            }
+        }
+        self.stroke_bevel(a1, b0);
+    }
+    /// Add a bevel join
+    fn stroke_bevel(&mut self, a1: Vec2, b0: Vec2) {
+        self.stroke_point(a1);
+        self.stroke_point(b0);
+    }
+    /// Write the mask to a PGM (portable gray map) file.
+    ///
+    /// * `filename` Name of file to write.
+    pub fn write_pgm(&self, filename: &str) -> io::Result<()> {
+        self.mask.write_pgm(&filename)
+    }
+}
+
+impl PlotterBuilder {
+    /// Create a new PlotterBuilder.
+    pub fn new() -> PlotterBuilder {
+        PlotterBuilder {
+            p_width:  0,
+            p_height: 0,
+            u_width:  0,
+            u_height: 0,
+            tol:      0.5f32,
+            absolute: false,
+        }
+    }
+    /// Set width in pixels.
+    pub fn width(mut self, w: u32) -> PlotterBuilder {
+        self.p_width = w;
+        self
+    }
+    /// Set height in pixels.
+    pub fn height(mut self, h: u32) -> PlotterBuilder {
+        self.p_height = h;
+        self
+    }
+    /// Set user width.
+    pub fn user_width(mut self, w: u32) -> PlotterBuilder {
+        self.u_width = w;
+        self
+    }
+    /// Set user height.
+    pub fn user_height(mut self, h: u32) -> PlotterBuilder {
+        self.u_height = h;
+        self
+    }
+    /// Set tolerance threshold for curve decomposition.
+    pub fn tolerance(mut self, t: f32) -> PlotterBuilder {
+        self.tol = t.max(0.01f32);
+        self
+    }
+    /// Use absolute instead of relative coordinates.
+    pub fn absolute(mut self) -> PlotterBuilder {
+        self.absolute = true;
+        self
+    }
+    /// Build configured Plotter.
+    pub fn build(self) -> Plotter {
+        let pw = if self.p_width > 0 { self.p_width } else { 100 };
+        let ph = if self.p_height > 0 { self.p_height } else { 100 };
+        let uw = if self.u_width > 0 { self.u_width } else { pw };
+        let uh = if self.u_height > 0 { self.u_height } else { ph };
+        let sx = pw as f32 / uw as f32;
+        let sy = ph as f32 / uh as f32;
+        let scale = sx.min(sy);
+        Plotter {
+            fig:        Fig::new(),
+            sfig:       Fig::new(),
+            mask:       Mask::new(pw, ph),
+            scan_buf:   Mask::new(pw, 1),
+            pen:        None,
+            scale:      scale,
+            tol_sq:     self.tol * self.tol,
+            absolute:   self.absolute,
+            s_width:    scale,
+            join_style: JoinStyle::Miter(4f32),
+        }
     }
 }
