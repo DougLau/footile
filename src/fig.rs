@@ -7,7 +7,6 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
 use std::ops;
-use super::geom::Vec2;
 use super::geom::Vec3;
 use super::mask::Mask;
 
@@ -233,7 +232,7 @@ impl SubFig {
 
 impl Edge {
     /// Create a new edge
-    fn new(v0: u16, v1: u16, p0: &Vec3, p1: &Vec3, dir: FigDir) -> Edge {
+    fn new(v0: u16, v1: u16, p0: Vec3, p1: Vec3, dir: FigDir) -> Edge {
         assert!(v0 != v1);
         let dx = Fixed::from_f32(p1.x - p0.x);  // delta X
         let dy = Fixed::from_f32(p1.y - p0.y);  // delta Y
@@ -286,8 +285,7 @@ impl fmt::Debug for Fig {
         for sub in &self.subs {
             write!(f, "sub {}+{} ", sub.start, sub.n_points)?;
             for v in sub.start..(sub.start + sub.n_points) {
-                let p = &self.points[v as usize];
-                write!(f, "{:?} ", p)?;
+                write!(f, "{:?} ", self.get_point(v))?;
             }
         }
 		Ok(())
@@ -357,11 +355,11 @@ impl Fig {
     }
     /// Get the next vertex with a different Y
     fn next_y(&self, vid: u16, dir: FigDir) -> u16 {
-        let py = self.points[vid as usize].y;
+        let py = self.get_point(vid).y;
         let sub = self.sub_at(vid);
         let mut v = sub.next(vid, dir);
         while v != vid {
-            let y = self.points[v as usize].y;
+            let y = self.get_point(v).y;
             if Fixed::cmp_f32(py, y) != Equal {
                 return v;
             }
@@ -371,14 +369,12 @@ impl Fig {
     }
     /// Get the next vertex for an edge change
     fn next_edge(&self, vid: u16, dir: FigDir) -> u16 {
-        let px = self.points[vid as usize].x;
-        let py = self.points[vid as usize].y;
+        let pp = self.get_point(vid);
         let sub = self.sub_at(vid);
         let mut v = sub.next(vid, dir);
         while v != vid {
-            let x = self.points[v as usize].x;
-            let y = self.points[v as usize].y;
-            if x < px || Fixed::cmp_f32(py, y) != Equal {
+            let p = self.get_point(v);
+            if p.x < pp.x || Fixed::cmp_f32(pp.y, p.y) != Equal {
                 return v;
             }
             v = sub.next(v, dir);
@@ -387,12 +383,12 @@ impl Fig {
     }
     /// Get the last vertex with the same Y
     fn same_y(&self, vid: u16, dir: FigDir) -> u16 {
-        let py = self.points[vid as usize].y;
+        let py = self.get_point(vid).y;
         let sub = self.sub_at(vid);
         let mut vp = vid;
         let mut v = sub.next(vid, dir);
         while v != vid {
-            let y = self.points[v as usize].y;
+            let y = self.get_point(v).y;
             if Fixed::cmp_f32(py, y) != Equal {
                 return vp;
             }
@@ -401,17 +397,36 @@ impl Fig {
         }
         vid
     }
+    /// Get a point.
+    ///
+    /// * `vid` Vertex ID.
+    pub fn get_point(&self, vid: u16) -> Vec3 {
+        self.points[vid as usize]
+    }
     /// Add a point.
     ///
     /// * `pt` Point to add (z indicates stroke width).
     pub fn add_point(&mut self, pt: Vec3) {
         let n_pts = self.points.len();
         if n_pts < u16::max_value() as usize {
-            if self.sub_current().done {
+            let done = self.sub_current().done;
+            if done {
                 self.sub_add();
             }
-            self.points.push(pt);
-            self.sub_add_point();
+            if done || !self.coincident(pt) {
+                self.points.push(pt);
+                self.sub_add_point();
+            }
+        }
+    }
+    /// Check if a point is coincident with previous point.
+    fn coincident(&self, pt: Vec3) -> bool {
+        let n = self.points.len();
+        if n > 0 {
+            let p = self.points[n - 1];
+            p.x == pt.x && p.y == pt.y
+        } else {
+            false
         }
     }
     /// Close the current sub-figure.
@@ -432,8 +447,8 @@ impl Fig {
     }
     /// Compare two figure vertex IDs
     fn compare_vids(&self, v0: u16, v1: u16) -> Ordering {
-        let p0 = &self.points[v0 as usize];
-        let p1 = &self.points[v1 as usize];
+        let p0 = self.get_point(v0);
+        let p1 = self.get_point(v1);
         match Fixed::cmp_f32(p0.y, p1.y) {
             Less    => Less,
             Greater => Greater,
@@ -459,17 +474,6 @@ impl Fig {
             }
             scan.scan_vertex(vid);
         }
-    }
-    /// Get boundary of stroke between two points
-    pub fn stroke_boundary(&self, v0: u16, v1: u16) -> (Vec2, Vec2) {
-        let p0 = self.points[v0 as usize];
-        let p1 = self.points[v1 as usize];
-        let pp0 = Vec2::new(p0.x, p0.y);
-        let pp1 = Vec2::new(p1.x, p1.y);
-        let vr = (pp0 - pp1).left().normalize();
-        let pr0 = pp0 + vr * (p0.z / 2f32);
-        let pr1 = pp1 + vr * (p1.z / 2f32);
-        (pr0, pr1)
     }
 }
 
@@ -500,7 +504,7 @@ impl<'a> Scanner<'a> {
     }
     /// Scan figure to a given vertex
     fn scan_vertex(&mut self, vid: u16) {
-        let p = self.fig.points[vid as usize];
+        let p = self.fig.get_point(vid);
         let y_vtx = Fixed::from_f32(p.y);
         if self.edges.len() > 0 {
             self.scan_to_y(y_vtx);
@@ -633,9 +637,9 @@ impl<'a> Scanner<'a> {
         let vp = self.fig.next_edge(vid, FigDir::Reverse);
         let vn = self.fig.next_edge(vid, FigDir::Forward);
         if (vp != vid) && (vn != vid) {
-            let y = self.fig.points[vid as usize].y;
-            let cp = Fixed::cmp_f32(self.fig.points[vp as usize].y, y);
-            let cn = Fixed::cmp_f32(self.fig.points[vn as usize].y, y);
+            let y = self.fig.get_point(vid).y;
+            let cp = Fixed::cmp_f32(self.fig.get_point(vp).y, y);
+            let cn = Fixed::cmp_f32(self.fig.get_point(vn).y, y);
             match (cp, cn) {
                 (Less,    Less)    => self.edge_merge(vid),
                 (Greater, Greater) => self.edge_split(vp, vn),
@@ -661,12 +665,12 @@ impl<'a> Scanner<'a> {
     fn edge_split(&mut self, v0: u16, v1: u16) {
         let fig = &self.fig;
         let v0u = fig.next(v0, FigDir::Forward);    // Find upper vtx of edge 0
-        let p0u = &fig.points[v0u as usize];        // Upper point of edge 0
-        let p0 = &fig.points[v0 as usize];          // Lower point of edge 0
+        let p0u = fig.get_point(v0u);               // Upper point of edge 0
+        let p0 = fig.get_point(v0);                 // Lower point of edge 0
         self.edges.push(Edge::new(v0u, v0, p0u, p0, FigDir::Reverse));
         let v1u = fig.next(v1, FigDir::Reverse);    // Find upper vtx of edge 1
-        let p1u = &fig.points[v1u as usize];        // Upper point of edge 1
-        let p1 = &fig.points[v1 as usize];          // Lower point of edge 1
+        let p1u = fig.get_point(v1u);               // Upper point of edge 1
+        let p1 = fig.get_point(v1);                 // Lower point of edge 1
         self.edges.push(Edge::new(v1u, v1, p1u, p1, FigDir::Forward));
     }
     /// Update one edge at a regular vertex
@@ -677,8 +681,8 @@ impl<'a> Scanner<'a> {
                 let dir = self.edges[i].dir;
                 let vn = fig.next_y(vid, dir);          // Find lower vertex
                 let v = fig.next_y(vn, opposite(dir));  // Find upper vertex
-                let p = &fig.points[v as usize];
-                let pn = &fig.points[vn as usize];
+                let p = fig.get_point(v);
+                let pn = fig.get_point(vn);
                 self.edges[i] = Edge::new(v, vn, p, pn, dir);
                 break;
             }

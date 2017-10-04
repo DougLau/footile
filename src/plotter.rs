@@ -21,6 +21,19 @@ pub enum JoinStyle {
 /// Plotter for rasterizing vector paths.
 ///
 /// Paths are made from lines and splines (quadratic or cubic).
+///
+/// # Example
+/// ```
+/// use footile::PlotterBuilder;
+/// let mut p = PlotterBuilder::new().build();
+/// p.pen_width(3f32, false);
+/// p.move_to(50f32, 34f32);
+/// p.cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32);
+/// p.cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32);
+/// p.close();
+/// p.stroke();
+/// p.write_png("./drop.png").unwrap();
+/// ```
 pub struct Plotter {
     fig        : Fig,           // drawing fig
     sfig       : Fig,           // stroking fig
@@ -35,6 +48,18 @@ pub struct Plotter {
 }
 
 /// Builder for plotters
+///
+/// # Example
+/// ```
+/// use footile::PlotterBuilder;
+/// let mut p = PlotterBuilder::new()
+///                            .width(64)
+///                            .height(64)
+///                            .absolute()
+///                            .tolerance(1f32)
+///                            .build();
+/// // Plot some stuff ...
+/// ```
 pub struct PlotterBuilder {
     p_width  : u32,     // width in pixels
     p_height : u32,     // height in pixels
@@ -63,7 +88,7 @@ impl Plotter {
     pub fn clear(&mut self) {
         self.mask.clear();
     }
-    /// Close the current sub-path and lift the pen.
+    /// Close current sub-path and lift the pen.
     pub fn close(&mut self) {
         self.fig.close(true);
         self.pen = None;
@@ -78,7 +103,7 @@ impl Plotter {
     pub fn pen_width(&mut self, width: f32, pixels: bool) {
         self.s_width = if pixels { width } else { width * self.scale }
     }
-    /// Set the stroke join style.
+    /// Set stroke join style.
     ///
     /// * `js` Join style.
     pub fn join_style(&mut self, js: JoinStyle) {
@@ -97,7 +122,7 @@ impl Plotter {
         let py = y * self.scale;
         Vec3::new(px, py, w)
     }
-    /// Move the pen to a point an lower it.
+    /// Move pen to a point and lower it.
     ///
     /// * `bx` X-position of point.
     /// * `by` Y-position of point.
@@ -106,9 +131,9 @@ impl Plotter {
         self.fig.close(false);
         self.line_to_scaled(p);
     }
-    /// Add a line from the pen to a point.
+    /// Add a line from pen to a point.
     ///
-    /// If the pen is lifted, nothing is added.
+    /// If pen is lifted, nothing is added.
     ///
     /// * `bx` X-position of end point.
     /// * `by` Y-position of end point.
@@ -128,7 +153,7 @@ impl Plotter {
     /// The points are A (current pen position), B (control point), and C
     /// (spline end point).
     ///
-    /// If the pen is lifted, nothing is added.
+    /// If pen is lifted, nothing is added.
     ///
     /// * `bx` X-position of control point.
     /// * `by` Y-position of control point.
@@ -157,7 +182,7 @@ impl Plotter {
             self.quad_to_scaled(ab_bc, bc, c);
         }
     }
-    /// Check if two points are within the tolerance threshold.
+    /// Check if two points are within tolerance threshold.
     fn is_within_tolerance(&self, a: Vec3, b: Vec3) -> bool {
         assert!(self.tol_sq > 0f32);
         let a2 = Vec2::new(a.x, a.y);
@@ -169,7 +194,7 @@ impl Plotter {
     /// The points are A (current pen position), B (first control point), C
     /// (second control point) and D (spline end point).
     ///
-    /// If the pen is lifted, nothing is added.
+    /// If pen is lifted, nothing is added.
     ///
     /// * `bx` X-position of first control point.
     /// * `by` Y-position of first control point.
@@ -222,7 +247,7 @@ impl Plotter {
         }
         self.sfig.fill(&mut self.mask, &mut self.scan_buf, FillRule::NonZero);
     }
-    /// Stroke one sub-figure
+    /// Stroke one sub-figure.
     fn stroke_sub(&mut self, i: usize) {
         if self.fig.sub_points(i) > 0 {
             let start = self.fig.sub_start(i);
@@ -236,14 +261,14 @@ impl Plotter {
             self.sfig.close(joined);
         }
     }
-    /// Stroke one side of a sub-figure to another figure
+    /// Stroke one side of a sub-figure to another figure.
     fn stroke_side(&mut self, i: usize, start: u16, dir: FigDir) {
         let mut xr: Option<(Vec2, Vec2)> = None;
         let mut v0 = start;
         let mut v1 = self.fig.next(v0, dir);
         let joined = self.fig.sub_joined(i);
         for _ in 0..self.fig.sub_points(i) {
-            let bounds = self.fig.stroke_boundary(v0, v1);
+            let bounds = self.stroke_boundary(v0, v1);
             let (pr0, pr1) = bounds;
             if let Some((xr0, xr1)) = xr {
                 self.stroke_join(xr0, xr1, pr0, pr1);
@@ -260,18 +285,29 @@ impl Plotter {
             }
         }
     }
-    /// Add a point to stroke figure
+    /// Get boundary of stroke between two points
+    fn stroke_boundary(&self, v0: u16, v1: u16) -> (Vec2, Vec2) {
+        let p0 = self.fig.get_point(v0);
+        let p1 = self.fig.get_point(v1);
+        let pp0 = Vec2::new(p0.x, p0.y);
+        let pp1 = Vec2::new(p1.x, p1.y);
+        let vr = (pp0 - pp1).left().normalize();
+        let pr0 = pp0 + vr * (p0.z / 2f32);
+        let pr1 = pp1 + vr * (p1.z / 2f32);
+        (pr0, pr1)
+    }
+    /// Add a point to stroke figure.
     fn stroke_point(&mut self, pt: Vec2) {
         self.sfig.add_point(Vec3::new(pt.x, pt.y, 1f32));
     }
-    /// Add a stroke join
+    /// Add a stroke join.
     fn stroke_join(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
         match self.join_style {
             JoinStyle::Miter(ml) => self.stroke_miter(a0, a1, b0, b1, ml),
             _                    => self.stroke_bevel(a1, b0),
         }
     }
-    /// Add a miter join
+    /// Add a miter join.
     fn stroke_miter(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2, ml: f32){
         // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
         //      so: stroke_width / miter_length = sin ( theta / 2 )
@@ -280,7 +316,7 @@ impl Plotter {
             let sm_min = 1f32 / ml;
             let th = (a1 - a0).angle_rel(b0 - b1);
             let sm = (th / 2f32).sin().abs();
-            if sm >= sm_min {
+            if sm >= sm_min && sm < 1f32 {
                 // Calculate miter point
                 if let Some(xp) = intersection(a0, a1, b0, b1) {
                     self.stroke_point(xp);
@@ -290,7 +326,7 @@ impl Plotter {
         }
         self.stroke_bevel(a1, b0);
     }
-    /// Add a bevel join
+    /// Add a bevel join.
     fn stroke_bevel(&mut self, a1: Vec2, b0: Vec2) {
         self.stroke_point(a1);
         self.stroke_point(b0);
@@ -300,6 +336,12 @@ impl Plotter {
     /// * `filename` Name of file to write.
     pub fn write_pgm(&self, filename: &str) -> io::Result<()> {
         self.mask.write_pgm(&filename)
+    }
+    /// Write the mask to a PNG (portable network graphics) file.
+    ///
+    /// * `filename` Name of file to write.
+    pub fn write_png(&self, filename: &str) -> io::Result<()> {
+        self.mask.write_png(&filename)
     }
 }
 
