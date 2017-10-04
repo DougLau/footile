@@ -22,9 +22,9 @@ pub struct Vec3 {
 }
 
 impl fmt::Debug for Vec2 {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "({},{})", self.x, self.y)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
+    }
 }
 
 impl ops::Add for Vec2 {
@@ -38,7 +38,7 @@ impl ops::Add for Vec2 {
 impl ops::Sub for Vec2 {
     type Output = Self;
 
-    fn sub(self, other: Self) -> Self{
+    fn sub(self, other: Self) -> Self {
         Vec2::new(self.x - other.x, self.y - other.y)
     }
 }
@@ -92,11 +92,7 @@ impl Vec2 {
     /// Create a copy normalized to unit length
     pub fn normalize(self) -> Self {
         let m = self.mag();
-        if m > 0f32 {
-            self / m
-        } else {
-            Vec2::zero()
-        }
+        if m > 0f32 { self / m } else { Vec2::zero() }
     }
     /// Calculate the distance squared between two Vec2
     pub fn dist_sq(self, other: Self) -> f32 {
@@ -168,11 +164,7 @@ pub fn float_lerp(a: f32, b: f32, t: f32) -> f32 {
 /// * `b0` First point on line b.
 /// * `b1` Second point on line b.
 /// Returns None if the lines are colinear.
-pub fn intersection(a0: Vec2,
-                    a1: Vec2,
-                    b0: Vec2,
-                    b1: Vec2) -> Option<Vec2>
-{
+pub fn intersection(a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) -> Option<Vec2> {
     let av = a0 - a1;
     let bv = b0 - b1;
     let den = av * bv;

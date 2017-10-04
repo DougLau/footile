@@ -3,8 +3,8 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 use std::io;
-use super::fig::{ Fig, FillRule, FigDir };
-use super::geom::{ Vec2, Vec3, float_lerp, intersection };
+use super::fig::{Fig, FillRule, FigDir};
+use super::geom::{Vec2, Vec3, float_lerp, intersection};
 use super::mask::Mask;
 
 /// Style for joins
@@ -35,16 +35,16 @@ pub enum JoinStyle {
 /// p.write_png("./drop.png").unwrap();
 /// ```
 pub struct Plotter {
-    fig        : Fig,           // drawing fig
-    sfig       : Fig,           // stroking fig
-    mask       : Mask,          // image mask
-    scan_buf   : Mask,          // scan line buffer
-    pen        : Option<Vec3>,  // current pen position and width
-    scale      : f32,           // user to pixel scale factor
-    tol_sq     : f32,           // curve decomposition tolerance squared
-    absolute   : bool,          // absolute coordinates
-    s_width    : f32,           // current stroke width
-    join_style : JoinStyle,     // current join style
+    fig: Fig, // drawing fig
+    sfig: Fig, // stroking fig
+    mask: Mask, // image mask
+    scan_buf: Mask, // scan line buffer
+    pen: Option<Vec3>, // current pen position and width
+    scale: f32, // user to pixel scale factor
+    tol_sq: f32, // curve decomposition tolerance squared
+    absolute: bool, // absolute coordinates
+    s_width: f32, // current stroke width
+    join_style: JoinStyle, // current join style
 }
 
 /// Builder for plotters
@@ -61,12 +61,12 @@ pub struct Plotter {
 /// // Plot some stuff ...
 /// ```
 pub struct PlotterBuilder {
-    p_width  : u32,     // width in pixels
-    p_height : u32,     // height in pixels
-    u_width  : u32,     // width in user units
-    u_height : u32,     // height in user units
-    tol      : f32,     // curve decomposition tolerance
-    absolute : bool,    // absolute coordinates (false: relative)
+    p_width: u32, // width in pixels
+    p_height: u32, // height in pixels
+    u_width: u32, // width in user units
+    u_height: u32, // height in user units
+    tol: f32, // curve decomposition tolerance
+    absolute: bool, // absolute coordinates (false: relative)
 }
 
 impl Plotter {
@@ -171,10 +171,10 @@ impl Plotter {
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
     fn quad_to_scaled(&mut self, a: Vec3, b: Vec3, c: Vec3) {
-        let ab    = a.midpoint(b);
-        let bc    = b.midpoint(c);
+        let ab = a.midpoint(b);
+        let bc = b.midpoint(c);
         let ab_bc = ab.midpoint(bc);
-        let ac    = a.midpoint(c);
+        let ac = a.midpoint(c);
         if self.is_within_tolerance(ab_bc, ac) {
             self.line_to_scaled(c);
         } else {
@@ -202,9 +202,7 @@ impl Plotter {
     /// * `cy` Y-position of second control point.
     /// * `dx` X-position of end point.
     /// * `dy` Y-position of end point.
-    pub fn cubic_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32, dx: f32,
-                    dy: f32)
-    {
+    pub fn cubic_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32, dx: f32, dy: f32) {
         if let Some(pen) = self.pen {
             let bw = float_lerp(pen.z, self.s_width, 1f32 / 3f32);
             let cw = float_lerp(pen.z, self.s_width, 2f32 / 3f32);
@@ -219,13 +217,13 @@ impl Plotter {
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
     fn cubic_to_scaled(&mut self, a: Vec3, b: Vec3, c: Vec3, d: Vec3) {
-        let ab    = a.midpoint(b);
-        let bc    = b.midpoint(c);
-        let cd    = c.midpoint(d);
+        let ab = a.midpoint(b);
+        let bc = b.midpoint(c);
+        let cd = c.midpoint(d);
         let ab_bc = ab.midpoint(bc);
         let bc_cd = bc.midpoint(cd);
-        let e     = ab_bc.midpoint(bc_cd);
-        let ad    = a.midpoint(d);
+        let e = ab_bc.midpoint(bc_cd);
+        let ad = a.midpoint(d);
         if self.is_within_tolerance(e, ad) {
             self.line_to_scaled(d);
         } else {
@@ -245,7 +243,8 @@ impl Plotter {
         for i in 0..n_subs {
             self.stroke_sub(i);
         }
-        self.sfig.fill(&mut self.mask, &mut self.scan_buf, FillRule::NonZero);
+        self.sfig
+            .fill(&mut self.mask, &mut self.scan_buf, FillRule::NonZero);
     }
     /// Stroke one sub-figure.
     fn stroke_sub(&mut self, i: usize) {
@@ -304,11 +303,11 @@ impl Plotter {
     fn stroke_join(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
         match self.join_style {
             JoinStyle::Miter(ml) => self.stroke_miter(a0, a1, b0, b1, ml),
-            _                    => self.stroke_bevel(a1, b0),
+            _ => self.stroke_bevel(a1, b0),
         }
     }
     /// Add a miter join.
-    fn stroke_miter(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2, ml: f32){
+    fn stroke_miter(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2, ml: f32) {
         // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
         //      so: stroke_width / miter_length = sin ( theta / 2 )
         if ml > 0f32 {
@@ -349,11 +348,11 @@ impl PlotterBuilder {
     /// Create a new PlotterBuilder.
     pub fn new() -> PlotterBuilder {
         PlotterBuilder {
-            p_width:  0,
+            p_width: 0,
             p_height: 0,
-            u_width:  0,
+            u_width: 0,
             u_height: 0,
-            tol:      0.5f32,
+            tol: 0.5f32,
             absolute: false,
         }
     }
@@ -390,22 +389,26 @@ impl PlotterBuilder {
     /// Build configured Plotter.
     pub fn build(self) -> Plotter {
         let pw = if self.p_width > 0 { self.p_width } else { 100 };
-        let ph = if self.p_height > 0 { self.p_height } else { 100 };
+        let ph = if self.p_height > 0 {
+            self.p_height
+        } else {
+            100
+        };
         let uw = if self.u_width > 0 { self.u_width } else { pw };
         let uh = if self.u_height > 0 { self.u_height } else { ph };
         let sx = pw as f32 / uw as f32;
         let sy = ph as f32 / uh as f32;
         let scale = sx.min(sy);
         Plotter {
-            fig:        Fig::new(),
-            sfig:       Fig::new(),
-            mask:       Mask::new(pw, ph),
-            scan_buf:   Mask::new(pw, 1),
-            pen:        None,
-            scale:      scale,
-            tol_sq:     self.tol * self.tol,
-            absolute:   self.absolute,
-            s_width:    scale,
+            fig: Fig::new(),
+            sfig: Fig::new(),
+            mask: Mask::new(pw, ph),
+            scan_buf: Mask::new(pw, 1),
+            pen: None,
+            scale: scale,
+            tol_sq: self.tol * self.tol,
+            absolute: self.absolute,
+            s_width: scale,
             join_style: JoinStyle::Miter(4f32),
         }
     }
