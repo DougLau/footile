@@ -12,9 +12,9 @@ use self::png::HasParameters;
 
 /// A Mask is an 8-bit alpha image mask.
 pub struct Mask {
-    width  : u32,
-    height : u32,
-    pixels : Vec<u8>,
+    width: u32,
+    height: u32,
+    pixels: Vec<u8>,
 }
 
 impl Mask {
@@ -24,7 +24,11 @@ impl Mask {
     /// * `height` Height in pixels.
     pub fn new(width: u32, height: u32) -> Mask {
         let pixels = vec![0; (width * height) as usize];
-        Mask { width: width, height: height, pixels: pixels }
+        Mask {
+            width: width,
+            height: height,
+            pixels: pixels,
+        }
     }
     /// Get the width in pixels
     pub fn width(&self) -> u32 {
@@ -78,8 +82,7 @@ impl Mask {
         let fl = File::create(filename)?;
         let mut bw = io::BufWriter::new(fl);
         let mut w = bw.get_mut();
-        w.write_all(format!("P5\n{} {}\n255\n", self.width, self.height)
-         .as_bytes())?;
+        w.write_all(format!("P5\n{} {}\n255\n", self.width, self.height).as_bytes())?;
         w.write_all(&self.pixels[..])?;
         w.flush()?;
         Ok(())
@@ -91,7 +94,8 @@ impl Mask {
         let fl = File::create(filename)?;
         let ref mut bw = io::BufWriter::new(fl);
         let mut enc = png::Encoder::new(bw, self.width, self.height);
-        enc.set(png::ColorType::Grayscale).set(png::BitDepth::Eight);
+        enc.set(png::ColorType::Grayscale)
+            .set(png::BitDepth::Eight);
         let mut writer = enc.write_header()?;
         writer.write_image_data(&self.pixels[..])?;
         Ok(())

@@ -9,18 +9,19 @@ use std::fmt;
 use std::ops;
 use super::geom::Vec3;
 use super::mask::Mask;
+use rayon::prelude::*;
 
 /// Fixed-point type for fast calculations
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Fixed {
-	v: i32,
+    v: i32,
 }
 
 /// Figure direction enum
 #[derive(Clone, Copy)]
 pub enum FigDir {
-	Forward,
-	Reverse,
+    Forward,
+    Reverse,
 }
 
 /// Get the opposite direction
@@ -35,30 +36,30 @@ fn opposite(dir: FigDir) -> FigDir {
 #[derive(Debug)]
 pub enum FillRule {
     /// All points within bounds are filled
-	NonZero,
+    NonZero,
     /// Alternate filling with figure outline
-	EvenOdd,
+    EvenOdd,
 }
 
 /// Sub-figure structure
 struct SubFig {
-    start    : u16,     // starting point
-    n_points : u16,     // number of points
-    joined   : bool,    // joined ends flag
-    done     : bool,    // done flag
+    start: u16, // starting point
+    n_points: u16, // number of points
+    joined: bool, // joined ends flag
+    done: bool, // done flag
 }
 
 /// Edge structure
 struct Edge {
-	vtx      : u16,             // lower vertex ID
-	dir      : FigDir,          // figure direction from upper to lower
-	step_pix : Fixed,           // change in cov per pix on scan line
-	islope   : Fixed,           // inverse slope (dx / dy)
-	x_bot    : Fixed,           // X at bottom of scan line
-	min_x    : Fixed,           // minimum X on scan line
-	max_x    : Fixed,           // maximum X on scan line
-	min_pix  : i32,             // minimum pixel on scan line
-	max_pix  : i32,             // maximum pixel on scan line
+    vtx: u16, // lower vertex ID
+    dir: FigDir, // figure direction from upper to lower
+    step_pix: Fixed, // change in cov per pix on scan line
+    islope: Fixed, // inverse slope (dx / dy)
+    x_bot: Fixed, // X at bottom of scan line
+    min_x: Fixed, // minimum X on scan line
+    max_x: Fixed, // maximum X on scan line
+    min_pix: i32, // minimum pixel on scan line
+    max_pix: i32, // maximum pixel on scan line
 }
 
 /// A Fig is a series of 2D points which can be rendered to
@@ -66,21 +67,21 @@ struct Edge {
 /// It can also be stroked to another figure, which can then be filled.
 ///
 pub struct Fig {
-	points : Vec<Vec3>,         // all points
-	subs   : Vec<SubFig>,       // all sub-figures
+    points: Vec<Vec3>, // all points
+    subs: Vec<SubFig>, // all sub-figures
 }
 
 /// Figure scanner structure
 struct Scanner<'a> {
-	fig      : &'a Fig,         // the figure
-	mask     : &'a mut Mask,    // alpha mask
-	scan_buf : &'a mut Mask,    // scan line buffer
-	edges    : Vec<Edge>,       // all edges
-	rule     : FillRule,        // fill rule
-	n_fill   : i32,             // edge count for fill rule
-	y_now    : Fixed,           // current scan Y
-	y_prev   : Fixed,           // previous scan Y
-	y_bot    : Fixed,           // Y at bottom of mask
+    fig: &'a Fig, // the figure
+    mask: &'a mut Mask, // alpha mask
+    scan_buf: &'a mut Mask, // scan line buffer
+    edges: Vec<Edge>, // all edges
+    rule: FillRule, // fill rule
+    n_fill: i32, // edge count for fill rule
+    y_now: Fixed, // current scan Y
+    y_prev: Fixed, // previous scan Y
+    y_bot: Fixed, // Y at bottom of mask
 }
 
 /// Number of bits at fixed point
@@ -99,9 +100,9 @@ const FX_ONE: Fixed = Fixed { v: 1 << FRAC_BITS };
 const FX_EPSILON: Fixed = Fixed { v: 1 };
 
 impl fmt::Debug for Fixed {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "{} (0x{:x})", self.to_f32(), self.v)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} (0x{:x})", self.to_f32(), self.v)
+    }
 }
 
 impl ops::Add for Fixed {
@@ -130,7 +131,7 @@ impl ops::Mul for Fixed {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-	    let v: i64 = (self.v as i64 * other.v as i64) >> FRAC_BITS;
+        let v: i64 = (self.v as i64 * other.v as i64) >> FRAC_BITS;
         if cfg!(saturating_fixed) {
             if v > i32::max_value() as i64 {
                 return Fixed { v: i32::max_value() };
@@ -146,7 +147,7 @@ impl ops::Div for Fixed {
     type Output = Self;
 
     fn div(self, other: Self) -> Self {
-	    let v = ((self.v as i64) << (FRAC_BITS as i64)) / other.v as i64;
+        let v = ((self.v as i64) << (FRAC_BITS as i64)) / other.v as i64;
         if cfg!(saturating_fixed) {
             if v > i32::max_value() as i64 {
                 return Fixed { v: i32::max_value() };
@@ -169,7 +170,7 @@ impl Fixed {
         self.v >> FRAC_BITS
     }
     fn to_f32(self) -> f32 {
-	    self.v as f32 / (FX_ONE.v as f32)
+        self.v as f32 / (FX_ONE.v as f32)
     }
     fn abs(self) -> Fixed {
         Fixed { v: self.v.abs() }
@@ -196,7 +197,12 @@ impl Fixed {
 impl SubFig {
     /// Create a new sub-figure
     fn new(start: u16) -> SubFig {
-        SubFig { start: start, n_points: 0u16, joined: false, done: false }
+        SubFig {
+            start: start,
+            n_points: 0u16,
+            joined: false,
+            done: false,
+        }
     }
     /// Get next vertex within a sub-figure
     fn next(&self, vid: u16, dir: FigDir) -> u16 {
@@ -208,14 +214,14 @@ impl SubFig {
                 } else {
                     self.start
                 }
-            },
+            }
             FigDir::Reverse => {
                 if vid > self.start {
                     vid - 1u16
                 } else {
                     self.start + self.n_points - 1u16
                 }
-            },
+            }
         }
     }
     /// Get count of points
@@ -234,8 +240,8 @@ impl Edge {
     /// Create a new edge
     fn new(v0: u16, v1: u16, p0: Vec3, p1: Vec3, dir: FigDir) -> Edge {
         assert!(v0 != v1);
-        let dx = Fixed::from_f32(p1.x - p0.x);  // delta X
-        let dy = Fixed::from_f32(p1.y - p0.y);  // delta Y
+        let dx = Fixed::from_f32(p1.x - p0.x); // delta X
+        let dy = Fixed::from_f32(p1.y - p0.y); // delta Y
         assert!(dy > FX_ZERO);
         let step_pix = Edge::calculate_step(dx, dy);
         let islope = dx / dy;
@@ -267,11 +273,11 @@ impl Edge {
         let x_mn = x.cmp(&self.min_pix);
         let x_mx = x.cmp(&self.max_pix);
         match (x_mn, x_mx) {
-            (Less, _)          => FX_ZERO,
-            (Equal, Equal)     => FX_ONE - self.x_mid().frac(),
-            (Equal, _)         => (FX_ONE - self.min_x.frac()) * self.step_pix,
+            (Less, _) => FX_ZERO,
+            (Equal, Equal) => FX_ONE - self.x_mid().frac(),
+            (Equal, _) => (FX_ONE - self.min_x.frac()) * self.step_pix,
             (Greater, Greater) => FX_ONE,
-            (Greater, _)       => cmp::min(FX_ONE, cov_pix + self.step_pix),
+            (Greater, _) => cmp::min(FX_ONE, cov_pix + self.step_pix),
         }
     }
     /// Get the X midpoint for the current scan line
@@ -281,15 +287,15 @@ impl Edge {
 }
 
 impl fmt::Debug for Fig {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for sub in &self.subs {
             write!(f, "sub {}+{} ", sub.start, sub.n_points)?;
             for v in sub.start..(sub.start + sub.n_points) {
                 write!(f, "{:?} ", self.get_point(v))?;
             }
         }
-		Ok(())
-	}
+        Ok(())
+    }
 }
 
 impl Fig {
@@ -298,7 +304,10 @@ impl Fig {
         let points = Vec::with_capacity(1024);
         let mut subs = Vec::with_capacity(16);
         subs.push(SubFig::new(0u16));
-        Fig { points: points, subs: subs }
+        Fig {
+            points: points,
+            subs: subs,
+        }
     }
     /// Get the count of sub-figures
     pub fn sub_count(&self) -> usize {
@@ -450,11 +459,9 @@ impl Fig {
         let p0 = self.get_point(v0);
         let p1 = self.get_point(v1);
         match Fixed::cmp_f32(p0.y, p1.y) {
-            Less    => Less,
+            Less => Less,
             Greater => Greater,
-            Equal   => {
-                p0.x.partial_cmp(&p1.x).unwrap_or(Equal)
-            },
+            Equal => p0.x.partial_cmp(&p1.x).unwrap_or(Equal),
         }
     }
     /// Fill the figure to an image mask.
@@ -462,11 +469,10 @@ impl Fig {
     /// * `mask` Output mask.
     /// * `scan_buf` Scan buffer (must be same width as mask, with height 1).
     /// * `rule` Fill rule.
-    pub fn fill(&mut self, mask: &mut Mask, scan_buf: &mut Mask, rule: FillRule)
-    {
+    pub fn fill(&mut self, mask: &mut Mask, scan_buf: &mut Mask, rule: FillRule) {
         let n_points = self.points.len() as u16;
         let mut vids: Vec<u16> = (0u16..n_points).collect();
-        vids.sort_by(|a,b| self.compare_vids(*a, *b));
+        vids.sort_by(|a, b| self.compare_vids(*a, *b));
         let mut scan = Scanner::new(self, mask, scan_buf, rule);
         for vid in vids {
             if scan.is_complete() {
@@ -479,23 +485,25 @@ impl Fig {
 
 impl<'a> Scanner<'a> {
     /// Create a new figure scanner struct
-    fn new(fig: &'a mut Fig, mask: &'a mut Mask, scan_buf: &'a mut Mask,
-           rule: FillRule) -> Scanner<'a>
-    {
+    fn new(fig: &'a mut Fig,
+           mask: &'a mut Mask,
+           scan_buf: &'a mut Mask,
+           rule: FillRule)
+           -> Scanner<'a> {
         assert!(scan_buf.height() == 1);
         assert!(mask.width() == scan_buf.width());
         let y_bot = Fixed::from_i32(mask.height() as i32);
         let edges = Vec::with_capacity(16);
         Scanner {
-            fig:      fig,
-            mask:     mask,
+            fig: fig,
+            mask: mask,
             scan_buf: scan_buf,
-            edges:    edges,
-            rule:     rule,
-            n_fill:   0,
-            y_now:    FX_ZERO,
-            y_prev:   FX_ZERO,
-            y_bot:    y_bot,
+            edges: edges,
+            rule: rule,
+            n_fill: 0,
+            y_now: FX_ZERO,
+            y_prev: FX_ZERO,
+            y_bot: y_bot,
         }
     }
     /// Get the scan line for a Y value
@@ -531,7 +539,7 @@ impl<'a> Scanner<'a> {
     }
     /// Check if scan is complete (reached bottom of mask)
     fn is_complete(&self) -> bool {
-	    Scanner::line(self.y_now) >= Scanner::line(self.y_bot)
+        Scanner::line(self.y_now) >= Scanner::line(self.y_bot)
     }
     /// Check if scan has advanced to the next line
     fn is_next_line(&self) -> bool {
@@ -539,9 +547,9 @@ impl<'a> Scanner<'a> {
     }
     /// Advance all edges to the next line
     fn advance_edges(&mut self) {
-        for e in self.edges.iter_mut() {
-            e.x_bot = e.x_bot + e.islope;
-        }
+        self.edges
+            .par_iter_mut()
+            .for_each(|e| e.x_bot = e.x_bot + e.islope);
     }
     /// Calculate the X limits on the current scan line for all edges
     fn calculate_x_limits(&mut self) {
@@ -566,8 +574,8 @@ impl<'a> Scanner<'a> {
     }
     /// Scan once across all edges
     fn scan_once(&mut self) {
-    	let mut e: Option<usize> = None;
-	    self.sort_edges();
+        let mut e: Option<usize> = None;
+        self.sort_edges();
         self.n_fill = 0;
         self.scan_buf.clear();
         let n_edges = self.edges.len();
@@ -576,17 +584,17 @@ impl<'a> Scanner<'a> {
                 (Some(lt), false) => {
                     self.rasterize(lt, i);
                     e = None;
-                },
+                }
                 (None, true) => {
                     e = Some(i);
-                },
-                _ => {},
+                }
+                _ => {}
             };
         }
     }
     /// Sort edges by X at the bottom of the current scan line.
     fn sort_edges(&mut self) {
-        self.edges.sort_by(|a,b| a.x_mid().v.cmp(&b.x_mid().v));
+        self.edges.sort_by(|a, b| a.x_mid().v.cmp(&b.x_mid().v));
     }
     /// Check if the given edge starts a fill
     fn edge_fill(&mut self, i: usize) -> bool {
@@ -614,8 +622,8 @@ impl<'a> Scanner<'a> {
         let mut x = cmp::max(left.min_pix, 0);
         while x <= max_pix {
             if x > left.max_pix && x < min_rt {
-                self.scan_buf.fill(x as usize, (min_rt - x) as usize,
-                    pixel_cov(cov) as u8);
+                self.scan_buf
+                    .fill(x as usize, (min_rt - x) as usize, pixel_cov(cov) as u8);
                 x = min_rt;
                 continue;
             }
@@ -641,9 +649,9 @@ impl<'a> Scanner<'a> {
             let cp = Fixed::cmp_f32(self.fig.get_point(vp).y, y);
             let cn = Fixed::cmp_f32(self.fig.get_point(vn).y, y);
             match (cp, cn) {
-                (Less,    Less)    => self.edge_merge(vid),
+                (Less, Less) => self.edge_merge(vid),
                 (Greater, Greater) => self.edge_split(vp, vn),
-                _                  => self.edge_regular(vid),
+                _ => self.edge_regular(vid),
             }
         }
     }
@@ -655,8 +663,7 @@ impl<'a> Scanner<'a> {
             i -= 1;
             let vtx = self.edges[i].vtx;
             if (fig.same_y(vtx, FigDir::Forward) == vid) ||
-               (fig.same_y(vtx, FigDir::Reverse) == vid)
-            {
+               (fig.same_y(vtx, FigDir::Reverse) == vid) {
                 self.edges.remove(i);
             }
         }
@@ -664,14 +671,16 @@ impl<'a> Scanner<'a> {
     /// Add two edges at a split vertex
     fn edge_split(&mut self, v0: u16, v1: u16) {
         let fig = &self.fig;
-        let v0u = fig.next(v0, FigDir::Forward);    // Find upper vtx of edge 0
-        let p0u = fig.get_point(v0u);               // Upper point of edge 0
-        let p0 = fig.get_point(v0);                 // Lower point of edge 0
-        self.edges.push(Edge::new(v0u, v0, p0u, p0, FigDir::Reverse));
-        let v1u = fig.next(v1, FigDir::Reverse);    // Find upper vtx of edge 1
-        let p1u = fig.get_point(v1u);               // Upper point of edge 1
-        let p1 = fig.get_point(v1);                 // Lower point of edge 1
-        self.edges.push(Edge::new(v1u, v1, p1u, p1, FigDir::Forward));
+        let v0u = fig.next(v0, FigDir::Forward); // Find upper vtx of edge 0
+        let p0u = fig.get_point(v0u); // Upper point of edge 0
+        let p0 = fig.get_point(v0); // Lower point of edge 0
+        self.edges
+            .push(Edge::new(v0u, v0, p0u, p0, FigDir::Reverse));
+        let v1u = fig.next(v1, FigDir::Reverse); // Find upper vtx of edge 1
+        let p1u = fig.get_point(v1u); // Upper point of edge 1
+        let p1 = fig.get_point(v1); // Lower point of edge 1
+        self.edges
+            .push(Edge::new(v1u, v1, p1u, p1, FigDir::Forward));
     }
     /// Update one edge at a regular vertex
     fn edge_regular(&mut self, vid: u16) {
@@ -679,8 +688,8 @@ impl<'a> Scanner<'a> {
         for i in 0..self.edges.len() {
             if vid == self.edges[i].vtx {
                 let dir = self.edges[i].dir;
-                let vn = fig.next_y(vid, dir);          // Find lower vertex
-                let v = fig.next_y(vn, opposite(dir));  // Find upper vertex
+                let vn = fig.next_y(vid, dir); // Find lower vertex
+                let v = fig.next_y(vn, opposite(dir)); // Find upper vertex
                 let p = fig.get_point(v);
                 let pn = fig.get_point(vn);
                 self.edges[i] = Edge::new(v, vn, p, pn, dir);
