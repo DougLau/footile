@@ -9,3 +9,4 @@ homepage = "https://github.com/DougLau/footile"
 repository = "https://github.com/DougLau/footile"
 
 [dependencies]
+png = "0.10.0"
