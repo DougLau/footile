@@ -13,14 +13,14 @@ use super::mask::Mask;
 /// Fixed-point type for fast calculations
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Fixed {
-	v: i32,
+    v: i32,
 }
 
 /// Figure direction enum
 #[derive(Clone, Copy)]
 pub enum FigDir {
-	Forward,
-	Reverse,
+    Forward,
+    Reverse,
 }
 
 /// Get the opposite direction
@@ -35,9 +35,9 @@ fn opposite(dir: FigDir) -> FigDir {
 #[derive(Debug)]
 pub enum FillRule {
     /// All points within bounds are filled
-	NonZero,
+    NonZero,
     /// Alternate filling with figure outline
-	EvenOdd,
+    EvenOdd,
 }
 
 /// Sub-figure structure
@@ -50,15 +50,15 @@ struct SubFig {
 
 /// Edge structure
 struct Edge {
-	vtx      : u16,             // lower vertex ID
-	dir      : FigDir,          // figure direction from upper to lower
-	step_pix : Fixed,           // change in cov per pix on scan line
-	islope   : Fixed,           // inverse slope (dx / dy)
-	x_bot    : Fixed,           // X at bottom of scan line
-	min_x    : Fixed,           // minimum X on scan line
-	max_x    : Fixed,           // maximum X on scan line
-	min_pix  : i32,             // minimum pixel on scan line
-	max_pix  : i32,             // maximum pixel on scan line
+    vtx      : u16,         // lower vertex ID
+    dir      : FigDir,      // figure direction from upper to lower
+    step_pix : Fixed,       // change in cov per pix on scan line
+    islope   : Fixed,       // inverse slope (dx / dy)
+    x_bot    : Fixed,       // X at bottom of scan line
+    min_x    : Fixed,       // minimum X on scan line
+    max_x    : Fixed,       // maximum X on scan line
+    min_pix  : i32,         // minimum pixel on scan line
+    max_pix  : i32,         // maximum pixel on scan line
 }
 
 /// A Fig is a series of 2D points which can be rendered to
@@ -66,21 +66,21 @@ struct Edge {
 /// It can also be stroked to another figure, which can then be filled.
 ///
 pub struct Fig {
-	points : Vec<Vec3>,         // all points
-	subs   : Vec<SubFig>,       // all sub-figures
+    points : Vec<Vec3>,         // all points
+    subs   : Vec<SubFig>,       // all sub-figures
 }
 
 /// Figure scanner structure
 struct Scanner<'a> {
-	fig      : &'a Fig,         // the figure
-	mask     : &'a mut Mask,    // alpha mask
-	scan_buf : &'a mut Mask,    // scan line buffer
-	edges    : Vec<Edge>,       // all edges
-	rule     : FillRule,        // fill rule
-	n_fill   : i32,             // edge count for fill rule
-	y_now    : Fixed,           // current scan Y
-	y_prev   : Fixed,           // previous scan Y
-	y_bot    : Fixed,           // Y at bottom of mask
+    fig      : &'a Fig,         // the figure
+    mask     : &'a mut Mask,    // alpha mask
+    scan_buf : &'a mut Mask,    // scan line buffer
+    edges    : Vec<Edge>,       // all edges
+    rule     : FillRule,        // fill rule
+    n_fill   : i32,             // edge count for fill rule
+    y_now    : Fixed,           // current scan Y
+    y_prev   : Fixed,           // previous scan Y
+    y_bot    : Fixed,           // Y at bottom of mask
 }
 
 /// Number of bits at fixed point
@@ -99,9 +99,9 @@ const FX_ONE: Fixed = Fixed { v: 1 << FRAC_BITS };
 const FX_EPSILON: Fixed = Fixed { v: 1 };
 
 impl fmt::Debug for Fixed {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "{} (0x{:x})", self.to_f32(), self.v)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} (0x{:x})", self.to_f32(), self.v)
+    }
 }
 
 impl ops::Add for Fixed {
@@ -130,7 +130,7 @@ impl ops::Mul for Fixed {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-	    let v: i64 = (self.v as i64 * other.v as i64) >> FRAC_BITS;
+        let v: i64 = (self.v as i64 * other.v as i64) >> FRAC_BITS;
         if cfg!(saturating_fixed) {
             if v > i32::max_value() as i64 {
                 return Fixed { v: i32::max_value() };
@@ -146,7 +146,7 @@ impl ops::Div for Fixed {
     type Output = Self;
 
     fn div(self, other: Self) -> Self {
-	    let v = ((self.v as i64) << (FRAC_BITS as i64)) / other.v as i64;
+        let v = ((self.v as i64) << (FRAC_BITS as i64)) / other.v as i64;
         if cfg!(saturating_fixed) {
             if v > i32::max_value() as i64 {
                 return Fixed { v: i32::max_value() };
@@ -169,7 +169,7 @@ impl Fixed {
         self.v >> FRAC_BITS
     }
     fn to_f32(self) -> f32 {
-	    self.v as f32 / (FX_ONE.v as f32)
+        self.v as f32 / (FX_ONE.v as f32)
     }
     fn abs(self) -> Fixed {
         Fixed { v: self.v.abs() }
@@ -281,15 +281,15 @@ impl Edge {
 }
 
 impl fmt::Debug for Fig {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for sub in &self.subs {
             write!(f, "sub {}+{} ", sub.start, sub.n_points)?;
             for v in sub.start..(sub.start + sub.n_points) {
                 write!(f, "{:?} ", self.get_point(v))?;
             }
         }
-		Ok(())
-	}
+        Ok(())
+    }
 }
 
 impl Fig {
@@ -531,7 +531,7 @@ impl<'a> Scanner<'a> {
     }
     /// Check if scan is complete (reached bottom of mask)
     fn is_complete(&self) -> bool {
-	    Scanner::line(self.y_now) >= Scanner::line(self.y_bot)
+        Scanner::line(self.y_now) >= Scanner::line(self.y_bot)
     }
     /// Check if scan has advanced to the next line
     fn is_next_line(&self) -> bool {
@@ -566,8 +566,8 @@ impl<'a> Scanner<'a> {
     }
     /// Scan once across all edges
     fn scan_once(&mut self) {
-    	let mut e: Option<usize> = None;
-	    self.sort_edges();
+        let mut e: Option<usize> = None;
+        self.sort_edges();
         self.n_fill = 0;
         self.scan_buf.clear();
         let n_edges = self.edges.len();
