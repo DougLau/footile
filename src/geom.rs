@@ -22,9 +22,9 @@ pub struct Vec3 {
 }
 
 impl fmt::Debug for Vec2 {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "({},{})", self.x, self.y)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
+    }
 }
 
 impl ops::Add for Vec2 {
