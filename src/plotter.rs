@@ -184,10 +184,14 @@ impl Plotter {
     }
     /// Check if two points are within tolerance threshold.
     fn is_within_tolerance(&self, a: Vec3, b: Vec3) -> bool {
-        assert!(self.tol_sq > 0f32);
         let a2 = Vec2::new(a.x, a.y);
         let b2 = Vec2::new(b.x, b.y);
-        a2.dist_sq(b2) <= self.tol_sq
+        self.is_within_tolerance2(a2, b2)
+    }
+    /// Check if two points are within tolerance threshold.
+    fn is_within_tolerance2(&self, a: Vec2, b: Vec2) -> bool {
+        assert!(self.tol_sq > 0f32);
+        a.dist_sq(b) <= self.tol_sq
     }
     /// Add a cubic bezier spline.
     ///
@@ -268,10 +272,12 @@ impl Plotter {
         let mut v1 = self.fig.next(v0, dir);
         let joined = self.fig.sub_joined(i);
         for _ in 0..self.fig.sub_points(i) {
-            let bounds = self.stroke_boundary(v0, v1);
+            let p0 = self.fig.get_point(v0);
+            let p1 = self.fig.get_point(v1);
+            let bounds = self.stroke_offset(p0, p1);
             let (pr0, pr1) = bounds;
             if let Some((xr0, xr1)) = xr {
-                self.stroke_join(xr0, xr1, pr0, pr1);
+                self.stroke_join(p0, xr0, xr1, pr0, pr1);
             } else if !joined {
                 self.stroke_point(pr0);
             }
@@ -285,10 +291,11 @@ impl Plotter {
             }
         }
     }
-    /// Get boundary of stroke between two points
-    fn stroke_boundary(&self, v0: u16, v1: u16) -> (Vec2, Vec2) {
-        let p0 = self.fig.get_point(v0);
-        let p1 = self.fig.get_point(v1);
+    /// Offset segment by half stroke width.
+    ///
+    /// * `p0` First point.
+    /// * `p1` Second point.
+    fn stroke_offset(&self, p0: Vec3, p1: Vec3) -> (Vec2, Vec2) {
         let pp0 = Vec2::new(p0.x, p0.y);
         let pp1 = Vec2::new(p1.x, p1.y);
         let vr = (pp0 - pp1).left().normalize();
@@ -301,10 +308,17 @@ impl Plotter {
         self.sfig.add_point(Vec3::new(pt.x, pt.y, 1f32));
     }
     /// Add a stroke join.
-    fn stroke_join(&mut self, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
+    ///
+    /// * `p` Join point (with stroke width).
+    /// * `a0` First point of A segment.
+    /// * `a1` Second point of A segment.
+    /// * `b0` First point of B segment.
+    /// * `b1` Second point of B segment.
+    fn stroke_join(&mut self, p: Vec3, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
         match self.join_style {
             JoinStyle::Miter(ml) => self.stroke_miter(a0, a1, b0, b1, ml),
-            _                    => self.stroke_bevel(a1, b0),
+            JoinStyle::Bevel     => self.stroke_bevel(a1, b0),
+            JoinStyle::Round     => self.stroke_round(p, a0, a1, b0, b1),
         }
     }
     /// Add a miter join.
@@ -331,6 +345,33 @@ impl Plotter {
         self.stroke_point(a1);
         self.stroke_point(b0);
     }
+    /// Add a round join.
+    ///
+    /// * `p` Join point (with stroke width).
+    /// * `a1` Second point of A segment.
+    /// * `b0` First point of B segment.
+    fn stroke_round(&mut self, p: Vec3, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2){
+        let th = (a1 - a0).angle_rel(b0 - b1);
+        if th <= 0f32 {
+            self.stroke_bevel(a1, b0);
+        } else {
+            self.stroke_point(a1);
+            self.stroke_arc(p, a1, b0);
+        }
+    }
+    /// Add a stroke arc.
+    fn stroke_arc(&mut self, p: Vec3, a: Vec2, b: Vec2) {
+        let p2 = Vec2::new(p.x, p.y);
+        let vr = (a - b).left().normalize();
+        let c = p2 + vr * (p.z / 2f32);
+        let ab = a.midpoint(b);
+        if self.is_within_tolerance2(c, ab) {
+            self.stroke_point(b);
+        } else {
+            self.stroke_arc(p, a, c);
+            self.stroke_arc(p, c, b);
+        }
+    }
     /// Write the mask to a PGM (portable gray map) file.
     ///
     /// * `filename` Name of file to write.
@@ -353,7 +394,7 @@ impl PlotterBuilder {
             p_height: 0,
             u_width:  0,
             u_height: 0,
-            tol:      0.5f32,
+            tol:      0.3f32,
             absolute: false,
         }
     }
