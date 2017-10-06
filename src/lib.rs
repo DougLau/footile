@@ -6,13 +6,16 @@
 //! paths.  These are created using typical vector drawing primitives such as
 //! lines and bézier splines.
 //!
+extern crate palette;
 extern crate png;
 
 mod geom;
 mod mask;
 mod fig;
 mod plotter;
+mod raster;
 
 pub use fig::FillRule;
 pub use mask::Mask;
 pub use plotter::{ JoinStyle, Plotter, PlotterBuilder };
+pub use raster::Raster;
