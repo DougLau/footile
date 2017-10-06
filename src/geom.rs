@@ -105,6 +105,7 @@ impl Vec2 {
         dx * dx + dy * dy
     }
     /// Calculate the distance between two Vec2
+    #[allow(dead_code)]
     pub fn dist(self, other: Self) -> f32 {
         self.dist_sq(other).sqrt()
     }
@@ -119,6 +120,7 @@ impl Vec2 {
         Vec2::new(-self.y, self.x)
     }
     /// Create a right-hand perpendicular Vec2
+    #[allow(dead_code)]
     pub fn right(self) -> Self {
         Vec2::new(self.y, -self.x)
     }
@@ -126,6 +128,7 @@ impl Vec2 {
     ///
     /// The Vec2 should be initialized as edges pointing toward the same vertex.
     /// Returns true if the winding order is widdershins (counter-clockwise).
+    #[allow(dead_code)]
     pub fn widdershins(self, other: Self) -> bool {
         // Cross product (with Z zero) is used to determine the winding order.
         (self.x * other.y) > (other.x * self.y)
@@ -133,6 +136,7 @@ impl Vec2 {
     /// Calculate linear interpolation of two Vec2
     ///
     /// * `t` Interpolation amount, from 0 to 1
+    #[allow(dead_code)]
     pub fn lerp(self, other: Self, t: f32) -> Self {
         let x = float_lerp(self.x, other.x, t);
         let y = float_lerp(self.y, other.y, t);

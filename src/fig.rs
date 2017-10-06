@@ -7,8 +7,8 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
 use std::ops;
-use super::geom::Vec3;
-use super::mask::Mask;
+use geom::Vec3;
+use mask::Mask;
 
 /// Fixed-point type for fast calculations
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -482,9 +482,9 @@ impl<'a> Scanner<'a> {
     fn new(fig: &'a mut Fig, mask: &'a mut Mask, scan_buf: &'a mut Mask,
            rule: FillRule) -> Scanner<'a>
     {
-        assert!(scan_buf.height() == 1);
-        assert!(mask.width() == scan_buf.width());
-        let y_bot = Fixed::from_i32(mask.height() as i32);
+        assert!(scan_buf.height == 1);
+        assert!(mask.width == scan_buf.width);
+        let y_bot = Fixed::from_i32(mask.height as i32);
         let edges = Vec::with_capacity(16);
         Scanner {
             fig:      fig,
@@ -604,7 +604,7 @@ impl<'a> Scanner<'a> {
     fn rasterize(&mut self, lt: usize, rt: usize) {
         let left = &self.edges[lt];
         let right = &self.edges[rt];
-        let w = self.mask.width() as i32;
+        let w = self.mask.width as i32;
         let max_pix = cmp::min(right.max_pix, w - 1);
         let min_rt = cmp::min(max_pix, right.min_pix);
         assert!(self.y_now > self.y_prev);

@@ -2,19 +2,18 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-extern crate png;
-
 use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::ptr;
-use self::png::HasParameters;
+use png;
+use png::HasParameters;
 
 /// A Mask is an 8-bit alpha image mask.
 pub struct Mask {
-    width  : u32,
-    height : u32,
-    pixels : Vec<u8>,
+    pub width  : u32,
+    pub height : u32,
+    pixels     : Vec<u8>,
 }
 
 impl Mask {
@@ -26,21 +25,17 @@ impl Mask {
         let pixels = vec![0; (width * height) as usize];
         Mask { width: width, height: height, pixels: pixels }
     }
-    /// Get the width in pixels
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-    /// Get the height in pixels
-    pub fn height(&self) -> u32 {
-        self.height
+    /// Get pixel iterator
+    pub(crate) fn iter(&self) -> ::std::slice::Iter<u8> {
+        self.pixels.iter()
     }
     /// Clear the mask.
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         let len = self.pixels.len();
         self.fill(0, len, 0);
     }
     /// Fill a range of pixels with a single value
-    pub(super) fn fill(&mut self, x: usize, len: usize, v: u8) {
+    pub(crate) fn fill(&mut self, x: usize, len: usize, v: u8) {
         assert!(x + len <= self.pixels.len());
         unsafe {
             let pix = self.pixels.as_mut_ptr().offset(x as isize);
@@ -48,16 +43,16 @@ impl Mask {
         }
     }
     /// Set the value of one pixel
-    pub(super) fn set(&mut self, x: i32, v: i32) {
+    pub(crate) fn set(&mut self, x: i32, v: i32) {
         assert!(x >= 0 && (x as u32) < self.width);
         // FIXME: how to elide bounds checks
         self.pixels[x as usize] = v as u8;
     }
     /// Accumulate a scan buffer over one scan line
-    pub(super) fn accumulate(&mut self, scan_buf: &Mask, row: u32) {
-        assert!(scan_buf.height() == 1);
-        assert!(self.width() == scan_buf.width());
-        let w = self.width() as usize;
+    pub(crate) fn accumulate(&mut self, scan_buf: &Mask, row: u32) {
+        assert!(scan_buf.height == 1);
+        assert!(self.width == scan_buf.width);
+        let w = self.width as usize;
         // slicing ..w should allow bounds check elision
         let mut pix = &mut self.scan_line(row)[..w];
         let buf = &scan_buf.pixels[..w];
@@ -102,8 +97,8 @@ impl Mask {
 fn test_mask() {
     let mut m = Mask::new(10, 10);
     m.clear();
-    assert!(m.width() == 10);
-    assert!(m.height() == 10);
+    assert!(m.width == 10);
+    assert!(m.height == 10);
     assert!(m.pixels.len() == 100);
     m.fill(40, 20, 255u8);
     assert!(m.pixels[0] == 0u8);

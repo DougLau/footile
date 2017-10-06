@@ -3,9 +3,9 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 use std::io;
-use super::fig::{ Fig, FillRule, FigDir };
-use super::geom::{ Vec2, Vec3, float_lerp, intersection };
-use super::mask::Mask;
+use fig::{ Fig, FillRule, FigDir };
+use geom::{ Vec2, Vec3, float_lerp, intersection };
+use mask::Mask;
 
 /// Style for joins
 #[derive(Clone,Copy,Debug)]
@@ -32,7 +32,6 @@ pub enum JoinStyle {
 /// p.cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32);
 /// p.close();
 /// p.stroke();
-/// p.write_png("./drop.png").unwrap();
 /// ```
 pub struct Plotter {
     fig        : Fig,           // drawing fig
@@ -72,11 +71,11 @@ pub struct PlotterBuilder {
 impl Plotter {
     /// Get width in pixels.
     pub fn width(&self) -> u32 {
-        self.mask.width()
+        self.mask.width
     }
     /// Get height in pixels.
     pub fn height(&self) -> u32 {
-        self.mask.height()
+        self.mask.height
     }
     /// Reset path and lift pen.
     pub fn reset(&mut self) {
@@ -371,6 +370,10 @@ impl Plotter {
             self.stroke_arc(p, a, c);
             self.stroke_arc(p, c, b);
         }
+    }
+    /// Get the mask.
+    pub fn mask(&self) -> &Mask {
+        &self.mask
     }
     /// Write the mask to a PGM (portable gray map) file.
     ///
