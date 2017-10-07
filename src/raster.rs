@@ -18,12 +18,12 @@ use png::HasParameters;
 /// use footile::{PlotterBuilder, Raster};
 /// let mut p = PlotterBuilder::new().build();
 /// let mut r = Raster::new(p.width(), p.height());
-/// p.pen_width(5f32, false);
-/// p.move_to(16f32, 48f32);
-/// p.line_to(32f32, 0f32);
-/// p.line_to(-16f32, -32f32);
-/// p.close();
-/// p.stroke();
+/// p.pen_width(5f32, false)
+///  .move_to(16f32, 48f32)
+///  .line_to(32f32, 0f32)
+///  .line_to(-16f32, -32f32)
+///  .close()
+///  .stroke();
 /// r.composite(p.mask(), [208u8, 255u8, 208u8]);
 /// ```
 pub struct Raster {
