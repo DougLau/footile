@@ -20,5 +20,5 @@ fn main() {
     p.line_to(32f32, 1f32);
     p.line_to(-32f32, 1f32);
     p.stroke();
-    p.write_pgm("./stroke2.pgm").unwrap();
+    p.mask().write_png("./stroke2.png").unwrap();
 }

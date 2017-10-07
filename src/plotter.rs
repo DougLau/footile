@@ -2,7 +2,6 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use std::io;
 use fig::{ Fig, FillRule, FigDir };
 use geom::{ Vec2, Vec3, float_lerp, intersection };
 use mask::Mask;
@@ -374,18 +373,6 @@ impl Plotter {
     /// Get the mask.
     pub fn mask(&self) -> &Mask {
         &self.mask
-    }
-    /// Write the mask to a PGM (portable gray map) file.
-    ///
-    /// * `filename` Name of file to write.
-    pub fn write_pgm(&self, filename: &str) -> io::Result<()> {
-        self.mask.write_pgm(&filename)
-    }
-    /// Write the mask to a PNG (portable network graphics) file.
-    ///
-    /// * `filename` Name of file to write.
-    pub fn write_png(&self, filename: &str) -> io::Result<()> {
-        self.mask.write_png(&filename)
     }
 }
 

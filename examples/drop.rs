@@ -14,5 +14,5 @@ fn main() {
     p.cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32);
     p.close();
     p.stroke();
-    p.write_png("./drop.png").unwrap();
+    p.mask().write_png("./drop.png").unwrap();
 }

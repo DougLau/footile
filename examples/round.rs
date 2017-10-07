@@ -14,5 +14,5 @@ fn main() {
     p.line_to(50f32, 0f32);
     p.line_to(0f32, -50f32);
     p.stroke();
-    p.write_png("./round.png").unwrap();
+    p.mask().write_png("./round.png").unwrap();
 }

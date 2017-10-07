@@ -15,5 +15,5 @@ fn main() {
     p.move_to(0f32, 16f32);
     p.quad_to(128f32, 16f32, 0f32, 32f32);
     p.stroke();
-    p.write_pgm("./quad.pgm").unwrap();
+    p.mask().write_png("./quad.png").unwrap();
 }

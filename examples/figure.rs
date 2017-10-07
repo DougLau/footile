@@ -22,5 +22,5 @@ fn main() {
     p.line_to(12f32, -28f32);
     p.close();
     p.fill(FillRule::EvenOdd);
-    p.write_pgm("./figure.pgm").unwrap();
+    p.mask().write_png("./figure.png").unwrap();
 }
