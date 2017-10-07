@@ -25,12 +25,12 @@ pub enum JoinStyle {
 /// ```
 /// use footile::PlotterBuilder;
 /// let mut p = PlotterBuilder::new().build();
-/// p.pen_width(3f32, false);
-/// p.move_to(50f32, 34f32);
-/// p.cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32);
-/// p.cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32);
-/// p.close();
-/// p.stroke();
+/// p.pen_width(3f32, false)
+///  .move_to(50f32, 34f32)
+///  .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
+///  .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
+///  .close()
+///  .stroke();
 /// ```
 pub struct Plotter {
     fig        : Fig,           // drawing fig
@@ -77,19 +77,22 @@ impl Plotter {
         self.mask.height
     }
     /// Reset path and lift pen.
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> &mut Self {
         self.fig.reset();
         self.sfig.reset();
         self.pen = None;
+        self
     }
     /// Clear the mask.
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self) -> &mut Self {
         self.mask.clear();
+        self
     }
     /// Close current sub-path and lift the pen.
-    pub fn close(&mut self) {
+    pub fn close(&mut self) -> &mut Self {
         self.fig.close(true);
         self.pen = None;
+        self
     }
     /// Set pen stroke width.
     ///
@@ -98,14 +101,16 @@ impl Plotter {
     ///
     /// * `width` Pen stroke width.
     /// * `pixels` Use pixel units (true), or user units (false).
-    pub fn pen_width(&mut self, width: f32, pixels: bool) {
-        self.s_width = if pixels { width } else { width * self.scale }
+    pub fn pen_width(&mut self, width: f32, pixels: bool) -> &mut Self {
+        self.s_width = if pixels { width } else { width * self.scale };
+        self
     }
     /// Set stroke join style.
     ///
     /// * `js` Join style.
-    pub fn join_style(&mut self, js: JoinStyle) {
+    pub fn join_style(&mut self, js: JoinStyle) -> &mut Self {
         self.join_style = js;
+        self
     }
     /// Create a point.
     fn point(&self, x: f32, y: f32, w: f32) -> Vec3 {
@@ -124,10 +129,11 @@ impl Plotter {
     ///
     /// * `bx` X-position of point.
     /// * `by` Y-position of point.
-    pub fn move_to(&mut self, bx: f32, by: f32) {
+    pub fn move_to(&mut self, bx: f32, by: f32) -> &mut Self {
         let p = self.point(bx, by, self.s_width);
         self.fig.close(false);
         self.line_to_scaled(p);
+        self
     }
     /// Add a line from pen to a point.
     ///
@@ -135,11 +141,12 @@ impl Plotter {
     ///
     /// * `bx` X-position of end point.
     /// * `by` Y-position of end point.
-    pub fn line_to(&mut self, bx: f32, by: f32) {
+    pub fn line_to(&mut self, bx: f32, by: f32) -> &mut Self {
         if let Some(_) = self.pen {
             let p = self.point(bx, by, self.s_width);
             self.line_to_scaled(p);
         }
+        self
     }
     /// Add a line and move the pen.
     fn line_to_scaled(&mut self, p: Vec3) {
@@ -157,12 +164,13 @@ impl Plotter {
     /// * `by` Y-position of control point.
     /// * `cx` X-position of end point.
     /// * `cy` Y-position of end point.
-    pub fn quad_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32) {
+    pub fn quad_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32) -> &mut Self {
         if let Some(pen) = self.pen {
             let bb = self.point(bx, by, (pen.z + self.s_width) / 2f32);
             let cc = self.point(cx, cy, self.s_width);
             self.quad_to_scaled(pen, bb, cc);
         }
+        self
     }
     /// Add a quadratic bezier spline.
     ///
@@ -205,7 +213,7 @@ impl Plotter {
     /// * `dx` X-position of end point.
     /// * `dy` Y-position of end point.
     pub fn cubic_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32, dx: f32,
-                    dy: f32)
+                    dy: f32) -> &mut Self
     {
         if let Some(pen) = self.pen {
             let bw = float_lerp(pen.z, self.s_width, 1f32 / 3f32);
@@ -215,6 +223,7 @@ impl Plotter {
             let dd = self.point(dx, dy, self.s_width);
             self.cubic_to_scaled(pen, bb, cc, dd);
         }
+        self
     }
     /// Add a cubic bezier spline.
     ///
@@ -238,16 +247,18 @@ impl Plotter {
     /// Fill path onto the mask.  The path is not affected.
     ///
     /// * `rule` Fill rule.
-    pub fn fill(&mut self, rule: FillRule) {
+    pub fn fill(&mut self, rule: FillRule) -> &mut Self {
         self.fig.fill(&mut self.mask, &mut self.scan_buf, rule);
+        self
     }
     /// Stroke path onto the mask.  The path is not affected.
-    pub fn stroke(&mut self) {
+    pub fn stroke(&mut self) -> &mut Self {
         let n_subs = self.fig.sub_count();
         for i in 0..n_subs {
             self.stroke_sub(i);
         }
         self.sfig.fill(&mut self.mask, &mut self.scan_buf, FillRule::NonZero);
+        self
     }
     /// Stroke one sub-figure.
     fn stroke_sub(&mut self, i: usize) {

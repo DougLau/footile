@@ -8,11 +8,11 @@ use footile::{PlotterBuilder, JoinStyle};
 
 fn main() {
     let mut p = PlotterBuilder::new().build();
-    p.pen_width(40f32, false);
-    p.join_style(JoinStyle::Round);
-    p.move_to(10f32, 60f32);
-    p.line_to(50f32, 0f32);
-    p.line_to(0f32, -50f32);
-    p.stroke();
+    p.pen_width(40f32, false)
+     .join_style(JoinStyle::Round)
+     .move_to(10f32, 60f32)
+     .line_to(50f32, 0f32)
+     .line_to(0f32, -50f32)
+     .stroke();
     p.mask().write_png("./round.png").unwrap();
 }

@@ -11,9 +11,9 @@ fn main() {
                                .width(64)
                                .height(64)
                                .build();
-    p.pen_width(2f32, false);
-    p.move_to(0f32, 16f32);
-    p.quad_to(128f32, 16f32, 0f32, 32f32);
-    p.stroke();
+    p.pen_width(2f32, false)
+     .move_to(0f32, 16f32)
+     .quad_to(128f32, 16f32, 0f32, 32f32)
+     .stroke();
     p.mask().write_png("./quad.png").unwrap();
 }
