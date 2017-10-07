@@ -1,4 +1,4 @@
-// cubic.rs     Example plotting a cubic bezier arc
+// cubic.rs     Example plotting a cubic bézier spline.
 //
 // Copyright (c) 2017  Douglas P Lau
 //

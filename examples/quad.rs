@@ -1,4 +1,4 @@
-// quad.rs     Example plotting a quadratic bezier arc
+// quad.rs     Example plotting a quadratic bézier spline.
 //
 // Copyright (c) 2017  Douglas P Lau
 //

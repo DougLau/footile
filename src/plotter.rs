@@ -153,7 +153,7 @@ impl Plotter {
         self.fig.add_point(p);
         self.pen = Some(p);
     }
-    /// Add a quadratic bezier spline.
+    /// Add a quadratic bézier spline.
     ///
     /// The points are A (current pen position), B (control point), and C
     /// (spline end point).
@@ -172,7 +172,7 @@ impl Plotter {
         }
         self
     }
-    /// Add a quadratic bezier spline.
+    /// Add a quadratic bézier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
@@ -199,7 +199,7 @@ impl Plotter {
         assert!(self.tol_sq > 0f32);
         a.dist_sq(b) <= self.tol_sq
     }
-    /// Add a cubic bezier spline.
+    /// Add a cubic bézier spline.
     ///
     /// The points are A (current pen position), B (first control point), C
     /// (second control point) and D (spline end point).
@@ -225,7 +225,7 @@ impl Plotter {
         }
         self
     }
-    /// Add a cubic bezier spline.
+    /// Add a cubic bézier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
