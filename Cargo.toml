@@ -8,6 +8,10 @@ documentation = "https://docs.rs/footile"
 homepage = "https://github.com/DougLau/footile"
 repository = "https://github.com/DougLau/footile"
 
+[build-dependencies]
+cc = "1.0"
+
 [dependencies]
+libc = "0.2"
 png = "0.10"
 palette = "0.2"

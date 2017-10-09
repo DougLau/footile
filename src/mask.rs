@@ -8,6 +8,7 @@ use std::io::Write;
 use std::ptr;
 use png;
 use png::HasParameters;
+use imgbuf::alpha_saturating_add;
 
 /// A Mask is an 8-bit alpha image mask.
 pub struct Mask {
@@ -54,7 +55,7 @@ impl Mask {
         assert!(self.width == scan_buf.width);
         let pix = &mut self.scan_line(row);
         let buf = &scan_buf.pixels;
-        accum(pix, buf);
+        alpha_saturating_add(pix, buf);
     }
     /// Get one scan line (row)
     fn scan_line(&mut self, row: u32) -> &mut [u8] {
@@ -86,16 +87,6 @@ impl Mask {
         let mut writer = enc.write_header()?;
         writer.write_image_data(&self.pixels[..])?;
         Ok(())
-    }
-}
-
-/// Accumulate one slice over another
-fn accum(a: &mut [u8], b: &[u8]) {
-    assert!(a.len() == b.len());
-    // This loop should be auto-vectorizable, but alas,
-    // LLVM can't do this with saturating_add yet.
-    for (ai, bi) in a.iter_mut().zip(b.iter()) {
-        *ai = ai.saturating_add(*bi);
     }
 }
 
