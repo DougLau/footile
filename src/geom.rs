@@ -211,24 +211,29 @@ impl Vec3 {
     }
 }
 
-#[test]
-fn test_vec2() {
-    let a = Vec2::new(2f32, 1f32);
-    let b = Vec2::new(3f32, 4f32);
-    let c = Vec2::new(-1f32, 1f32);
-    assert!(a + b == Vec2::new(5f32, 5f32));
-    assert!(b - a == Vec2::new(1f32, 3f32));
-    assert!(a * 2f32 == Vec2::new(4f32, 2f32));
-    assert!(a / 2f32 == Vec2::new(1f32, 0.5f32));
-    assert!(-a == Vec2::new(-2f32, -1f32));
-    assert!(b.mag() == 5f32);
-    assert!(a.normalize() == Vec2::new(0.8944272f32, 0.4472136f32));
-    assert!(a.dist_sq(b) == 10f32);
-    assert!(b.dist(Vec2::new(0f32, 0f32)) == 5f32);
-    assert!(a.midpoint(b) == Vec2::new(2.5f32, 2.5f32));
-    assert!(a.left() == Vec2::new(-1f32, 2f32));
-    assert!(a.right() == Vec2::new(1f32, -2f32));
-    assert!(a.angle_rel(b) == -0.4636476f32);
-    assert!(c.angle_rel(Vec2::new(1f32, 1f32)) == 1.5707963f32);
-    assert!(Vec2::new(-1f32, -1f32).angle_rel(c) == 1.5707965f32);
+#[cfg(test)]
+mod test {
+    use super::Vec2;
+
+    #[test]
+    fn test_vec2() {
+        let a = Vec2::new(2f32, 1f32);
+        let b = Vec2::new(3f32, 4f32);
+        let c = Vec2::new(-1f32, 1f32);
+        assert!(a + b == Vec2::new(5f32, 5f32));
+        assert!(b - a == Vec2::new(1f32, 3f32));
+        assert!(a * 2f32 == Vec2::new(4f32, 2f32));
+        assert!(a / 2f32 == Vec2::new(1f32, 0.5f32));
+        assert!(-a == Vec2::new(-2f32, -1f32));
+        assert!(b.mag() == 5f32);
+        assert!(a.normalize() == Vec2::new(0.8944272f32, 0.4472136f32));
+        assert!(a.dist_sq(b) == 10f32);
+        assert!(b.dist(Vec2::new(0f32, 0f32)) == 5f32);
+        assert!(a.midpoint(b) == Vec2::new(2.5f32, 2.5f32));
+        assert!(a.left() == Vec2::new(-1f32, 2f32));
+        assert!(a.right() == Vec2::new(1f32, -2f32));
+        assert!(a.angle_rel(b) == -0.4636476f32);
+        assert!(c.angle_rel(Vec2::new(1f32, 1f32)) == 1.5707963f32);
+        assert!(Vec2::new(-1f32, -1f32).angle_rel(c) == 1.5707965f32);
+    }
 }

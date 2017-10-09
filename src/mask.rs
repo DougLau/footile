@@ -99,18 +99,22 @@ fn accum(a: &mut [u8], b: &[u8]) {
     }
 }
 
-#[test]
-fn test_mask() {
-    let mut m = Mask::new(10, 10);
-    m.clear();
-    assert!(m.width == 10);
-    assert!(m.height == 10);
-    assert!(m.pixels.len() == 100);
-    m.fill(40, 20, 255u8);
-    assert!(m.pixels[0] == 0u8);
-    assert!(m.pixels[39] == 0u8);
-    assert!(m.pixels[40] == 255u8);
-    assert!(m.pixels[59] == 255u8);
-    assert!(m.pixels[60] == 0u8);
-    assert!(m.pixels[99] == 0u8);
+#[cfg(test)]
+mod test {
+    use super::Mask;
+    #[test]
+    fn test_mask() {
+        let mut m = Mask::new(10, 10);
+        m.clear();
+        assert!(m.width == 10);
+        assert!(m.height == 10);
+        assert!(m.pixels.len() == 100);
+        m.fill(40, 20, 255u8);
+        assert!(m.pixels[0] == 0u8);
+        assert!(m.pixels[39] == 0u8);
+        assert!(m.pixels[40] == 255u8);
+        assert!(m.pixels[59] == 255u8);
+        assert!(m.pixels[60] == 0u8);
+        assert!(m.pixels[99] == 0u8);
+    }
 }

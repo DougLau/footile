@@ -700,34 +700,38 @@ fn pixel_cov(fcov: Fixed) -> i32 {
     cmp::min(cmp::max(n, 0), 255)
 }
 
-#[test]
-fn test_fixed() {
-    let a = Fixed::from_i32(37);
-    let b = Fixed::from_i32(3);
-    let c = Fixed::from_f32(1.5f32);
-    let d = Fixed::from_f32(-2.5f32);
-    let e = Fixed::from_i32(128);
-    assert!(a.to_i32() == 37);
-    assert!(a.floor() == a);
-    assert!(a.ceil() == a);
-    assert!(a * b == Fixed::from_i32(111));
-    assert!(a / b == Fixed::from_f32(12.33333f32));
-    assert!(b.floor() == b);
-    assert!(b.ceil() == b);
-    assert!(c.floor() == Fixed::from_i32(1));
-    assert!(c.ceil() == Fixed::from_i32(2));
-    assert!(c.frac() == Fixed::from_f32(0.5f32));
-    assert!(d.abs() == Fixed::from_f32(2.5f32));
-    assert!(d.frac() == Fixed::from_f32(0.5f32));
-    assert!(d.floor() == Fixed::from_i32(-3));
-    assert!(d.ceil() == Fixed::from_i32(-2));
-    assert!(cmp::min(a, b) == b);
-    assert!(cmp::max(a, b) == a);
-    assert!(a.avg(b) == Fixed::from_i32(20));
-    assert!(b.avg(c) == Fixed::from_f32(2.25f32));
-    assert!((e * e).to_i32() == 16384);
-    assert!(Fixed::cmp_f32(0f32, 0f32) == Ordering::Equal);
-    assert!(Fixed::cmp_f32(0f32, 0.00001f32) == Ordering::Equal);
-    assert!(Fixed::cmp_f32(0f32, 0.0001f32) == Ordering::Less);
-    assert!(Fixed::cmp_f32(0f32, -0.0001f32) == Ordering::Greater);
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_fixed() {
+        let a = Fixed::from_i32(37);
+        let b = Fixed::from_i32(3);
+        let c = Fixed::from_f32(1.5f32);
+        let d = Fixed::from_f32(-2.5f32);
+        let e = Fixed::from_i32(128);
+        assert!(a.to_i32() == 37);
+        assert!(a.floor() == a);
+        assert!(a.ceil() == a);
+        assert!(a * b == Fixed::from_i32(111));
+        assert!(a / b == Fixed::from_f32(12.33333f32));
+        assert!(b.floor() == b);
+        assert!(b.ceil() == b);
+        assert!(c.floor() == Fixed::from_i32(1));
+        assert!(c.ceil() == Fixed::from_i32(2));
+        assert!(c.frac() == Fixed::from_f32(0.5f32));
+        assert!(d.abs() == Fixed::from_f32(2.5f32));
+        assert!(d.frac() == Fixed::from_f32(0.5f32));
+        assert!(d.floor() == Fixed::from_i32(-3));
+        assert!(d.ceil() == Fixed::from_i32(-2));
+        assert!(cmp::min(a, b) == b);
+        assert!(cmp::max(a, b) == a);
+        assert!(a.avg(b) == Fixed::from_i32(20));
+        assert!(b.avg(c) == Fixed::from_f32(2.25f32));
+        assert!((e * e).to_i32() == 16384);
+        assert!(Fixed::cmp_f32(0f32, 0f32) == Ordering::Equal);
+        assert!(Fixed::cmp_f32(0f32, 0.00001f32) == Ordering::Equal);
+        assert!(Fixed::cmp_f32(0f32, 0.0001f32) == Ordering::Less);
+        assert!(Fixed::cmp_f32(0f32, -0.0001f32) == Ordering::Greater);
+    }
 }
