@@ -55,7 +55,7 @@ impl Raster {
     /// * `mask` Mask for compositing.
     /// * `clr` RGB color.
     pub fn composite(&mut self, mask: &Mask, clr: [u8; 3]) {
-        for (mut p, m) in self.pixels.chunks_mut(4).zip(mask.iter()) {
+        for (p, m) in self.pixels.chunks_mut(4).zip(mask.iter()) {
             let src = Rgba::<f32>::new_u8(clr[0], clr[1], clr[2], *m);
             let dst = Rgba::<f32>::new_u8(p[0], p[1], p[2], p[3]);
             let c = src.over(dst);

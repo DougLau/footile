@@ -52,13 +52,9 @@ impl Mask {
     pub(crate) fn accumulate(&mut self, scan_buf: &Mask, row: u32) {
         assert!(scan_buf.height == 1);
         assert!(self.width == scan_buf.width);
-        let w = self.width as usize;
-        // slicing ..w should allow bounds check elision
-        let mut pix = &mut self.scan_line(row)[..w];
-        let buf = &scan_buf.pixels[..w];
-        for i in 0..w {
-            pix[i] = pix[i].saturating_add(buf[i]);
-        }
+        let pix = &mut self.scan_line(row);
+        let buf = &scan_buf.pixels;
+        accum(pix, buf);
     }
     /// Get one scan line (row)
     fn scan_line(&mut self, row: u32) -> &mut [u8] {
@@ -72,7 +68,7 @@ impl Mask {
     pub fn write_pgm(&self, filename: &str) -> io::Result<()> {
         let fl = File::create(filename)?;
         let mut bw = io::BufWriter::new(fl);
-        let mut w = bw.get_mut();
+        let w = bw.get_mut();
         w.write_all(format!("P5\n{} {}\n255\n", self.width, self.height)
          .as_bytes())?;
         w.write_all(&self.pixels[..])?;
@@ -90,6 +86,16 @@ impl Mask {
         let mut writer = enc.write_header()?;
         writer.write_image_data(&self.pixels[..])?;
         Ok(())
+    }
+}
+
+/// Accumulate one slice over another
+fn accum(a: &mut [u8], b: &[u8]) {
+    assert!(a.len() == b.len());
+    // This loop should be auto-vectorizable, but alas,
+    // LLVM can't do this with saturating_add yet.
+    for (ai, bi) in a.iter_mut().zip(b.iter()) {
+        *ai = ai.saturating_add(*bi);
     }
 }
 

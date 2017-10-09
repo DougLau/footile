@@ -333,7 +333,7 @@ impl Fig {
     }
     /// Add a point to the current sub-figure
     fn sub_add_point(&mut self) {
-        let mut sub = self.sub_current();
+        let sub = self.sub_current();
         sub.n_points += 1;
     }
     /// Get the sub-figure at a specified vertex ID
@@ -434,7 +434,7 @@ impl Fig {
     /// * `joined` If true, join ends of sub-figure.
     pub fn close(&mut self, joined: bool) {
         if self.points.len() > 0 {
-            let mut sub = self.sub_current();
+            let sub = self.sub_current();
             sub.joined = joined;
             sub.done = true;
         }
