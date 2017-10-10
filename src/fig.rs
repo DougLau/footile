@@ -17,7 +17,7 @@ struct Fixed {
 }
 
 /// Figure direction enum
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum FigDir {
     Forward,
     Reverse,
@@ -49,6 +49,7 @@ struct SubFig {
 }
 
 /// Edge structure
+#[derive(Debug)]
 struct Edge {
     vtx      : u16,         // lower vertex ID
     dir      : FigDir,      // figure direction from upper to lower
@@ -57,8 +58,6 @@ struct Edge {
     x_bot    : Fixed,       // X at bottom of scan line
     min_x    : Fixed,       // minimum X on scan line
     max_x    : Fixed,       // maximum X on scan line
-    min_pix  : i32,         // minimum pixel on scan line
-    max_pix  : i32,         // maximum pixel on scan line
 }
 
 /// A Fig is a series of 2D points which can be rendered to
@@ -250,8 +249,6 @@ impl Edge {
             x_bot: x_bot,
             min_x: FX_ZERO,
             max_x: FX_ZERO,
-            min_pix: 0,
-            max_pix: 0,
         }
     }
     /// Calculate the step for each pixel on an edge
@@ -262,14 +259,44 @@ impl Edge {
             FX_ZERO
         }
     }
-    /// Scan one pixel on the edge
+    /// Calculate X limits for a partial scan line
+    fn calculate_x_limits_partial(&mut self, ypb: Fixed, ynb: Fixed) {
+        let xt = ypb * self.islope + self.x_bot;
+        let xb = ynb * self.islope + self.x_bot;
+        self.calculate_x_limits(xt, xb);
+    }
+    /// Calculate X limits for a full scan line
+    fn calculate_x_limits_full(&mut self) {
+        let xt = self.x_bot - self.islope;
+        let xb = self.x_bot;
+        self.calculate_x_limits(xt, xb);
+    }
+    /// Calculate X limits
+    fn calculate_x_limits(&mut self, xt: Fixed, xb: Fixed) {
+        self.min_x = cmp::min(xt, xb);
+        self.max_x = cmp::max(xt, xb);
+    }
+    /// Get the minimum X pixel
+    fn min_pix(&self) -> i32 {
+        self.min_x.to_i32()
+    }
+    /// Get the maximum X pixel
+    fn max_pix(&self) -> i32 {
+        self.max_x.to_i32()
+    }
+    /// Scan one pixel on an edge.
+    ///
+    /// * `x` X position.
+    /// * `cov_pix` Previous pixel coverage.
+    /// Returns pixel coverage at X.
     fn scan_pix(&self, x: i32, cov_pix: Fixed) -> Fixed {
-        let x_mn = x.cmp(&self.min_pix);
-        let x_mx = x.cmp(&self.max_pix);
+        let x_mn = x.cmp(&self.min_pix());
+        let x_mx = x.cmp(&self.max_pix());
         match (x_mn, x_mx) {
             (Less, _)          => FX_ZERO,
             (Equal, Equal)     => FX_ONE - self.x_mid().frac(),
-            (Equal, _)         => (FX_ONE - self.min_x.frac()) * self.step_pix,
+            (Equal, _)         => (FX_ONE - self.min_x.frac())
+                                    * self.step_pix / Fixed::from_i32(2),
             (Greater, Greater) => FX_ONE,
             (Greater, _)       => cmp::min(FX_ONE, cov_pix + self.step_pix),
         }
@@ -546,30 +573,60 @@ impl<'a> Scanner<'a> {
     /// Calculate the X limits on the current scan line for all edges
     fn calculate_x_limits(&mut self) {
         let part = (self.y_now - self.y_prev) < FX_ONE;
-        for e in self.edges.iter_mut() {
-            if part {
-                let y_bot = self.y_now.ceil();
-                let ypb = self.y_prev - y_bot;
-                let xt = ypb * e.islope + e.x_bot;
-                let ynb = self.y_now - y_bot;
-                let xb = ynb * e.islope + e.x_bot;
-                e.min_x = cmp::min(xt, xb);
-                e.max_x = cmp::max(xt, xb);
-            } else {
-                let xt = e.x_bot - e.islope;
-                e.min_x = cmp::min(xt, e.x_bot);
-                e.max_x = cmp::max(xt, e.x_bot);
+        if part {
+            let y_bot = self.y_now.ceil();
+            let ypb = self.y_prev - y_bot;
+            let ynb = self.y_now - y_bot;
+            for e in self.edges.iter_mut() {
+                e.calculate_x_limits_partial(ypb, ynb);
             }
-            e.min_pix = e.min_x.to_i32();
-            e.max_pix = e.max_x.to_i32();
+        } else {
+            for e in self.edges.iter_mut() {
+                e.calculate_x_limits_full();
+            }
         }
     }
-    /// Scan once across all edges
+    /// Scan once across all edges.
     fn scan_once(&mut self) {
-        let mut e: Option<usize> = None;
         self.sort_edges();
         self.n_fill = 0;
         self.scan_buf.clear();
+        match self.rule {
+            FillRule::NonZero => self.tweak_edges(),
+            _ => (),
+        }
+        self.scan_edges();
+    }
+    /// Sort edges by the X midpoint of the current scan line.
+    fn sort_edges(&mut self) {
+        self.edges.sort_by(|a,b| a.x_mid().v.cmp(&b.x_mid().v));
+    }
+    /// Tweak edges which intersect on the current scan line.
+    ///
+    /// These tweaks prevent rendering glitches from occuring
+    /// at pixels where two edges intersect without a vertex.
+    /// This is a result of sorting edges by x_mid point.
+    fn tweak_edges(&mut self) {
+        let mut min_x: Option<Fixed> = None;
+        let n_edges = self.edges.len();
+        for i in 0..n_edges {
+            let x = self.edges[i].min_x;
+            if let Some(mn) = min_x {
+                let xd = mn - x;
+                if xd > FX_ZERO {
+                    self.edges[i].min_x = mn;
+                    let mx = self.edges[i].max_x;
+                    if mn.to_i32() == mx.to_i32() {
+                        self.edges[i].max_x = cmp::max(mn, mx - xd);
+                    }
+                }
+            }
+            min_x = Some(x);
+        }
+    }
+    /// Scan across all edges
+    fn scan_edges(&mut self) {
+        let mut e: Option<usize> = None;
         let n_edges = self.edges.len();
         for i in 0..n_edges {
             match (e, self.edge_fill(i)) {
@@ -583,10 +640,6 @@ impl<'a> Scanner<'a> {
                 _ => {},
             };
         }
-    }
-    /// Sort edges by X at the bottom of the current scan line.
-    fn sort_edges(&mut self) {
-        self.edges.sort_by(|a,b| a.x_mid().v.cmp(&b.x_mid().v));
     }
     /// Check if the given edge starts a fill
     fn edge_fill(&mut self, i: usize) -> bool {
@@ -605,15 +658,15 @@ impl<'a> Scanner<'a> {
         let left = &self.edges[lt];
         let right = &self.edges[rt];
         let w = self.mask.width as i32;
-        let max_pix = cmp::min(right.max_pix, w - 1);
-        let min_rt = cmp::min(max_pix, right.min_pix);
+        let max_pix = cmp::min(right.max_pix(), w - 1);
+        let min_rt = cmp::min(max_pix, right.min_pix());
         assert!(self.y_now > self.y_prev);
         let cov = self.y_now - self.y_prev;
         let mut cov_pix_l = FX_ZERO;
         let mut cov_pix_r = FX_ZERO;
-        let mut x = cmp::max(left.min_pix, 0);
+        let mut x = cmp::max(left.min_pix(), 0);
         while x <= max_pix {
-            if x > left.max_pix && x < min_rt {
+            if x > left.max_pix() && x < min_rt {
                 self.scan_buf.fill(x as usize, (min_rt - x) as usize,
                     pixel_cov(cov) as u8);
                 x = min_rt;
@@ -733,5 +786,45 @@ mod test {
         assert!(Fixed::cmp_f32(0f32, 0.00001f32) == Ordering::Equal);
         assert!(Fixed::cmp_f32(0f32, 0.0001f32) == Ordering::Less);
         assert!(Fixed::cmp_f32(0f32, -0.0001f32) == Ordering::Greater);
+    }
+    #[test]
+    fn fig_3x3() {
+        let mut m = Mask::new(3, 3);
+        let mut s = Mask::new(3, 1);
+        let mut f = Fig::new();
+        f.add_point(Vec3::new(0f32, 0f32, 1f32));
+        f.add_point(Vec3::new(3f32, 3f32, 1f32));
+        f.add_point(Vec3::new(0f32, 3f32, 1f32));
+        f.fill(&mut m, &mut s, FillRule::NonZero);
+        let mut p = m.iter();
+        assert!(*p.next().unwrap() == 128u8);
+        assert!(*p.next().unwrap() == 0u8);
+        assert!(*p.next().unwrap() == 0u8);
+        assert!(*p.next().unwrap() == 255u8);
+        assert!(*p.next().unwrap() == 128u8);
+        assert!(*p.next().unwrap() == 0u8);
+        assert!(*p.next().unwrap() == 255u8);
+        assert!(*p.next().unwrap() == 255u8);
+        assert!(*p.next().unwrap() == 128u8);
+    }
+    #[test]
+    fn fig_9x1() {
+        let mut m = Mask::new(9, 1);
+        let mut s = Mask::new(9, 1);
+        let mut f = Fig::new();
+        f.add_point(Vec3::new(0f32, 0f32, 1f32));
+        f.add_point(Vec3::new(9f32, 1f32, 1f32));
+        f.add_point(Vec3::new(0f32, 1f32, 1f32));
+        f.fill(&mut m, &mut s, FillRule::NonZero);
+        let mut p = m.iter();
+        assert!(*p.next().unwrap() == 242u8);
+        assert!(*p.next().unwrap() == 213u8);
+        assert!(*p.next().unwrap() == 185u8);
+        assert!(*p.next().unwrap() == 156u8);
+        assert!(*p.next().unwrap() == 128u8);
+        assert!(*p.next().unwrap() == 100u8);
+        assert!(*p.next().unwrap() == 71u8);
+        assert!(*p.next().unwrap() == 43u8);
+        assert!(*p.next().unwrap() == 14u8);
     }
 }
