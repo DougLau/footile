@@ -10,6 +10,9 @@ use std::ops;
 use geom::Vec3;
 use mask::Mask;
 
+/// Vertex ID
+pub type Vid = u16;
+
 /// Fixed-point type for fast calculations
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Fixed {
@@ -42,8 +45,8 @@ pub enum FillRule {
 
 /// Sub-figure structure
 struct SubFig {
-    start    : u16,     // starting point
-    n_points : u16,     // number of points
+    start    : Vid,     // starting point
+    n_points : Vid,     // number of points
     joined   : bool,    // joined ends flag
     done     : bool,    // done flag
 }
@@ -51,7 +54,7 @@ struct SubFig {
 /// Edge structure
 #[derive(Debug)]
 struct Edge {
-    vtx      : u16,         // lower vertex ID
+    vtx      : Vid,         // lower vertex ID
     dir      : FigDir,      // figure direction from upper to lower
     step_pix : Fixed,       // change in cov per pix on scan line
     islope   : Fixed,       // inverse slope (dx / dy)
@@ -194,14 +197,19 @@ impl Fixed {
 
 impl SubFig {
     /// Create a new sub-figure
-    fn new(start: u16) -> SubFig {
-        SubFig { start: start, n_points: 0u16, joined: false, done: false }
+    fn new(start: Vid) -> SubFig {
+        SubFig {
+            start    : start,
+            n_points : 0 as Vid,
+            joined   : false,
+            done     : false,
+        }
     }
     /// Get next vertex within a sub-figure
-    fn next(&self, vid: u16, dir: FigDir) -> u16 {
+    fn next(&self, vid: Vid, dir: FigDir) -> Vid {
         match dir {
             FigDir::Forward => {
-                let v = vid + 1u16;
+                let v = vid + 1 as Vid;
                 if v < self.start + self.n_points {
                     v
                 } else {
@@ -210,28 +218,28 @@ impl SubFig {
             },
             FigDir::Reverse => {
                 if vid > self.start {
-                    vid - 1u16
+                    vid - 1 as Vid
                 } else {
-                    self.start + self.n_points - 1u16
+                    self.start + self.n_points - 1 as Vid
                 }
             },
         }
     }
     /// Get count of points
-    fn count(&self) -> u16 {
+    fn count(&self) -> Vid {
         if self.joined {
-            self.n_points + 1u16
+            self.n_points + 1 as Vid
         } else if self.n_points > 0 {
-            self.n_points - 1u16
+            self.n_points - 1 as Vid
         } else {
-            0
+            0 as Vid
         }
     }
 }
 
 impl Edge {
     /// Create a new edge
-    fn new(v0: u16, v1: u16, p0: Vec3, p1: Vec3, dir: FigDir) -> Edge {
+    fn new(v0: Vid, v1: Vid, p0: Vec3, p1: Vec3, dir: FigDir) -> Edge {
         assert!(v0 != v1);
         let dx = Fixed::from_f32(p1.x - p0.x);  // delta X
         let dy = Fixed::from_f32(p1.y - p0.y);  // delta Y
@@ -324,7 +332,7 @@ impl Fig {
     pub fn new() -> Fig {
         let points = Vec::with_capacity(1024);
         let mut subs = Vec::with_capacity(16);
-        subs.push(SubFig::new(0u16));
+        subs.push(SubFig::new(0 as Vid));
         Fig { points: points, subs: subs }
     }
     /// Get the count of sub-figures
@@ -332,11 +340,11 @@ impl Fig {
         self.subs.len()
     }
     /// Get start of a sub-figure
-    pub fn sub_start(&self, i: usize) -> u16 {
+    pub fn sub_start(&self, i: usize) -> Vid {
         self.subs[i].start
     }
     /// Get end of a sub-figure
-    pub fn sub_end(&self, i: usize) -> u16 {
+    pub fn sub_end(&self, i: usize) -> Vid {
         let sub = &self.subs[i];
         sub.next(sub.start, FigDir::Reverse)
     }
@@ -345,7 +353,7 @@ impl Fig {
         self.subs[i].joined
     }
     /// Get the number of points in a sub-figure
-    pub fn sub_points(&self, i: usize) -> u16 {
+    pub fn sub_points(&self, i: usize) -> Vid {
         self.subs[i].count()
     }
     /// Get the current sub-figure
@@ -355,7 +363,7 @@ impl Fig {
     }
     /// Add a new sub-figure
     fn sub_add(&mut self) {
-        let vid = self.points.len() as u16;
+        let vid = self.points.len() as Vid;
         self.subs.push(SubFig::new(vid));
     }
     /// Add a point to the current sub-figure
@@ -364,7 +372,7 @@ impl Fig {
         sub.n_points += 1;
     }
     /// Get the sub-figure at a specified vertex ID
-    fn sub_at(&self, vid: u16) -> &SubFig {
+    fn sub_at(&self, vid: Vid) -> &SubFig {
         let n_subs = self.subs.len();
         for i in 0..n_subs {
             let sub = &self.subs[i];
@@ -376,12 +384,12 @@ impl Fig {
         unreachable!();
     }
     /// Get next vertex
-    pub fn next(&self, vid: u16, dir: FigDir) -> u16 {
+    pub fn next(&self, vid: Vid, dir: FigDir) -> Vid {
         let sub = self.sub_at(vid);
         sub.next(vid, dir)
     }
     /// Get the next vertex with a different Y
-    fn next_y(&self, vid: u16, dir: FigDir) -> u16 {
+    fn next_y(&self, vid: Vid, dir: FigDir) -> Vid {
         let py = self.get_point(vid).y;
         let sub = self.sub_at(vid);
         let mut v = sub.next(vid, dir);
@@ -395,7 +403,7 @@ impl Fig {
         vid
     }
     /// Get the next vertex for an edge change
-    fn next_edge(&self, vid: u16, dir: FigDir) -> u16 {
+    fn next_edge(&self, vid: Vid, dir: FigDir) -> Vid {
         let pp = self.get_point(vid);
         let sub = self.sub_at(vid);
         let mut v = sub.next(vid, dir);
@@ -409,7 +417,7 @@ impl Fig {
         vid
     }
     /// Get the last vertex with the same Y
-    fn same_y(&self, vid: u16, dir: FigDir) -> u16 {
+    fn same_y(&self, vid: Vid, dir: FigDir) -> Vid {
         let py = self.get_point(vid).y;
         let sub = self.sub_at(vid);
         let mut vp = vid;
@@ -427,7 +435,7 @@ impl Fig {
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
-    pub fn get_point(&self, vid: u16) -> Vec3 {
+    pub fn get_point(&self, vid: Vid) -> Vec3 {
         self.points[vid as usize]
     }
     /// Add a point.
@@ -435,7 +443,7 @@ impl Fig {
     /// * `pt` Point to add (z indicates stroke width).
     pub fn add_point(&mut self, pt: Vec3) {
         let n_pts = self.points.len();
-        if n_pts < u16::max_value() as usize {
+        if n_pts < Vid::max_value() as usize {
             let done = self.sub_current().done;
             if done {
                 self.sub_add();
@@ -470,10 +478,10 @@ impl Fig {
     pub fn reset(&mut self) {
         self.points.clear();
         self.subs.clear();
-        self.subs.push(SubFig::new(0u16));
+        self.subs.push(SubFig::new(0 as Vid));
     }
     /// Compare two figure vertex IDs
-    fn compare_vids(&self, v0: u16, v1: u16) -> Ordering {
+    fn compare_vids(&self, v0: Vid, v1: Vid) -> Ordering {
         let p0 = self.get_point(v0);
         let p1 = self.get_point(v1);
         match Fixed::cmp_f32(p0.y, p1.y) {
@@ -491,8 +499,8 @@ impl Fig {
     /// * `rule` Fill rule.
     pub fn fill(&mut self, mask: &mut Mask, scan_buf: &mut Mask, rule: FillRule)
     {
-        let n_points = self.points.len() as u16;
-        let mut vids: Vec<u16> = (0u16..n_points).collect();
+        let n_points = self.points.len() as Vid;
+        let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
         vids.sort_by(|a,b| self.compare_vids(*a, *b));
         let mut scan = Scanner::new(self, mask, scan_buf, rule);
         for vid in vids {
@@ -530,7 +538,7 @@ impl<'a> Scanner<'a> {
         (y - FX_EPSILON).to_i32()
     }
     /// Scan figure to a given vertex
-    fn scan_vertex(&mut self, vid: u16) {
+    fn scan_vertex(&mut self, vid: Vid) {
         let p = self.fig.get_point(vid);
         let y_vtx = Fixed::from_f32(p.y);
         if self.edges.len() > 0 {
@@ -686,7 +694,7 @@ impl<'a> Scanner<'a> {
         self.mask.accumulate(&self.scan_buf, y);
     }
     /// Update edges at a given vertex
-    fn update_edges(&mut self, vid: u16) {
+    fn update_edges(&mut self, vid: Vid) {
         let vp = self.fig.next_edge(vid, FigDir::Reverse);
         let vn = self.fig.next_edge(vid, FigDir::Forward);
         if (vp != vid) && (vn != vid) {
@@ -701,7 +709,7 @@ impl<'a> Scanner<'a> {
         }
     }
     /// Remove two edges at a merge vertex
-    fn edge_merge(&mut self, vid: u16) {
+    fn edge_merge(&mut self, vid: Vid) {
         let fig = &self.fig;
         let mut i = self.edges.len();
         while i > 0 {
@@ -715,7 +723,7 @@ impl<'a> Scanner<'a> {
         }
     }
     /// Add two edges at a split vertex
-    fn edge_split(&mut self, v0: u16, v1: u16) {
+    fn edge_split(&mut self, v0: Vid, v1: Vid) {
         let fig = &self.fig;
         let v0u = fig.next(v0, FigDir::Forward);    // Find upper vtx of edge 0
         let p0u = fig.get_point(v0u);               // Upper point of edge 0
@@ -727,7 +735,7 @@ impl<'a> Scanner<'a> {
         self.edges.push(Edge::new(v1u, v1, p1u, p1, FigDir::Forward));
     }
     /// Update one edge at a regular vertex
-    fn edge_regular(&mut self, vid: u16) {
+    fn edge_regular(&mut self, vid: Vid) {
         let fig = &self.fig;
         for i in 0..self.edges.len() {
             if vid == self.edges[i].vtx {

@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use fig::{ Fig, FillRule, FigDir };
+use fig::{ Fig, FillRule, FigDir, Vid };
 use geom::{ Vec2, Vec3, float_lerp, intersection };
 use mask::Mask;
 
@@ -275,7 +275,7 @@ impl Plotter {
         }
     }
     /// Stroke one side of a sub-figure to another figure.
-    fn stroke_side(&mut self, i: usize, start: u16, dir: FigDir) {
+    fn stroke_side(&mut self, i: usize, start: Vid, dir: FigDir) {
         let mut xr: Option<(Vec2, Vec2)> = None;
         let mut v0 = start;
         let mut v1 = self.fig.next(v0, dir);
