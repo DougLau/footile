@@ -2,29 +2,28 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use std::fmt;
 use std::f32;
 use std::ops;
 
-/// 2-dimensional vector
-#[derive(Clone, Copy, PartialEq)]
+/// 2-dimensional vector.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
 }
 
-/// 3-dimensional vector
-#[derive(Clone, Copy, PartialEq)]
+/// 3-dimensional vector.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
     pub z: f32,
 }
 
-impl fmt::Debug for Vec2 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({},{})", self.x, self.y)
-    }
+/// 3x3 Matrix
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Mat3x3 {
+    pub e: [f32; 9],
 }
 
 impl ops::Add for Vec2 {
@@ -191,12 +190,6 @@ pub fn intersection(a0: Vec2,
     }
 }
 
-impl fmt::Debug for Vec3 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({},{},{})", self.x, self.y, self.z)
-    }
-}
-
 impl Vec3 {
     /// Create a new Vec3
     pub fn new(x: f32, y: f32, z: f32) -> Self {
@@ -208,6 +201,133 @@ impl Vec3 {
         let y = (self.y + other.y) / 2f32;
         let z = (self.z + other.z) / 2f32;
         Vec3::new(x, y, z)
+    }
+}
+
+impl ops::MulAssign for Mat3x3 {
+    fn mul_assign(&mut self, other: Self) {
+        for c in 0..3 {
+            let mut m = [0f32; 3];
+            for r in 0..3 {
+                m[r] = self.get(0, c) * other.get(r, 0) +
+                       self.get(1, c) * other.get(r, 1) +
+                       self.get(2, c) * other.get(r, 2);
+            }
+            for r in 0..3 {
+                self.set(r, c, m[r]);
+            }
+        }
+    }
+}
+
+impl ops::Mul for Mat3x3 {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        let mut m = Mat3x3::new();
+        for c in 0..3 {
+            for r in 0..3 {
+                let e = self.get(0, c) * other.get(r, 0) +
+                        self.get(1, c) * other.get(r, 1) +
+                        self.get(2, c) * other.get(r, 2);
+                m.set(r, c, e);
+            }
+        }
+        m
+    }
+}
+
+impl ops::Mul<Vec2> for Mat3x3 {
+    type Output = Vec2;
+
+    fn mul(self, s: Vec2) -> Vec2 {
+        let x = self.get(0, 0) * s.x + self.get(0, 1) * s.y + self.get(0, 2);
+        let y = self.get(1, 0) * s.x + self.get(1, 1) * s.y + self.get(1, 2);
+        Vec2::new(x, y)
+    }
+}
+
+impl Mat3x3 {
+    /// Create a new identity matrix.
+    pub fn new() -> Self {
+        Mat3x3 {
+            e: [1f32, 0f32, 0f32,
+                0f32, 1f32, 0f32,
+                0f32, 0f32, 1f32]
+        }
+    }
+    /// Create a new translation matrix.
+    pub fn new_translate(tx: f32, ty: f32) -> Self {
+        Mat3x3 {
+            e: [1f32, 0f32,   tx,
+                0f32, 1f32,   ty,
+                0f32, 0f32, 1f32]
+        }
+    }
+    /// Create a new scale matrix.
+    pub fn new_scale(sx: f32, sy: f32) -> Self {
+        Mat3x3 {
+            e: [  sx, 0f32, 0f32,
+                0f32,   sy, 0f32,
+                0f32, 0f32, 1f32]
+        }
+    }
+    /// Create a new rotation matrix.
+    pub fn new_rotate(th: f32) -> Self {
+        // Counter-clockwise
+        let sn = th.sin();
+        let cs = th.cos();
+        Mat3x3 {
+            e: [  cs,  -sn, 0f32,
+                  sn,   cs, 0f32,
+                0f32, 0f32, 1f32]
+        }
+    }
+    /// Create a new X-axis skew matrix.
+    pub fn new_skew_x(a: f32) -> Self {
+        let t = a.tan();
+        Mat3x3 {
+            e: [1f32,    t, 0f32,
+                0f32, 1f32, 0f32,
+                0f32, 0f32, 1f32]
+        }
+    }
+    /// Create a new Y-axis skew matrix.
+    pub fn new_skew_y(a: f32) -> Self {
+        let t = a.tan();
+        Mat3x3 {
+            e: [1f32, 0f32, 0f32,
+                   t, 1f32, 0f32,
+                0f32, 0f32, 1f32]
+        }
+    }
+    /// Get a value.
+    fn get(&self, row: usize, col: usize) -> f32 {
+        self.e[row * 3 + col]
+    }
+    /// Set a value.
+    fn set(&mut self, row: usize, col: usize, e: f32) {
+        self.e[row * 3 + col] = e;
+    }
+    /// Translate by tx, ty
+    pub fn translate(&mut self, tx: f32, ty: f32) {
+        *self *= Mat3x3::new_translate(tx, ty);
+    }
+    /// Scale by sx, sy
+    pub fn scale(&mut self, sx: f32, sy: f32) {
+        *self *= Mat3x3::new_scale(sx, sy);
+    }
+    /// Rotate by th
+    pub fn rotate(&mut self, th: f32) {
+        *self *= Mat3x3::new_rotate(th);
+    }
+    /// Skew X-axis by a
+    pub fn skew_x(&mut self, a: f32) {
+        *self *= Mat3x3::new_skew_x(a);
+    }
+    /// Skew Y-axis by a
+    pub fn skew_y(&mut self, a: f32) {
+        *self *= Mat3x3::new_skew_y(a);
     }
 }
 

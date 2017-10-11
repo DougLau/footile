@@ -11,8 +11,7 @@ fn main() {
                                .width(64)
                                .height(64)
                                .build();
-    p.pen_width(1f32, false)
-     .move_to(4f32, 4f32)
+    p.move_to(4f32, 4f32)
      .line_to(28f32, 12f32)
      .line_to(28f32, -12f32)
      .line_to(-12f32, 28f32)

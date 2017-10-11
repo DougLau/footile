@@ -24,8 +24,9 @@ fn stroke_fishy2() {
 }
 
 fn make_fishy() -> Plotter {
-    let mut p = PlotterBuilder::new().width(256).height(256).user_width(128).user_height(128).build();
-    p.move_to(112f32, 16f32)
+    let mut p = PlotterBuilder::new().width(256).height(256).build();
+    p.scale(2f32, 2f32)
+     .move_to(112f32, 16f32)
      .line_to(-48f32, 32f32)
      .cubic_to(-64f32, -48f32, -64f32, 80f32, 0f32, 32f32)
      .line_to(48f32, 32f32)
