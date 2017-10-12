@@ -27,9 +27,9 @@ use png::HasParameters;
 /// r.composite(p.mask(), [208u8, 255u8, 208u8]);
 /// ```
 pub struct Raster {
-    pub width  : u32,
-    pub height : u32,
-        pixels : Vec<u8>,
+    width  : u32,
+    height : u32,
+    pixels : Vec<u8>,
 }
 
 impl Raster {

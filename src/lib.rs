@@ -18,6 +18,7 @@ mod plotter;
 mod raster;
 
 pub use fig::FillRule;
+pub use geom::Transform;
 pub use mask::Mask;
 pub use plotter::{ JoinStyle, Plotter, PlotterBuilder };
 pub use raster::Raster;

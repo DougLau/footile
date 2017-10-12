@@ -20,10 +20,24 @@ pub struct Vec3 {
     pub z: f32,
 }
 
-/// 3x3 Matrix
+/// An affine transform can translate, scale, rotate and skew 2D points.
+///
+/// A series of transforms can be combined into a single Transform struct.
+/// This can be used by a [Plotter](struct.Plotter.html) to alter subsequent
+/// points.
+///
+/// # Example
+/// ```
+/// use footile::Transform;
+/// const PI: f32 = std::f32::consts::PI;
+/// let t = Transform::new_translate(-50f32, -50f32)
+///                   .rotate(PI)
+///                   .translate(50f32, 50f32)
+///                   .scale(2f32, 2f32);
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Mat3x3 {
-    pub e: [f32; 9],
+pub struct Transform {
+    e: [f32; 9],
 }
 
 impl ops::Add for Vec2 {
@@ -145,12 +159,12 @@ impl Vec2 {
     ///
     /// The result will be between `-PI` and `+PI`.
     pub fn angle_rel(self, other: Self) -> f32 {
-        let pi = f32::consts::PI;
+        const PI: f32 = f32::consts::PI;
         let th = self.y.atan2(self.x) - other.y.atan2(other.x);
-        if th < -pi {
-            th + 2f32 * pi
-        } else if th > pi {
-            th - 2f32 * pi
+        if th < -PI {
+            th + 2f32 * PI
+        } else if th > PI {
+            th - 2f32 * PI
         } else {
             th
         }
@@ -204,7 +218,7 @@ impl Vec3 {
     }
 }
 
-impl ops::MulAssign for Mat3x3 {
+impl ops::MulAssign for Transform {
     fn mul_assign(&mut self, other: Self) {
         for c in 0..3 {
             let mut m = [0f32; 3];
@@ -220,11 +234,11 @@ impl ops::MulAssign for Mat3x3 {
     }
 }
 
-impl ops::Mul for Mat3x3 {
+impl ops::Mul for Transform {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-        let mut m = Mat3x3::new();
+        let mut m = Transform::new();
         for c in 0..3 {
             for r in 0..3 {
                 let e = self.get(0, c) * other.get(r, 0) +
@@ -237,7 +251,7 @@ impl ops::Mul for Mat3x3 {
     }
 }
 
-impl ops::Mul<Vec2> for Mat3x3 {
+impl ops::Mul<Vec2> for Transform {
     type Output = Vec2;
 
     fn mul(self, s: Vec2) -> Vec2 {
@@ -247,57 +261,59 @@ impl ops::Mul<Vec2> for Mat3x3 {
     }
 }
 
-impl Mat3x3 {
-    /// Create a new identity matrix.
+impl Transform {
+    /// Create a new identity transform.
     pub fn new() -> Self {
-        Mat3x3 {
+        Transform {
             e: [1f32, 0f32, 0f32,
                 0f32, 1f32, 0f32,
                 0f32, 0f32, 1f32]
         }
     }
-    /// Create a new translation matrix.
+    /// Create a new translation transform.
+    ///
+    /// * `tx` Amount to translate X.
+    /// * `ty` Amount to translate Y.
     pub fn new_translate(tx: f32, ty: f32) -> Self {
-        Mat3x3 {
+        Transform {
             e: [1f32, 0f32,   tx,
                 0f32, 1f32,   ty,
                 0f32, 0f32, 1f32]
         }
     }
-    /// Create a new scale matrix.
+    /// Create a new scale transform.
+    ///
+    /// * `sx` Scale factor for X dimension.
+    /// * `sy` Scale factor for Y dimension.
     pub fn new_scale(sx: f32, sy: f32) -> Self {
-        Mat3x3 {
+        Transform {
             e: [  sx, 0f32, 0f32,
                 0f32,   sy, 0f32,
                 0f32, 0f32, 1f32]
         }
     }
-    /// Create a new rotation matrix.
+    /// Create a new rotation transform.
+    ///
+    /// * `th` Angle to rotate coordinates (radians).
     pub fn new_rotate(th: f32) -> Self {
-        // Counter-clockwise
         let sn = th.sin();
         let cs = th.cos();
-        Mat3x3 {
+        Transform {
             e: [  cs,  -sn, 0f32,
                   sn,   cs, 0f32,
                 0f32, 0f32, 1f32]
         }
     }
-    /// Create a new X-axis skew matrix.
-    pub fn new_skew_x(a: f32) -> Self {
-        let t = a.tan();
-        Mat3x3 {
-            e: [1f32,    t, 0f32,
-                0f32, 1f32, 0f32,
-                0f32, 0f32, 1f32]
-        }
-    }
-    /// Create a new Y-axis skew matrix.
-    pub fn new_skew_y(a: f32) -> Self {
-        let t = a.tan();
-        Mat3x3 {
-            e: [1f32, 0f32, 0f32,
-                   t, 1f32, 0f32,
+    /// Create a new skew transform.
+    ///
+    /// * `ax` Angle to skew X-axis (radians).
+    /// * `ay` Angle to skew Y-axis (radians).
+    pub fn new_skew(ax: f32, ay: f32) -> Self {
+        let tnx = ax.tan();
+        let tny = ay.tan();
+        Transform {
+            e: [1f32,  tnx, 0f32,
+                 tny, 1f32, 0f32,
                 0f32, 0f32, 1f32]
         }
     }
@@ -309,25 +325,36 @@ impl Mat3x3 {
     fn set(&mut self, row: usize, col: usize, e: f32) {
         self.e[row * 3 + col] = e;
     }
-    /// Translate by tx, ty
-    pub fn translate(&mut self, tx: f32, ty: f32) {
-        *self *= Mat3x3::new_translate(tx, ty);
+    /// Apply translation to a transform.
+    ///
+    /// * `tx` Amount to translate X.
+    /// * `ty` Amount to translate Y.
+    pub fn translate(mut self, tx: f32, ty: f32) -> Self {
+        self *= Transform::new_translate(tx, ty);
+        self
     }
-    /// Scale by sx, sy
-    pub fn scale(&mut self, sx: f32, sy: f32) {
-        *self *= Mat3x3::new_scale(sx, sy);
+    /// Apply scaling to a transform.
+    ///
+    /// * `sx` Scale factor for X dimension.
+    /// * `sy` Scale factor for Y dimension.
+    pub fn scale(mut self, sx: f32, sy: f32) -> Self {
+        self *= Transform::new_scale(sx, sy);
+        self
     }
-    /// Rotate by th
-    pub fn rotate(&mut self, th: f32) {
-        *self *= Mat3x3::new_rotate(th);
+    /// Apply rotation to a transform.
+    ///
+    /// * `th` Angle to rotate coordinates (radians).
+    pub fn rotate(mut self, th: f32) -> Self {
+        self *= Transform::new_rotate(th);
+        self
     }
-    /// Skew X-axis by a
-    pub fn skew_x(&mut self, a: f32) {
-        *self *= Mat3x3::new_skew_x(a);
-    }
-    /// Skew Y-axis by a
-    pub fn skew_y(&mut self, a: f32) {
-        *self *= Mat3x3::new_skew_y(a);
+    /// Apply skew to a transform.
+    ///
+    /// * `ax` Angle to skew X-axis (radians).
+    /// * `ay` Angle to skew Y-axis (radians).
+    pub fn skew(mut self, ax: f32, ay: f32) -> Self {
+        self *= Transform::new_skew(ax, ay);
+        self
     }
 }
 

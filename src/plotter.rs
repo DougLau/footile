@@ -3,7 +3,7 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 use fig::{ Fig, FillRule, FigDir, Vid };
-use geom::{ Vec2, Vec3, float_lerp, intersection, Mat3x3 };
+use geom::{ Transform, Vec2, Vec3, float_lerp, intersection };
 use mask::Mask;
 
 /// Style for joins
@@ -17,9 +17,11 @@ pub enum JoinStyle {
     Round,
 }
 
-/// Plotter for rasterizing vector paths.
+/// Plotter for 2D vector paths.
 ///
 /// Paths are made from lines and splines (quadratic or cubic).
+/// When a plot is complete, a [Mask](struct.Mask.html) of the result can be
+/// used to composite a [Raster](struct.Raster.html).
 ///
 /// # Example
 /// ```
@@ -38,14 +40,14 @@ pub struct Plotter {
     mask       : Mask,          // image mask
     scan_buf   : Mask,          // scan line buffer
     pen        : Vec3,          // current pen position and width
-    matrix     : Mat3x3,        // user to pixel affine transform
+    transform  : Transform,     // user to pixel affine transform
     tol_sq     : f32,           // curve decomposition tolerance squared
     absolute   : bool,          // absolute coordinates
     s_width    : f32,           // current stroke width
     join_style : JoinStyle,     // current join style
 }
 
-/// Builder for plotters
+/// Builder for [Plotter](struct.Plotter.html).
 ///
 /// # Example
 /// ```
@@ -59,8 +61,8 @@ pub struct Plotter {
 /// // Plot some stuff ...
 /// ```
 pub struct PlotterBuilder {
-    p_width  : u32,     // width in pixels
-    p_height : u32,     // height in pixels
+    width    : u32,     // width in pixels
+    height   : u32,     // height in pixels
     tol      : f32,     // curve decomposition tolerance
     absolute : bool,    // absolute coordinates (false: relative)
 }
@@ -68,11 +70,11 @@ pub struct PlotterBuilder {
 impl Plotter {
     /// Get width in pixels.
     pub fn width(&self) -> u32 {
-        self.mask.width
+        self.mask.width()
     }
     /// Get height in pixels.
     pub fn height(&self) -> u32 {
-        self.mask.height
+        self.mask.height()
     }
     /// Reset path and pen.
     pub fn reset(&mut self) -> &mut Self {
@@ -81,9 +83,9 @@ impl Plotter {
         self.pen = Vec3::new(0f32, 0f32, self.s_width);
         self
     }
-    /// Reset the transform.
-    pub fn reset_transform(&mut self) -> &mut Self {
-        self.matrix = Mat3x3::new();
+    /// Set the transform.
+    pub fn set_transform(&mut self, t: Transform) -> &mut Self {
+        self.transform = t;
         self
     }
     /// Clear the mask.
@@ -97,43 +99,6 @@ impl Plotter {
         self.pen = Vec3::new(0f32, 0f32, self.s_width);
         self
     }
-    /// Translate points.
-    ///
-    /// * `tx` X offset.
-    /// * `ty` Y offset.
-    pub fn translate(&mut self, tx: f32, ty: f32) -> &mut Self {
-        self.matrix.translate(tx, ty);
-        self
-    }
-    /// Scale points.
-    ///
-    /// * `sx` X scale factor.
-    /// * `sy` Y scale factor.
-    pub fn scale(&mut self, sx: f32, sy: f32) -> &mut Self {
-        self.matrix.scale(sx, sy);
-        self
-    }
-    /// Rotate points.
-    ///
-    /// * `th` Angle to rotate.
-    pub fn rotate(&mut self, th: f32) -> &mut Self {
-        self.matrix.rotate(th);
-        self
-    }
-    /// Skew points on the X axis.
-    ///
-    /// * `a` Angle to skew.
-    pub fn skew_x(&mut self, a: f32) -> &mut Self {
-        self.matrix.skew_x(a);
-        self
-    }
-    /// Skew points on the Y axis.
-    ///
-    /// * `a` Angle to skew.
-    pub fn skew_y(&mut self, a: f32) -> &mut Self {
-        self.matrix.skew_y(a);
-        self
-    }
     /// Set pen stroke width.
     ///
     /// All subsequent path points will be affected, until the stroke width
@@ -141,7 +106,6 @@ impl Plotter {
     ///
     /// * `width` Pen stroke width.
     pub fn pen_width(&mut self, width: f32) -> &mut Self {
-        // FIXME: allow pixel units instead of user units
         self.s_width = width;
         self
     }
@@ -166,9 +130,9 @@ impl Plotter {
     fn move_pen(&mut self, p: Vec3) {
         self.pen = p;
     }
-    /// Transform a point
-    fn transform(&self, p: Vec3) -> Vec3 {
-        let pt = self.matrix * Vec2::new(p.x, p.y);
+    /// Transform a point.
+    fn transform_point(&self, p: Vec3) -> Vec3 {
+        let pt = self.transform * Vec2::new(p.x, p.y);
         Vec3::new(pt.x, pt.y, p.z)
     }
     /// Move pen to a point.
@@ -178,7 +142,7 @@ impl Plotter {
     pub fn move_to(&mut self, bx: f32, by: f32) -> &mut Self {
         let p = self.make_point(bx, by, self.s_width);
         self.fig.close(false);
-        let b = self.transform(p);
+        let b = self.transform_point(p);
         self.fig.add_point(b);
         self.move_pen(p);
         self
@@ -189,7 +153,7 @@ impl Plotter {
     /// * `by` Y-position of end point.
     pub fn line_to(&mut self, bx: f32, by: f32) -> &mut Self {
         let p = self.make_point(bx, by, self.s_width);
-        let b = self.transform(p);
+        let b = self.transform_point(p);
         self.fig.add_point(b);
         self.move_pen(p);
         self
@@ -207,9 +171,9 @@ impl Plotter {
         let pen = self.pen;
         let bb = self.make_point(bx, by, (pen.z + self.s_width) / 2f32);
         let cc = self.make_point(cx, cy, self.s_width);
-        let a = self.transform(pen);
-        let b = self.transform(bb);
-        let c = self.transform(cc);
+        let a = self.transform_point(pen);
+        let b = self.transform_point(bb);
+        let c = self.transform_point(cc);
         self.quad_to_tran(a, b, c);
         self.move_pen(cc);
         self
@@ -261,10 +225,10 @@ impl Plotter {
         let bb = self.make_point(bx, by, bw);
         let cc = self.make_point(cx, cy, cw);
         let dd = self.make_point(dx, dy, self.s_width);
-        let a = self.transform(pen);
-        let b = self.transform(bb);
-        let c = self.transform(cc);
-        let d = self.transform(dd);
+        let a = self.transform_point(pen);
+        let b = self.transform_point(bb);
+        let c = self.transform_point(cc);
+        let d = self.transform_point(dd);
         self.cubic_to_tran(a, b, c, d);
         self.move_pen(dd);
         self
@@ -349,9 +313,10 @@ impl Plotter {
     /// * `p0` First point.
     /// * `p1` Second point.
     fn stroke_offset(&self, p0: Vec3, p1: Vec3) -> (Vec2, Vec2) {
+        // FIXME: scale offset to allow user units as well as pixel units
         let pp0 = Vec2::new(p0.x, p0.y);
         let pp1 = Vec2::new(p1.x, p1.y);
-        let vr = (pp0 - pp1).left().normalize();
+        let vr = (pp1 - pp0).right().normalize();
         let pr0 = pp0 + vr * (p0.z / 2f32);
         let pr1 = pp1 + vr * (p1.z / 2f32);
         (pr0, pr1)
@@ -415,7 +380,7 @@ impl Plotter {
     /// Add a stroke arc.
     fn stroke_arc(&mut self, p: Vec3, a: Vec2, b: Vec2) {
         let p2 = Vec2::new(p.x, p.y);
-        let vr = (a - b).left().normalize();
+        let vr = (b - a).right().normalize();
         let c = p2 + vr * (p.z / 2f32);
         let ab = a.midpoint(b);
         if self.is_within_tolerance2(c, ab) {
@@ -435,20 +400,20 @@ impl PlotterBuilder {
     /// Create a new PlotterBuilder.
     pub fn new() -> PlotterBuilder {
         PlotterBuilder {
-            p_width:  0,
-            p_height: 0,
-            tol:      0.3f32,
-            absolute: false,
+            width    : 0,
+            height   : 0,
+            tol      : 0.3f32,
+            absolute : false,
         }
     }
     /// Set width in pixels.
     pub fn width(mut self, w: u32) -> PlotterBuilder {
-        self.p_width = w;
+        self.width = w;
         self
     }
     /// Set height in pixels.
     pub fn height(mut self, h: u32) -> PlotterBuilder {
-        self.p_height = h;
+        self.height = h;
         self
     }
     /// Set tolerance threshold for curve decomposition.
@@ -463,15 +428,15 @@ impl PlotterBuilder {
     }
     /// Build configured Plotter.
     pub fn build(self) -> Plotter {
-        let pw = if self.p_width > 0 { self.p_width } else { 100 };
-        let ph = if self.p_height > 0 { self.p_height } else { 100 };
+        let w = if self.width > 0 { self.width } else { 100 };
+        let h = if self.height > 0 { self.height } else { 100 };
         Plotter {
             fig        : Fig::new(),
             sfig       : Fig::new(),
-            mask       : Mask::new(pw, ph),
-            scan_buf   : Mask::new(pw, 1),
+            mask       : Mask::new(w, h),
+            scan_buf   : Mask::new(w, 1),
             pen        : Vec3::new(0f32, 0f32, 1f32),
-            matrix     : Mat3x3::new(),
+            transform  : Transform::new(),
             tol_sq     : self.tol * self.tol,
             absolute   : self.absolute,
             s_width    : 1f32,

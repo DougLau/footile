@@ -10,11 +10,24 @@ use png;
 use png::HasParameters;
 use imgbuf::alpha_saturating_add;
 
-/// A Mask is an 8-bit alpha image mask.
+/// A Mask is an image with only an 8-bit alpha channel.
+///
+/// It can be obtained from a [Plotter](struct.Plotter.html) after plotting.
+/// A [Raster](struct.Raster.html) can be composited with a Mask.
+///
+/// # Example
+/// ```
+/// use footile::PlotterBuilder;
+/// let mut p = PlotterBuilder::new().build();
+/// p.move_to(10f32, 10f32)
+///  .line_to(90f32, 90f32)
+///  .stroke();
+/// let m = p.mask();
+/// ```
 pub struct Mask {
-    pub width  : u32,
-    pub height : u32,
-    pixels     : Vec<u8>,
+    width  : u32,
+    height : u32,
+    pixels : Vec<u8>,
 }
 
 impl Mask {
@@ -22,9 +35,17 @@ impl Mask {
     ///
     /// * `width` Width in pixels.
     /// * `height` Height in pixels.
-    pub fn new(width: u32, height: u32) -> Mask {
+    pub(crate) fn new(width: u32, height: u32) -> Mask {
         let pixels = vec![0; (width * height) as usize];
         Mask { width: width, height: height, pixels: pixels }
+    }
+    /// Get mask width.
+    pub(crate) fn width(&self) -> u32 {
+        self.width
+    }
+    /// Get mask height.
+    pub(crate) fn height(&self) -> u32 {
+        self.height
     }
     /// Get pixel iterator
     pub(crate) fn iter(&self) -> ::std::slice::Iter<u8> {
