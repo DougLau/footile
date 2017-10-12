@@ -1,7 +1,4 @@
 // round.rs     Example plotting a rounded stroke
-//
-// Copyright (c) 2017  Douglas P Lau
-//
 extern crate footile;
 
 use footile::{PlotterBuilder, JoinStyle};

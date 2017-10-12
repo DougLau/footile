@@ -1,7 +1,4 @@
-// stroke.rs        Example stroking a figure
-//
-// Copyright (c) 2017  Douglas P Lau
-//
+// stroke2.rs
 extern crate footile;
 
 use footile::PlotterBuilder;

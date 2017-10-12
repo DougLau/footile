@@ -1,7 +1,4 @@
 // drop.rs      Example plotting a drop
-//
-// Copyright (c) 2017  Douglas P Lau
-//
 extern crate footile;
 
 use footile::PlotterBuilder;

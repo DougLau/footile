@@ -1,7 +1,4 @@
 // cubic.rs     Example plotting a cubic bézier spline.
-//
-// Copyright (c) 2017  Douglas P Lau
-//
 extern crate footile;
 
 use footile::PlotterBuilder;

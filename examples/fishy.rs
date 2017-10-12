@@ -1,7 +1,4 @@
 // fishy.rs     Example fishy drawing
-//
-// Copyright (c) 2017  Douglas P Lau
-//
 extern crate footile;
 
 use footile::{FillRule, PlotterBuilder, Raster};
@@ -18,8 +15,7 @@ fn main() {
      .close()
      .fill(FillRule::EvenOdd);
     r.composite(p.mask(), [127u8, 96u8, 96u8]);
-    p.clear()
-     .stroke();
+    p.clear().stroke();
     r.composite(p.mask(), [255u8, 208u8, 208u8]);
     p.clear()
      .reset()

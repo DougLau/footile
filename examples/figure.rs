@@ -1,7 +1,4 @@
 // figure.rs        Example using a figure
-//
-// Copyright (c) 2017  Douglas P Lau
-//
 extern crate footile;
 
 use footile::{ FillRule, PlotterBuilder };
