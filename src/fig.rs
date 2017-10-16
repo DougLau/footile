@@ -20,7 +20,7 @@ struct Fixed {
 }
 
 /// Figure direction enum
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum FigDir {
     Forward,
     Reverse,
@@ -77,7 +77,9 @@ struct Scanner<'a> {
     fig      : &'a Fig,         // the figure
     mask     : &'a mut Mask,    // alpha mask
     scan_buf : &'a mut Mask,    // scan line buffer
-    edges    : Vec<Edge>,       // all edges
+    sgn_area : Vec<i16>,        // signed area buffer
+    edges    : Vec<Edge>,       // active edges
+    dir      : FigDir,          // figure direction
     rule     : FillRule,        // fill rule
     n_fill   : i32,             // edge count for fill rule
     y_now    : Fixed,           // current scan Y
@@ -93,16 +95,13 @@ const FRAC_MASK: i32 = ((1 << FRAC_BITS) - 1);
 
 /// Fixed-point constants
 const FX_ZERO: Fixed = Fixed { v: 0 };
-
-/// Fixed constant one
 const FX_ONE: Fixed = Fixed { v: 1 << FRAC_BITS };
-
-/// Fixed epsilon
+const FX_HALF: Fixed = Fixed { v: 1 << (FRAC_BITS - 1) };
 const FX_EPSILON: Fixed = Fixed { v: 1 };
 
 impl fmt::Debug for Fixed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} (0x{:x})", self.to_f32(), self.v)
+        write!(f, "{}", self.to_f32())
     }
 }
 
@@ -292,21 +291,21 @@ impl Edge {
     fn max_pix(&self) -> i32 {
         self.max_x.to_i32()
     }
-    /// Scan one pixel on an edge.
-    ///
-    /// * `x` X position.
-    /// * `cov_pix` Previous pixel coverage.
-    /// Returns pixel coverage at X.
-    fn scan_pix(&self, x: i32, cov_pix: Fixed) -> Fixed {
-        let x_mn = x.cmp(&self.min_pix());
-        let x_mx = x.cmp(&self.max_pix());
-        match (x_mn, x_mx) {
-            (Less, _)          => FX_ZERO,
-            (Equal, Equal)     => FX_ONE - self.x_mid().frac(),
-            (Equal, _)         => (FX_ONE - self.min_x.frac())
-                                    * self.step_pix / Fixed::from_i32(2),
-            (Greater, Greater) => FX_ONE,
-            (Greater, _)       => cmp::min(FX_ONE, cov_pix + self.step_pix),
+    /// Get coverage of first pixel on edge.
+    fn first_cov(&self) -> Fixed {
+        let r = if self.min_pix() == self.max_pix() {
+            (FX_ONE - self.x_mid().frac())
+        } else {
+            (FX_ONE - self.min_x.frac()) * FX_HALF
+        };
+        self.step_cov(r)
+    }
+    /// Get pixel coverage.
+    fn step_cov(&self, r: Fixed) -> Fixed {
+        if self.step_pix > FX_ZERO {
+            r * self.step_pix
+        } else {
+            r
         }
     }
     /// Get the X midpoint for the current scan line
@@ -432,6 +431,16 @@ impl Fig {
         }
         vid
     }
+    /// Get direction from top vertex.
+    fn get_dir(&self, vid: Vid) -> FigDir {
+        let p0 = self.get_point(self.next(vid, FigDir::Forward));
+        let p1 = self.get_point(self.next(vid, FigDir::Reverse));
+        if p0.x < p1.x {
+            FigDir::Forward
+        } else {
+            FigDir::Reverse
+        }
+    }
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
@@ -502,30 +511,35 @@ impl Fig {
         let n_points = self.points.len() as Vid;
         let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
         vids.sort_by(|a,b| self.compare_vids(*a, *b));
-        let mut scan = Scanner::new(self, mask, scan_buf, rule);
+        let dir = self.get_dir(vids[0]);
+        let mut scan = Scanner::new(self, mask, scan_buf, dir, rule);
         for vid in vids {
             if scan.is_complete() {
                 break;
             }
             scan.scan_vertex(vid);
         }
+        scan.scan_accumulate();
     }
 }
 
 impl<'a> Scanner<'a> {
     /// Create a new figure scanner struct
     fn new(fig: &'a mut Fig, mask: &'a mut Mask, scan_buf: &'a mut Mask,
-           rule: FillRule) -> Scanner<'a>
+           dir: FigDir, rule: FillRule) -> Scanner<'a>
     {
         assert!(scan_buf.height() == 1);
         assert!(mask.width() == scan_buf.width());
         let y_bot = Fixed::from_i32(mask.height() as i32);
         let edges = Vec::with_capacity(16);
+        let sgn_area = vec![0i16; mask.width() as usize];
         Scanner {
             fig:      fig,
             mask:     mask,
             scan_buf: scan_buf,
+            sgn_area: sgn_area,
             edges:    edges,
+            dir:      dir,
             rule:     rule,
             n_fill:   0,
             y_now:    FX_ZERO,
@@ -552,15 +566,17 @@ impl<'a> Scanner<'a> {
     /// Scan figure, rasterizing all lines above a vertex
     fn scan_to_y(&mut self, y_vtx: Fixed) {
         while self.y_now < y_vtx && !self.is_complete() {
+            if self.y_now.to_i32() > self.y_prev.to_i32() {
+                self.scan_accumulate();
+            }
             self.y_prev = self.y_now;
             self.y_now = cmp::min(y_vtx, self.y_now.floor() + FX_ONE);
             if self.is_next_line() {
                 self.advance_edges();
             }
-            self.calculate_x_limits();
             if self.y_now > FX_ZERO {
-                self.scan_once();
-                self.accumulate_mask();
+                self.calculate_x_limits();
+                self.scan_edges();
             }
         }
     }
@@ -594,97 +610,59 @@ impl<'a> Scanner<'a> {
             }
         }
     }
-    /// Scan once across all edges.
-    fn scan_once(&mut self) {
-        self.sort_edges();
-        self.n_fill = 0;
-        self.scan_buf.clear();
-        match self.rule {
-            FillRule::NonZero => self.tweak_edges(),
-            _ => (),
-        }
-        self.scan_edges();
-    }
-    /// Sort edges by the X midpoint of the current scan line.
-    fn sort_edges(&mut self) {
-        self.edges.sort_by(|a,b| a.x_mid().v.cmp(&b.x_mid().v));
-    }
-    /// Tweak edges which intersect on the current scan line.
-    ///
-    /// These tweaks prevent rendering glitches from occuring
-    /// at pixels where two edges intersect without a vertex.
-    /// This is a result of sorting edges by x_mid point.
-    fn tweak_edges(&mut self) {
-        let mut min_x: Option<Fixed> = None;
-        let n_edges = self.edges.len();
-        for i in 0..n_edges {
-            let x = self.edges[i].min_x;
-            if let Some(mn) = min_x {
-                let xd = mn - x;
-                if xd > FX_ZERO {
-                    self.edges[i].min_x = mn;
-                    let mx = self.edges[i].max_x;
-                    if mn.to_i32() == mx.to_i32() {
-                        self.edges[i].max_x = cmp::max(mn, mx - xd);
-                    }
-                }
-            }
-            min_x = Some(x);
-        }
-    }
-    /// Scan across all edges
+    /// Scan all active edges.
     fn scan_edges(&mut self) {
-        let mut e: Option<usize> = None;
-        let n_edges = self.edges.len();
-        for i in 0..n_edges {
-            match (e, self.edge_fill(i)) {
-                (Some(lt), false) => {
-                    self.rasterize(lt, i);
-                    e = None;
-                },
-                (None, true) => {
-                    e = Some(i);
-                },
-                _ => {},
-            };
+        let cov_full = self.scan_full_now();
+        if cov_full <= 0i16 {
+            return;
         }
-    }
-    /// Check if the given edge starts a fill
-    fn edge_fill(&mut self, i: usize) -> bool {
-        let e = &self.edges[i];
-        self.n_fill += match e.dir {
-            FigDir::Forward => 1,
-            FigDir::Reverse => -1,
-        };
-        match self.rule {
-            FillRule::NonZero => self.n_fill != 0,
-            FillRule::EvenOdd => (self.n_fill & 1) != 0,
-        }
-    }
-    /// Rasterize the current scan line between 2 edges
-    fn rasterize(&mut self, lt: usize, rt: usize) {
-        let left = &self.edges[lt];
-        let right = &self.edges[rt];
-        let w = self.mask.width() as i32;
-        let max_pix = cmp::min(right.max_pix(), w - 1);
-        let min_rt = cmp::min(max_pix, right.min_pix());
-        assert!(self.y_now > self.y_prev);
-        let cov = self.y_now - self.y_prev;
-        let mut cov_pix_l = FX_ZERO;
-        let mut cov_pix_r = FX_ZERO;
-        let mut x = cmp::max(left.min_pix(), 0);
-        while x <= max_pix {
-            if x > left.max_pix() && x < min_rt {
-                self.scan_buf.fill(x as usize, (min_rt - x) as usize,
-                    pixel_cov(cov) as u8);
-                x = min_rt;
-                continue;
+        assert!(cov_full > 0i16 && cov_full <= 256i16);
+        let w = self.mask.width() as usize;
+        for e in self.edges.iter() {
+            let ed = if e.dir == self.dir { 1i16 } else { -1i16 };
+            let s_0 = pixel_cov(e.first_cov());
+            let s_n = pixel_cov(e.step_cov(FX_ONE));
+            assert!(s_n > 0);
+            let mut cc = s_0;
+            let mut cov = 0i16;
+            let mut x = e.min_pix() as usize;
+            while x < w && cov < cov_full {
+                let c = cmp::min(cc, cov_full - cov);
+                cov += c;
+                self.sgn_area[cmp::max(0, x)] += c * ed;
+                cc = s_n;
+                x += 1;
             }
-            cov_pix_l = left.scan_pix(x, cov_pix_l);
-            cov_pix_r = right.scan_pix(x, cov_pix_r);
-            let sam = pixel_cov(cov * (cov_pix_l - cov_pix_r));
-            self.scan_buf.set(x, sam);
-            x += 1;
+        }
+    }
+    /// Accumulate signed area to mask.
+    fn scan_accumulate(&mut self) {
+        if self.y_now > FX_ZERO {
+            let y = Scanner::line(self.y_now) as u32;
+            let w = self.mask.width() as usize;
+            let scan_line = self.mask.scan_line(y);
+            let mut s = 0i16;
+            for x in 0..w {
+                s += self.sgn_area[x];
+                self.sgn_area[x] = 0i16;
+                let p = cmp::max(0, cmp::min(255, s)) as u8;
+                scan_line[x] = p;
+            }
+        }
+    }
+    /// Get full scan coverage
+    fn scan_full_now(&self) -> i16 {
+        assert!(self.y_now > self.y_prev);
+        assert!(self.y_now <= self.y_prev + FX_ONE);
+        let scan_now = pixel_cov(self.y_now.frac());
+        let scan_prev = pixel_cov(self.y_prev.frac());
+        if scan_now == scan_prev && self.y_now.frac() > FX_ZERO {
+            0
+        } else
+        if scan_now > scan_prev {
+            scan_now - scan_prev
+        } else {
+            256 + scan_now - scan_prev
         }
     }
     /// Accumulate scan buffer over mask
@@ -754,11 +732,12 @@ impl<'a> Scanner<'a> {
 /// Calculate pixel coverage
 ///
 /// fcov Total coverage (0 to 1 fixed-point).
-/// return Total pixel coverage (0 to 255).
-fn pixel_cov(fcov: Fixed) -> i32 {
+/// return Total pixel coverage (0 to 256).
+fn pixel_cov(fcov: Fixed) -> i16 {
+    assert!(fcov >= FX_ZERO && fcov <= FX_ONE);
     // Round to nearest cov value
     let n = (fcov.v + (1 << 7)) >> 8;
-    cmp::min(cmp::max(n, 0), 255)
+    n as i16
 }
 
 #[cfg(test)]
@@ -826,13 +805,13 @@ mod test {
         f.fill(&mut m, &mut s, FillRule::NonZero);
         let mut p = m.iter();
         assert!(*p.next().unwrap() == 242u8);
-        assert!(*p.next().unwrap() == 213u8);
-        assert!(*p.next().unwrap() == 185u8);
-        assert!(*p.next().unwrap() == 156u8);
-        assert!(*p.next().unwrap() == 128u8);
-        assert!(*p.next().unwrap() == 100u8);
-        assert!(*p.next().unwrap() == 71u8);
-        assert!(*p.next().unwrap() == 43u8);
-        assert!(*p.next().unwrap() == 14u8);
+        assert!(*p.next().unwrap() == 214u8);
+        assert!(*p.next().unwrap() == 186u8);
+        assert!(*p.next().unwrap() == 158u8);
+        assert!(*p.next().unwrap() == 130u8);
+        assert!(*p.next().unwrap() == 102u8);
+        assert!(*p.next().unwrap() == 74u8);
+        assert!(*p.next().unwrap() == 46u8);
+        assert!(*p.next().unwrap() == 18u8);
     }
 }

@@ -79,7 +79,7 @@ impl Mask {
         alpha_saturating_add(pix, buf);
     }
     /// Get one scan line (row)
-    fn scan_line(&mut self, row: u32) -> &mut [u8] {
+    pub(crate) fn scan_line(&mut self, row: u32) -> &mut [u8] {
         let s = (row * self.width) as usize;
         let t = s + self.width as usize;
         &mut self.pixels[s..t]
