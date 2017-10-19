@@ -10,6 +10,7 @@ extern "C" {
 }
 
 /// Compose two u8 buffers with saturating add.
+#[allow(dead_code)]
 pub(crate) fn alpha_saturating_add(dst: &mut [u8], src: &[u8]) {
     assert!(dst.len() == src.len());
     let w = dst.len() as i32;

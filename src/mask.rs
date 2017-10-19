@@ -2,13 +2,13 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
+use std::cmp;
 use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::ptr;
 use png;
 use png::HasParameters;
-use imgbuf::alpha_saturating_add;
 
 /// A Mask is an image with only an 8-bit alpha channel.
 ///
@@ -37,7 +37,7 @@ impl Mask {
     /// * `height` Height in pixels.
     pub(crate) fn new(width: u32, height: u32) -> Mask {
         let pixels = vec![0; (width * height) as usize];
-        Mask { width: width, height: height, pixels: pixels }
+        Mask { width, height, pixels }
     }
     /// Get mask width.
     pub(crate) fn width(&self) -> u32 {
@@ -57,29 +57,28 @@ impl Mask {
         self.fill(0, len, 0);
     }
     /// Fill a range of pixels with a single value
-    pub(crate) fn fill(&mut self, x: usize, len: usize, v: u8) {
+    fn fill(&mut self, x: usize, len: usize, v: u8) {
         assert!(x + len <= self.pixels.len());
         unsafe {
             let pix = self.pixels.as_mut_ptr().offset(x as isize);
             ptr::write_bytes(pix, v, len);
         }
     }
-    /// Set the value of one pixel
-    pub(crate) fn set(&mut self, x: i32, v: i32) {
-        assert!(x >= 0 && (x as u32) < self.width);
-        // FIXME: how to elide bounds checks
-        self.pixels[x as usize] = v as u8;
-    }
-    /// Accumulate a scan buffer over one scan line
-    pub(crate) fn accumulate(&mut self, scan_buf: &Mask, row: u32) {
-        assert!(scan_buf.height == 1);
-        assert!(self.width == scan_buf.width);
-        let pix = &mut self.scan_line(row);
-        let buf = &scan_buf.pixels;
-        alpha_saturating_add(pix, buf);
+    /// Accumulate signed area to mask.
+    pub(crate) fn scan_accumulate(&mut self, sgn_area: &mut [i16], row: u32) {
+        assert!(self.width == sgn_area.len() as u32);
+        let w = self.width as usize;
+        let scan_line = self.scan_line(row);
+        let mut s = 0i16;
+        for x in 0..w {
+            s += sgn_area[x];
+            sgn_area[x] = 0i16;
+            let p = cmp::max(0, cmp::min(255, s)) as u8;
+            scan_line[x] = p;
+        }
     }
     /// Get one scan line (row)
-    pub(crate) fn scan_line(&mut self, row: u32) -> &mut [u8] {
+    fn scan_line(&mut self, row: u32) -> &mut [u8] {
         let s = (row * self.width) as usize;
         let t = s + self.width as usize;
         &mut self.pixels[s..t]

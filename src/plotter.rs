@@ -38,7 +38,7 @@ pub struct Plotter {
     fig        : Fig,           // drawing fig
     sfig       : Fig,           // stroking fig
     mask       : Mask,          // image mask
-    scan_buf   : Mask,          // scan line buffer
+    sgn_area   : Vec<i16>,      // signed area buffer
     pen        : Vec3,          // current pen position and width
     transform  : Transform,     // user to pixel affine transform
     tol_sq     : f32,           // curve decomposition tolerance squared
@@ -256,7 +256,7 @@ impl Plotter {
     ///
     /// * `rule` Fill rule.
     pub fn fill(&mut self, rule: FillRule) -> &mut Self {
-        self.fig.fill(&mut self.mask, &mut self.scan_buf, rule);
+        self.fig.fill(&mut self.mask, &mut self.sgn_area[..], rule);
         self
     }
     /// Stroke path onto the mask.  The path is not affected.
@@ -265,7 +265,8 @@ impl Plotter {
         for i in 0..n_subs {
             self.stroke_sub(i);
         }
-        self.sfig.fill(&mut self.mask, &mut self.scan_buf, FillRule::NonZero);
+        self.sfig.fill(&mut self.mask, &mut self.sgn_area[..],
+            FillRule::NonZero);
         self
     }
     /// Stroke one sub-figure.
@@ -434,7 +435,7 @@ impl PlotterBuilder {
             fig        : Fig::new(),
             sfig       : Fig::new(),
             mask       : Mask::new(w, h),
-            scan_buf   : Mask::new(w, 1),
+            sgn_area   : vec![0i16; w as usize],
             pen        : Vec3::new(0f32, 0f32, 1f32),
             transform  : Transform::new(),
             tol_sq     : self.tol * self.tol,

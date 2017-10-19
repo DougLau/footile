@@ -54,7 +54,9 @@ struct SubFig {
 /// Edge structure
 #[derive(Debug)]
 struct Edge {
-    vtx      : Vid,         // lower vertex ID
+    v1       : Vid,         // lower vertex ID
+    y0f      : Option<i32>, // fractional Y at upper vertex
+    y1f      : Option<i32>, // fractional Y at lower vertex
     dir      : FigDir,      // figure direction from upper to lower
     step_pix : Fixed,       // change in cov per pix on scan line
     islope   : Fixed,       // inverse slope (dx / dy)
@@ -73,15 +75,14 @@ pub struct Fig {
 }
 
 /// Figure scanner structure
+#[allow(dead_code)]
 struct Scanner<'a> {
     fig      : &'a Fig,         // the figure
     mask     : &'a mut Mask,    // alpha mask
-    scan_buf : &'a mut Mask,    // scan line buffer
-    sgn_area : Vec<i16>,        // signed area buffer
+    sgn_area : &'a mut [i16],   // signed area buffer
     edges    : Vec<Edge>,       // active edges
     dir      : FigDir,          // figure direction
     rule     : FillRule,        // fill rule
-    n_fill   : i32,             // edge count for fill rule
     y_now    : Fixed,           // current scan Y
     y_prev   : Fixed,           // previous scan Y
     y_bot    : Fixed,           // Y at bottom of mask
@@ -190,7 +191,11 @@ impl Fixed {
     }
     /// Compare two f32 for fixed-point equality
     fn cmp_f32(a: f32, b: f32) -> Ordering {
-        Fixed::from_f32(a - b).v.cmp(&0i32)
+        Fixed::from_f32(a).v.cmp(&Fixed::from_f32(b).v)
+    }
+    /// Get the line of a value
+    fn line_of(self) -> i32 {
+        (self - FX_EPSILON).to_i32()
     }
 }
 
@@ -245,17 +250,22 @@ impl Edge {
         assert!(dy > FX_ZERO);
         let step_pix = Edge::calculate_step(dx, dy);
         let islope = dx / dy;
-        let y = Fixed::from_f32(p0.y);
-        let fm = (y.ceil() - y) * islope;
+        let y0 = Fixed::from_f32(p0.y);
+        let y1 = Fixed::from_f32(p1.y);
+        let y0f = if y0.frac() > FX_ZERO { Some(y0.to_i32()) } else { None };
+        let y1f = if y1.frac() > FX_ZERO { Some(y1.to_i32()) } else { None };
+        let fm = (y0.ceil() - y0) * islope;
         let x_bot = fm + Fixed::from_f32(p0.x);
         Edge {
-            vtx: v1,
-            dir: dir,
-            step_pix: step_pix,
-            islope: islope,
-            x_bot: x_bot,
-            min_x: FX_ZERO,
-            max_x: FX_ZERO,
+            v1       : v1,
+            y0f      : y0f,
+            y1f      : y1f,
+            dir      : dir,
+            step_pix : step_pix,
+            islope   : islope,
+            x_bot    : x_bot,
+            min_x    : FX_ZERO,
+            max_x    : FX_ZERO,
         }
     }
     /// Calculate the step for each pixel on an edge
@@ -266,20 +276,25 @@ impl Edge {
             FX_ZERO
         }
     }
+    /// Check if edge is partial at a given row.
+    fn is_partial(&self, y: i32) -> bool {
+        (if let Some(y0) = self.y0f { y == y0 } else { false }) ||
+        (if let Some(y1) = self.y1f { y == y1 } else { false })
+    }
     /// Calculate X limits for a partial scan line
     fn calculate_x_limits_partial(&mut self, ypb: Fixed, ynb: Fixed) {
-        let xt = ypb * self.islope + self.x_bot;
-        let xb = ynb * self.islope + self.x_bot;
-        self.calculate_x_limits(xt, xb);
+        let xt = self.x_bot - self.islope * ypb;
+        let xb = self.x_bot - self.islope * ynb;
+        self.set_x_limits(xt, xb);
     }
     /// Calculate X limits for a full scan line
     fn calculate_x_limits_full(&mut self) {
         let xt = self.x_bot - self.islope;
         let xb = self.x_bot;
-        self.calculate_x_limits(xt, xb);
+        self.set_x_limits(xt, xb);
     }
-    /// Calculate X limits
-    fn calculate_x_limits(&mut self, xt: Fixed, xb: Fixed) {
+    /// Set X limits
+    fn set_x_limits(&mut self, xt: Fixed, xb: Fixed) {
         self.min_x = cmp::min(xt, xb);
         self.max_x = cmp::max(xt, xb);
     }
@@ -311,6 +326,24 @@ impl Edge {
     /// Get the X midpoint for the current scan line
     fn x_mid(&self) -> Fixed {
         self.max_x.avg(self.min_x)
+    }
+    /// Scan signed area of edge
+    fn scan_area(&self, dir: FigDir, cov_full: i16, area: &mut [i16]) {
+        let w = area.len() as i32;
+        let ed = if self.dir == dir { 1i16 } else { -1i16 };
+        let s_0 = pixel_cov(self.first_cov());
+        let s_n = pixel_cov(self.step_cov(FX_ONE));
+        assert!(s_n > 0);
+        let mut cc = s_0;
+        let mut cov = 0i16;
+        let mut x = self.min_pix();
+        while x < w && cov < cov_full {
+            let c = cmp::min(cc, cov_full - cov);
+            cov += c;
+            area[cmp::max(0, x) as usize] += c * ed;
+            cc = s_n;
+            x += 1;
+        }
     }
 }
 
@@ -504,15 +537,15 @@ impl Fig {
     /// Fill the figure to an image mask.
     ///
     /// * `mask` Output mask.
-    /// * `scan_buf` Scan buffer (must be same width as mask, with height 1).
+    /// * `sgn_area` Signed area buffer.
     /// * `rule` Fill rule.
-    pub fn fill(&mut self, mask: &mut Mask, scan_buf: &mut Mask, rule: FillRule)
+    pub fn fill(&mut self, mask: &mut Mask, sgn_area: &mut [i16],rule: FillRule)
     {
         let n_points = self.points.len() as Vid;
         let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
         vids.sort_by(|a,b| self.compare_vids(*a, *b));
         let dir = self.get_dir(vids[0]);
-        let mut scan = Scanner::new(self, mask, scan_buf, dir, rule);
+        let mut scan = Scanner::new(self, mask, sgn_area, dir, rule);
         for vid in vids {
             if scan.is_complete() {
                 break;
@@ -525,31 +558,23 @@ impl Fig {
 
 impl<'a> Scanner<'a> {
     /// Create a new figure scanner struct
-    fn new(fig: &'a mut Fig, mask: &'a mut Mask, scan_buf: &'a mut Mask,
+    fn new(fig: &'a mut Fig, mask: &'a mut Mask, sgn_area: &'a mut [i16],
            dir: FigDir, rule: FillRule) -> Scanner<'a>
     {
-        assert!(scan_buf.height() == 1);
-        assert!(mask.width() == scan_buf.width());
+        assert!(mask.width() == sgn_area.len() as u32);
         let y_bot = Fixed::from_i32(mask.height() as i32);
         let edges = Vec::with_capacity(16);
-        let sgn_area = vec![0i16; mask.width() as usize];
         Scanner {
             fig:      fig,
             mask:     mask,
-            scan_buf: scan_buf,
             sgn_area: sgn_area,
             edges:    edges,
             dir:      dir,
             rule:     rule,
-            n_fill:   0,
             y_now:    FX_ZERO,
             y_prev:   FX_ZERO,
             y_bot:    y_bot,
         }
-    }
-    /// Get the scan line for a Y value
-    fn line(y: Fixed) -> i32 {
-        (y - FX_EPSILON).to_i32()
     }
     /// Scan figure to a given vertex
     fn scan_vertex(&mut self, vid: Vid) {
@@ -566,7 +591,7 @@ impl<'a> Scanner<'a> {
     /// Scan figure, rasterizing all lines above a vertex
     fn scan_to_y(&mut self, y_vtx: Fixed) {
         while self.y_now < y_vtx && !self.is_complete() {
-            if self.y_now.to_i32() > self.y_prev.to_i32() {
+            if self.is_line_bottom() {
                 self.scan_accumulate();
             }
             self.y_prev = self.y_now;
@@ -575,18 +600,26 @@ impl<'a> Scanner<'a> {
                 self.advance_edges();
             }
             if self.y_now > FX_ZERO {
-                self.calculate_x_limits();
-                self.scan_edges();
+                if self.is_partial() {
+                    self.scan_partial();
+                }
+                if self.is_line_bottom() {
+                    self.scan_full();
+                }
             }
         }
     }
     /// Check if scan is complete (reached bottom of mask)
     fn is_complete(&self) -> bool {
-        Scanner::line(self.y_now) >= Scanner::line(self.y_bot)
+        self.y_now.line_of() >= self.y_bot.line_of()
+    }
+    /// Check if scan is at bottom of line
+    fn is_line_bottom(&self) -> bool {
+        self.y_now.frac() == FX_ZERO
     }
     /// Check if scan has advanced to the next line
     fn is_next_line(&self) -> bool {
-        Scanner::line(self.y_now) > Scanner::line(self.y_prev)
+        self.y_now.line_of() > self.y_prev.line_of()
     }
     /// Advance all edges to the next line
     fn advance_edges(&mut self) {
@@ -594,82 +627,60 @@ impl<'a> Scanner<'a> {
             e.x_bot = e.x_bot + e.islope;
         }
     }
-    /// Calculate the X limits on the current scan line for all edges
-    fn calculate_x_limits(&mut self) {
-        let part = (self.y_now - self.y_prev) < FX_ONE;
-        if part {
-            let y_bot = self.y_now.ceil();
-            let ypb = self.y_prev - y_bot;
-            let ynb = self.y_now - y_bot;
-            for e in self.edges.iter_mut() {
-                e.calculate_x_limits_partial(ypb, ynb);
-            }
-        } else {
-            for e in self.edges.iter_mut() {
-                e.calculate_x_limits_full();
-            }
-        }
+    /// Check if current scan line is partial
+    fn is_partial(&self) -> bool {
+        (self.y_now - self.y_prev) < FX_ONE
     }
-    /// Scan all active edges.
-    fn scan_edges(&mut self) {
-        let cov_full = self.scan_full_now();
+    /// Scan partial edges
+    fn scan_partial(&mut self) {
+        let cov_full = self.scan_coverage();
+        assert!(cov_full <= 256i16);
         if cov_full <= 0i16 {
             return;
         }
-        assert!(cov_full > 0i16 && cov_full <= 256i16);
-        let w = self.mask.width() as usize;
-        for e in self.edges.iter() {
-            let ed = if e.dir == self.dir { 1i16 } else { -1i16 };
-            let s_0 = pixel_cov(e.first_cov());
-            let s_n = pixel_cov(e.step_cov(FX_ONE));
-            assert!(s_n > 0);
-            let mut cc = s_0;
-            let mut cov = 0i16;
-            let mut x = e.min_pix() as usize;
-            while x < w && cov < cov_full {
-                let c = cmp::min(cc, cov_full - cov);
-                cov += c;
-                self.sgn_area[cmp::max(0, x)] += c * ed;
-                cc = s_n;
-                x += 1;
+        let y = self.y_now.line_of();
+        let y_bot = self.y_now.ceil();
+        let ypb = y_bot - self.y_prev;
+        let ynb = y_bot - self.y_now;
+        let mut area = &mut self.sgn_area;
+        for e in self.edges.iter_mut() {
+            if e.is_partial(y) {
+                e.calculate_x_limits_partial(ypb, ynb);
+                e.scan_area(self.dir, cov_full, &mut area);
+            }
+        }
+    }
+    /// Scan full edges.
+    fn scan_full(&mut self) {
+        let y = self.y_now.line_of();
+        let mut area = &mut self.sgn_area;
+        for e in self.edges.iter_mut() {
+            if !e.is_partial(y) {
+                e.calculate_x_limits_full();
+                e.scan_area(self.dir, 256i16, &mut area);
             }
         }
     }
     /// Accumulate signed area to mask.
     fn scan_accumulate(&mut self) {
         if self.y_now > FX_ZERO {
-            let y = Scanner::line(self.y_now) as u32;
-            let w = self.mask.width() as usize;
-            let scan_line = self.mask.scan_line(y);
-            let mut s = 0i16;
-            for x in 0..w {
-                s += self.sgn_area[x];
-                self.sgn_area[x] = 0i16;
-                let p = cmp::max(0, cmp::min(255, s)) as u8;
-                scan_line[x] = p;
-            }
+            let y = self.y_now.line_of() as u32;
+            self.mask.scan_accumulate(self.sgn_area, y);
         }
     }
     /// Get full scan coverage
-    fn scan_full_now(&self) -> i16 {
+    fn scan_coverage(&self) -> i16 {
         assert!(self.y_now > self.y_prev);
         assert!(self.y_now <= self.y_prev + FX_ONE);
         let scan_now = pixel_cov(self.y_now.frac());
         let scan_prev = pixel_cov(self.y_prev.frac());
         if scan_now == scan_prev && self.y_now.frac() > FX_ZERO {
             0
-        } else
-        if scan_now > scan_prev {
+        } else if scan_now > scan_prev {
             scan_now - scan_prev
         } else {
             256 + scan_now - scan_prev
         }
-    }
-    /// Accumulate scan buffer over mask
-    fn accumulate_mask(&mut self) {
-        assert!(self.y_now > FX_ZERO);
-        let y = Scanner::line(self.y_now) as u32;
-        self.mask.accumulate(&self.scan_buf, y);
     }
     /// Update edges at a given vertex
     fn update_edges(&mut self, vid: Vid) {
@@ -692,9 +703,9 @@ impl<'a> Scanner<'a> {
         let mut i = self.edges.len();
         while i > 0 {
             i -= 1;
-            let vtx = self.edges[i].vtx;
-            if (fig.same_y(vtx, FigDir::Forward) == vid) ||
-               (fig.same_y(vtx, FigDir::Reverse) == vid)
+            let v1 = self.edges[i].v1;
+            if (fig.same_y(v1, FigDir::Forward) == vid) ||
+               (fig.same_y(v1, FigDir::Reverse) == vid)
             {
                 self.edges.remove(i);
             }
@@ -716,7 +727,7 @@ impl<'a> Scanner<'a> {
     fn edge_regular(&mut self, vid: Vid) {
         let fig = &self.fig;
         for i in 0..self.edges.len() {
-            if vid == self.edges[i].vtx {
+            if vid == self.edges[i].v1 {
                 let dir = self.edges[i].dir;
                 let vn = fig.next_y(vid, dir);          // Find lower vertex
                 let v = fig.next_y(vn, opposite(dir));  // Find upper vertex
@@ -777,7 +788,7 @@ mod test {
     #[test]
     fn fig_3x3() {
         let mut m = Mask::new(3, 3);
-        let mut s = Mask::new(3, 1);
+        let mut s = vec!(0i16; 3);
         let mut f = Fig::new();
         f.add_point(Vec3::new(0f32, 0f32, 1f32));
         f.add_point(Vec3::new(3f32, 3f32, 1f32));
@@ -797,7 +808,7 @@ mod test {
     #[test]
     fn fig_9x1() {
         let mut m = Mask::new(9, 1);
-        let mut s = Mask::new(9, 1);
+        let mut s = vec!(0i16; 9);
         let mut f = Fig::new();
         f.add_point(Vec3::new(0f32, 0f32, 1f32));
         f.add_point(Vec3::new(9f32, 1f32, 1f32));
