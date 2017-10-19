@@ -2,11 +2,12 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use libc::{c_uchar, c_int};
+use libc::{c_uchar, c_short, c_int};
 
 extern "C" {
     // LLVM can't auto-vectorize saturating add
     fn alpha_buf_saturating_add(dst: *mut c_uchar, src: *const c_uchar, len: c_int);
+    fn cumulative_sum_16(dst: *mut c_uchar, src: *mut c_short, len: c_int);
 }
 
 /// Compose two u8 buffers with saturating add.
@@ -16,6 +17,14 @@ pub(crate) fn alpha_saturating_add(dst: &mut [u8], src: &[u8]) {
     let w = dst.len() as i32;
     unsafe {
         alpha_buf_saturating_add(dst.as_mut_ptr(), src.as_ptr(), w);
+    }
+}
+/// Accumulate sums over signed ares
+pub(crate) fn cumulative_sum(dst: &mut [u8], src: &mut [i16]) {
+    assert!(dst.len() == src.len());
+    let w = dst.len() as i32;
+    unsafe {
+        cumulative_sum_16(dst.as_mut_ptr(), src.as_mut_ptr(), w);
     }
 }
 

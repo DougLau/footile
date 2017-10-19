@@ -2,13 +2,13 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use std::cmp;
 use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::ptr;
 use png;
 use png::HasParameters;
+use imgbuf::cumulative_sum;
 
 /// A Mask is an image with only an 8-bit alpha channel.
 ///
@@ -36,7 +36,12 @@ impl Mask {
     /// * `width` Width in pixels.
     /// * `height` Height in pixels.
     pub(crate) fn new(width: u32, height: u32) -> Mask {
-        let pixels = vec![0; (width * height) as usize];
+        let len = (width * height) as usize;
+        // Capacity must be 8-byte multiple (for SIMD)
+        let cap = ((len + 7) >> 3) << 3;
+        let mut pixels = vec![0; cap];
+        // Remove excess pixels
+        for _ in 0..cap-len { pixels.pop(); };
         Mask { width, height, pixels }
     }
     /// Get mask width.
@@ -67,15 +72,8 @@ impl Mask {
     /// Accumulate signed area to mask.
     pub(crate) fn scan_accumulate(&mut self, sgn_area: &mut [i16], row: u32) {
         assert!(self.width == sgn_area.len() as u32);
-        let w = self.width as usize;
-        let scan_line = self.scan_line(row);
-        let mut s = 0i16;
-        for x in 0..w {
-            s += sgn_area[x];
-            sgn_area[x] = 0i16;
-            let p = cmp::max(0, cmp::min(255, s)) as u8;
-            scan_line[x] = p;
-        }
+        let dst = self.scan_line(row);
+        cumulative_sum(dst, sgn_area);
     }
     /// Get one scan line (row)
     fn scan_line(&mut self, row: u32) -> &mut [u8] {
