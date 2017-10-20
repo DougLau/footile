@@ -35,7 +35,7 @@ fn opposite(dir: FigDir) -> FigDir {
 }
 
 /// Fill-rule for filling figures
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum FillRule {
     /// All points within bounds are filled
     NonZero,
@@ -565,15 +565,15 @@ impl<'a> Scanner<'a> {
         let y_bot = Fixed::from_i32(mask.height() as i32);
         let edges = Vec::with_capacity(16);
         Scanner {
-            fig:      fig,
-            mask:     mask,
-            sgn_area: sgn_area,
-            edges:    edges,
-            dir:      dir,
-            rule:     rule,
-            y_now:    FX_ZERO,
-            y_prev:   FX_ZERO,
-            y_bot:    y_bot,
+            fig      : fig,
+            mask     : mask,
+            sgn_area : sgn_area,
+            edges    : edges,
+            dir      : dir,
+            rule     : rule,
+            y_now    : FX_ZERO,
+            y_prev   : FX_ZERO,
+            y_bot    : y_bot,
         }
     }
     /// Scan figure to a given vertex
@@ -665,7 +665,7 @@ impl<'a> Scanner<'a> {
     fn scan_accumulate(&mut self) {
         if self.y_now > FX_ZERO {
             let y = self.y_now.line_of() as u32;
-            self.mask.scan_accumulate(self.sgn_area, y);
+            self.mask.scan_accumulate(self.sgn_area, y, self.rule);
         }
     }
     /// Get full scan coverage

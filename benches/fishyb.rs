@@ -11,7 +11,7 @@ fn fill_fishy(b: &mut Bencher) {
 }
 
 fn fill_fishy2() {
-    make_fishy().fill(FillRule::EvenOdd);
+    make_fishy().fill(FillRule::NonZero);
 }
 
 #[bench]

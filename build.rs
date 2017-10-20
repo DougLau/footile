@@ -5,7 +5,7 @@ extern crate cc;
 fn main() {
     cc::Build::new()
         .file("src/imgbuf.c")
-        .flag("-mssse3")
+        .flag("-march=native")
         .opt_level(3)
         .compile("imgbuf");
 }

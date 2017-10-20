@@ -432,7 +432,7 @@ impl PlotterBuilder {
         let w = if self.width > 0 { self.width } else { 100 };
         let h = if self.height > 0 { self.height } else { 100 };
         let len = w as usize;
-        // Capacity must be 8-byte multiple (for SIMD)
+        // Capacity must be 8-element multiple (for SIMD)
         let cap = ((len + 7) >> 3) << 3;
         let mut sgn_area = vec![0i16; cap];
         // Remove excess elements

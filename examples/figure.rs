@@ -17,6 +17,6 @@ fn main() {
      .line_to(-28f32, 4f32)
      .line_to(12f32, -28f32)
      .close()
-     .fill(FillRule::EvenOdd);
+     .fill(FillRule::NonZero);
     p.mask().write_png("./figure.png").unwrap();
 }

@@ -13,7 +13,7 @@ fn main() {
      .line_to(32f32, 24f32)
      .line_to(-16f32, -40f32)
      .close()
-     .fill(FillRule::EvenOdd);
+     .fill(FillRule::NonZero);
     r.composite(p.mask(), [127u8, 96u8, 96u8]);
     p.clear().stroke();
     r.composite(p.mask(), [255u8, 208u8, 208u8]);

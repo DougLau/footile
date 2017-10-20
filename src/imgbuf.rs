@@ -5,44 +5,56 @@
 use libc::{c_uchar, c_short, c_int};
 
 extern "C" {
-    // LLVM can't auto-vectorize saturating add
-    fn alpha_buf_saturating_add(dst: *mut c_uchar, src: *const c_uchar, len: c_int);
-    fn cumulative_sum_16(dst: *mut c_uchar, src: *mut c_short, len: c_int);
+    fn accumulate_non_zero_c(dst: *mut c_uchar, src: *mut c_short, len: c_int);
+    fn accumulate_odd_c(dst: *mut c_uchar, src: *mut c_short, len: c_int);
 }
 
-/// Compose two u8 buffers with saturating add.
-#[allow(dead_code)]
-pub(crate) fn alpha_saturating_add(dst: &mut [u8], src: &[u8]) {
+/// Accumulate sums over signed ares.
+pub(crate) fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() == src.len());
     let w = dst.len() as i32;
     unsafe {
-        alpha_buf_saturating_add(dst.as_mut_ptr(), src.as_ptr(), w);
+        accumulate_non_zero_c(dst.as_mut_ptr(), src.as_mut_ptr(), w);
     }
 }
-/// Accumulate sums over signed ares
-pub(crate) fn cumulative_sum(dst: &mut [u8], src: &mut [i16]) {
+
+/// Accumulate sums over signed ares.
+pub(crate) fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() == src.len());
     let w = dst.len() as i32;
     unsafe {
-        cumulative_sum_16(dst.as_mut_ptr(), src.as_mut_ptr(), w);
+        accumulate_odd_c(dst.as_mut_ptr(), src.as_mut_ptr(), w);
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::alpha_saturating_add;
+    use super::{accumulate_non_zero, accumulate_odd};
     #[test]
-    fn saturating_add() {
-        let mut a = [100u8; 3000];
-        let mut b = [150u8; 3000];
-        let c = [200u8; 3000];
-        alpha_saturating_add(&mut a, &b);
+    fn non_zero() {
+        let mut a = [0u8; 3000];
+        let mut b = [0i16; 3000];
+        b[0] = 200i16;
+        accumulate_non_zero(&mut a, &mut b);
         for ai in a.iter() {
-            assert!(*ai == 250);
+            assert!(*ai == 200);
         }
-        alpha_saturating_add(&mut b, &c);
-        for bi in b.iter() {
-            assert!(*bi == 255);
+        let mut c = [0u8; 5000];
+        let mut d = [0i16; 5000];
+        d[0] = 300i16;
+        accumulate_non_zero(&mut c, &mut d);
+        for ci in c.iter() {
+            assert!(*ci == 255);
+        }
+    }
+    #[test]
+    fn odd() {
+        let mut a = [0u8; 3000];
+        let mut b = [0i16; 3000];
+        b[0] = 300i16;
+        accumulate_odd(&mut a, &mut b);
+        for ai in a.iter() {
+            assert!(*ai == 212);
         }
     }
 }

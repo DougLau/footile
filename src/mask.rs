@@ -8,7 +8,8 @@ use std::io::Write;
 use std::ptr;
 use png;
 use png::HasParameters;
-use imgbuf::cumulative_sum;
+use fig::FillRule;
+use imgbuf::{accumulate_non_zero, accumulate_odd};
 
 /// A Mask is an image with only an 8-bit alpha channel.
 ///
@@ -37,7 +38,7 @@ impl Mask {
     /// * `height` Height in pixels.
     pub(crate) fn new(width: u32, height: u32) -> Mask {
         let len = (width * height) as usize;
-        // Capacity must be 8-byte multiple (for SIMD)
+        // Capacity must be 8-element multiple (for SIMD)
         let cap = ((len + 7) >> 3) << 3;
         let mut pixels = vec![0; cap];
         // Remove excess pixels
@@ -70,10 +71,15 @@ impl Mask {
         }
     }
     /// Accumulate signed area to mask.
-    pub(crate) fn scan_accumulate(&mut self, sgn_area: &mut [i16], row: u32) {
+    pub(crate) fn scan_accumulate(&mut self, sgn_area: &mut [i16], row: u32,
+        rule: FillRule)
+    {
         assert!(self.width == sgn_area.len() as u32);
         let dst = self.scan_line(row);
-        cumulative_sum(dst, sgn_area);
+        match rule {
+            FillRule::NonZero => accumulate_non_zero(dst, sgn_area),
+            FillRule::EvenOdd => accumulate_odd(dst, sgn_area),
+        }
     }
     /// Get one scan line (row)
     fn scan_line(&mut self, row: u32) -> &mut [u8] {
