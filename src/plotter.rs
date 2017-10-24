@@ -3,7 +3,7 @@
 // Copyright (c) 2017  Douglas P Lau
 //
 use fig::{ Fig, FillRule, FigDir, Vid };
-use geom::{ Transform, Vec2, Vec3, float_lerp, intersection };
+use geom::{ Transform, Vec2, Vec2w, float_lerp, intersection };
 use mask::Mask;
 
 /// Style for joins
@@ -39,7 +39,7 @@ pub struct Plotter {
     sfig       : Fig,           // stroking fig
     mask       : Mask,          // image mask
     sgn_area   : Vec<i16>,      // signed area buffer
-    pen        : Vec3,          // current pen position and width
+    pen        : Vec2w,         // current pen position and width
     transform  : Transform,     // user to pixel affine transform
     tol_sq     : f32,           // curve decomposition tolerance squared
     absolute   : bool,          // absolute coordinates
@@ -80,7 +80,7 @@ impl Plotter {
     pub fn reset(&mut self) -> &mut Self {
         self.fig.reset();
         self.sfig.reset();
-        self.pen = Vec3::new(0f32, 0f32, self.s_width);
+        self.pen = Vec2w::new(0f32, 0f32, self.s_width);
         self
     }
     /// Set the transform.
@@ -96,7 +96,7 @@ impl Plotter {
     /// Close current sub-path and move pen to origin.
     pub fn close(&mut self) -> &mut Self {
         self.fig.close(true);
-        self.pen = Vec3::new(0f32, 0f32, self.s_width);
+        self.pen = Vec2w::new(0f32, 0f32, self.s_width);
         self
     }
     /// Set pen stroke width.
@@ -117,23 +117,23 @@ impl Plotter {
         self
     }
     /// Make a point.
-    fn make_point(&self, x: f32, y: f32, w: f32) -> Vec3 {
+    fn make_point(&self, x: f32, y: f32, w: f32) -> Vec2w {
         if self.absolute {
-            Vec3::new(x, y, w)
+            Vec2w::new(x, y, w)
         } else {
-            let px = self.pen.x + x;
-            let py = self.pen.y + y;
-            Vec3::new(px, py, w)
+            let px = self.pen.v.x + x;
+            let py = self.pen.v.y + y;
+            Vec2w::new(px, py, w)
         }
     }
     /// Move the pen.
-    fn move_pen(&mut self, p: Vec3) {
+    fn move_pen(&mut self, p: Vec2w) {
         self.pen = p;
     }
     /// Transform a point.
-    fn transform_point(&self, p: Vec3) -> Vec3 {
-        let pt = self.transform * Vec2::new(p.x, p.y);
-        Vec3::new(pt.x, pt.y, p.z)
+    fn transform_point(&self, p: Vec2w) -> Vec2w {
+        let pt = self.transform * p.v;
+        Vec2w::new(pt.x, pt.y, p.w)
     }
     /// Move pen to a point.
     ///
@@ -169,7 +169,7 @@ impl Plotter {
     /// * `cy` Y-position of end point.
     pub fn quad_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32) -> &mut Self {
         let pen = self.pen;
-        let bb = self.make_point(bx, by, (pen.z + self.s_width) / 2f32);
+        let bb = self.make_point(bx, by, (pen.w + self.s_width) / 2f32);
         let cc = self.make_point(cx, cy, self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
@@ -182,7 +182,7 @@ impl Plotter {
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
-    fn quad_to_tran(&mut self, a: Vec3, b: Vec3, c: Vec3) {
+    fn quad_to_tran(&mut self, a: Vec2w, b: Vec2w, c: Vec2w) {
         let ab    = a.midpoint(b);
         let bc    = b.midpoint(c);
         let ab_bc = ab.midpoint(bc);
@@ -195,10 +195,8 @@ impl Plotter {
         }
     }
     /// Check if two points are within tolerance threshold.
-    fn is_within_tolerance(&self, a: Vec3, b: Vec3) -> bool {
-        let a2 = Vec2::new(a.x, a.y);
-        let b2 = Vec2::new(b.x, b.y);
-        self.is_within_tolerance2(a2, b2)
+    fn is_within_tolerance(&self, a: Vec2w, b: Vec2w) -> bool {
+        self.is_within_tolerance2(a.v, b.v)
     }
     /// Check if two points are within tolerance threshold.
     fn is_within_tolerance2(&self, a: Vec2, b: Vec2) -> bool {
@@ -220,8 +218,8 @@ impl Plotter {
                     dy: f32) -> &mut Self
     {
         let pen = self.pen;
-        let bw = float_lerp(pen.z, self.s_width, 1f32 / 3f32);
-        let cw = float_lerp(pen.z, self.s_width, 2f32 / 3f32);
+        let bw = float_lerp(pen.w, self.s_width, 1f32 / 3f32);
+        let cw = float_lerp(pen.w, self.s_width, 2f32 / 3f32);
         let bb = self.make_point(bx, by, bw);
         let cc = self.make_point(cx, cy, cw);
         let dd = self.make_point(dx, dy, self.s_width);
@@ -237,7 +235,7 @@ impl Plotter {
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
-    fn cubic_to_tran(&mut self, a: Vec3, b: Vec3, c: Vec3, d: Vec3) {
+    fn cubic_to_tran(&mut self, a: Vec2w, b: Vec2w, c: Vec2w, d: Vec2w) {
         let ab    = a.midpoint(b);
         let bc    = b.midpoint(c);
         let cd    = c.midpoint(d);
@@ -313,18 +311,18 @@ impl Plotter {
     ///
     /// * `p0` First point.
     /// * `p1` Second point.
-    fn stroke_offset(&self, p0: Vec3, p1: Vec3) -> (Vec2, Vec2) {
+    fn stroke_offset(&self, p0: Vec2w, p1: Vec2w) -> (Vec2, Vec2) {
         // FIXME: scale offset to allow user units as well as pixel units
-        let pp0 = Vec2::new(p0.x, p0.y);
-        let pp1 = Vec2::new(p1.x, p1.y);
+        let pp0 = p0.v;
+        let pp1 = p1.v;
         let vr = (pp1 - pp0).right().normalize();
-        let pr0 = pp0 + vr * (p0.z / 2f32);
-        let pr1 = pp1 + vr * (p1.z / 2f32);
+        let pr0 = pp0 + vr * (p0.w / 2f32);
+        let pr1 = pp1 + vr * (p1.w / 2f32);
         (pr0, pr1)
     }
     /// Add a point to stroke figure.
     fn stroke_point(&mut self, pt: Vec2) {
-        self.sfig.add_point(Vec3::new(pt.x, pt.y, 1f32));
+        self.sfig.add_point(Vec2w::new(pt.x, pt.y, 1f32));
     }
     /// Add a stroke join.
     ///
@@ -333,7 +331,7 @@ impl Plotter {
     /// * `a1` Second point of A segment.
     /// * `b0` First point of B segment.
     /// * `b1` Second point of B segment.
-    fn stroke_join(&mut self, p: Vec3, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) {
+    fn stroke_join(&mut self, p: Vec2w, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2){
         match self.join_style {
             JoinStyle::Miter(ml) => self.stroke_miter(a0, a1, b0, b1, ml),
             JoinStyle::Bevel     => self.stroke_bevel(a1, b0),
@@ -369,7 +367,7 @@ impl Plotter {
     /// * `p` Join point (with stroke width).
     /// * `a1` Second point of A segment.
     /// * `b0` First point of B segment.
-    fn stroke_round(&mut self, p: Vec3, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2){
+    fn stroke_round(&mut self, p: Vec2w, a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2){
         let th = (a1 - a0).angle_rel(b0 - b1);
         if th <= 0f32 {
             self.stroke_bevel(a1, b0);
@@ -379,10 +377,10 @@ impl Plotter {
         }
     }
     /// Add a stroke arc.
-    fn stroke_arc(&mut self, p: Vec3, a: Vec2, b: Vec2) {
-        let p2 = Vec2::new(p.x, p.y);
+    fn stroke_arc(&mut self, p: Vec2w, a: Vec2, b: Vec2) {
+        let p2 = p.v;
         let vr = (b - a).right().normalize();
-        let c = p2 + vr * (p.z / 2f32);
+        let c = p2 + vr * (p.w / 2f32);
         let ab = a.midpoint(b);
         if self.is_within_tolerance2(c, ab) {
             self.stroke_point(b);
@@ -442,7 +440,7 @@ impl PlotterBuilder {
             sfig       : Fig::new(),
             mask       : Mask::new(w, h),
             sgn_area   : sgn_area,
-            pen        : Vec3::new(0f32, 0f32, 1f32),
+            pen        : Vec2w::new(0f32, 0f32, 1f32),
             transform  : Transform::new(),
             tol_sq     : self.tol * self.tol,
             absolute   : self.absolute,

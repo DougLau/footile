@@ -12,12 +12,11 @@ pub struct Vec2 {
     pub y: f32,
 }
 
-/// 3-dimensional vector.
+/// 2-dimensional vector with associated width.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Vec3 {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+pub struct Vec2w {
+    pub v: Vec2,
+    pub w: f32,
 }
 
 /// An affine transform can translate, scale, rotate and skew 2D points.
@@ -204,17 +203,20 @@ pub fn intersection(a0: Vec2,
     }
 }
 
-impl Vec3 {
-    /// Create a new Vec3
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
-        Vec3 { x: x, y: y, z: z }
+impl Vec2w {
+    /// Create a new Vec2w
+    pub fn new(x: f32, y: f32, w: f32) -> Self {
+        Vec2w {
+            v: Vec2::new(x, y),
+            w: w,
+        }
     }
-    /// Find the midpoint between two Vec3
+    /// Find the midpoint between two Vec2w
     pub fn midpoint(self, other: Self) -> Self {
-        let x = (self.x + other.x) / 2f32;
-        let y = (self.y + other.y) / 2f32;
-        let z = (self.z + other.z) / 2f32;
-        Vec3::new(x, y, z)
+        Vec2w {
+            v: self.v.midpoint(other.v),
+            w: (self.w + other.w) / 2f32,
+        }
     }
 }
 
