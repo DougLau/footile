@@ -14,11 +14,12 @@ mod imgbuf;
 mod geom;
 mod mask;
 mod fig;
+mod path;
 mod plotter;
 mod raster;
 
-pub use fig::FillRule;
 pub use geom::Transform;
 pub use mask::Mask;
-pub use plotter::{ JoinStyle, Plotter, PlotterBuilder };
+pub use path::{FillRule, JoinStyle, Path2D, PathBuilder};
+pub use plotter::Plotter;
 pub use raster::Raster;

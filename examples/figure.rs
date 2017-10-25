@@ -1,22 +1,21 @@
-// figure.rs        Example using a figure
+// figure.rs
 extern crate footile;
 
-use footile::{ FillRule, PlotterBuilder };
+use footile::{FillRule, PathBuilder, Plotter};
 
 fn main() {
-    let mut p = PlotterBuilder::new()
-                               .width(64)
-                               .height(64)
-                               .build();
-    p.move_to(4f32, 4f32)
-     .line_to(28f32, 12f32)
-     .line_to(28f32, -12f32)
-     .line_to(-12f32, 28f32)
-     .line_to(12f32, 28f32)
-     .line_to(-28f32, -4f32)
-     .line_to(-28f32, 4f32)
-     .line_to(12f32, -28f32)
-     .close()
-     .fill(FillRule::NonZero);
+    let path = PathBuilder::new().relative()
+                           .move_to(4f32, 4f32)
+                           .line_to(28f32, 12f32)
+                           .line_to(28f32, -12f32)
+                           .line_to(-12f32, 28f32)
+                           .line_to(12f32, 28f32)
+                           .line_to(-28f32, -4f32)
+                           .line_to(-28f32, 4f32)
+                           .line_to(12f32, -28f32)
+                           .close().build();
+    let mut p = Plotter::new(64, 64);
+    p.add_path(path);
+    p.fill(FillRule::NonZero);
     p.mask().write_png("./figure.png").unwrap();
 }

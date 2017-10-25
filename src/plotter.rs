@@ -2,37 +2,29 @@
 //
 // Copyright (c) 2017  Douglas P Lau
 //
-use fig::{ Fig, FillRule, FigDir, Vid };
-use geom::{ Transform, Vec2, Vec2w, float_lerp, intersection };
+use fig::{Fig, FigDir, Vid};
+use path::{FillRule, JoinStyle, Path2D, PathOp};
+use geom::{Transform, Vec2, Vec2w, float_lerp, intersection};
 use mask::Mask;
-
-/// Style for joins
-#[derive(Clone,Copy,Debug)]
-pub enum JoinStyle {
-    /// Mitered join with limit (miter length to stroke width ratio)
-    Miter(f32),
-    /// Beveled join
-    Bevel,
-    /// Rounded join
-    Round,
-}
 
 /// Plotter for 2D vector paths.
 ///
-/// Paths are made from lines and splines (quadratic or cubic).
+/// This is a software vector rasterizer featuring high quality anti-aliasing.
+/// Paths can be created using [PathBuilder](struct.PathBuilder.html).
 /// When a plot is complete, a [Mask](struct.Mask.html) of the result can be
 /// used to composite a [Raster](struct.Raster.html).
 ///
 /// # Example
 /// ```
-/// use footile::PlotterBuilder;
-/// let mut p = PlotterBuilder::new().build();
-/// p.pen_width(3f32)
-///  .move_to(50f32, 34f32)
-///  .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
-///  .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
-///  .close()
-///  .stroke();
+/// use footile::{PathBuilder, Plotter};
+/// let path = PathBuilder::new().pen_width(3f32)
+///                        .move_to(50f32, 34f32)
+///                        .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
+///                        .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
+///                        .close().build();
+/// let mut p = Plotter::new(100, 100);
+/// p.add_path(path);
+/// p.stroke();
 /// ```
 pub struct Plotter {
     fig        : Fig,           // drawing fig
@@ -42,32 +34,37 @@ pub struct Plotter {
     pen        : Vec2w,         // current pen position and width
     transform  : Transform,     // user to pixel affine transform
     tol_sq     : f32,           // curve decomposition tolerance squared
-    absolute   : bool,          // absolute coordinates
     s_width    : f32,           // current stroke width
     join_style : JoinStyle,     // current join style
 }
 
-/// Builder for [Plotter](struct.Plotter.html).
-///
-/// # Example
-/// ```
-/// use footile::PlotterBuilder;
-/// let mut p = PlotterBuilder::new()
-///                            .width(64)
-///                            .height(64)
-///                            .absolute()
-///                            .tolerance(1f32)
-///                            .build();
-/// // Plot some stuff ...
-/// ```
-pub struct PlotterBuilder {
-    width    : u32,     // width in pixels
-    height   : u32,     // height in pixels
-    tol      : f32,     // curve decomposition tolerance
-    absolute : bool,    // absolute coordinates (false: relative)
-}
-
 impl Plotter {
+    /// Create a new plotter.
+    ///
+    /// * `width` Width in pixels.
+    /// * `height` Height in pixels.
+    pub fn new(width: u32, height: u32) -> Plotter {
+        let tol = 0.3f32;
+        let w = if width > 0 { width } else { 100 };
+        let h = if height > 0 { height } else { 100 };
+        let len = w as usize;
+        // Capacity must be 8-element multiple (for SIMD)
+        let cap = ((len + 7) >> 3) << 3;
+        let mut sgn_area = vec![0i16; cap];
+        // Remove excess elements
+        for _ in 0..cap-len { sgn_area.pop(); };
+        Plotter {
+            fig        : Fig::new(),
+            sfig       : Fig::new(),
+            mask       : Mask::new(w, h),
+            sgn_area   : sgn_area,
+            pen        : Vec2w::new(0f32, 0f32, 1f32),
+            transform  : Transform::new(),
+            tol_sq     : tol * tol,
+            s_width    : 1f32,
+            join_style : JoinStyle::Miter(4f32),
+        }
+    }
     /// Get width in pixels.
     pub fn width(&self) -> u32 {
         self.mask.width()
@@ -83,20 +80,20 @@ impl Plotter {
         self.pen = Vec2w::new(0f32, 0f32, self.s_width);
         self
     }
-    /// Set the transform.
-    pub fn set_transform(&mut self, t: Transform) -> &mut Self {
-        self.transform = t;
-        self
-    }
     /// Clear the mask.
     pub fn clear(&mut self) -> &mut Self {
         self.mask.clear();
         self
     }
-    /// Close current sub-path and move pen to origin.
-    pub fn close(&mut self) -> &mut Self {
-        self.fig.close(true);
-        self.pen = Vec2w::new(0f32, 0f32, self.s_width);
+    /// Set tolerance threshold for curve decomposition.
+    pub fn set_tolerance(&mut self, t: f32) -> &mut Self {
+        let tol = t.max(0.01f32);
+        self.tol_sq = tol * tol;
+        self
+    }
+    /// Set the transform.
+    pub fn set_transform(&mut self, t: Transform) -> &mut Self {
+        self.transform = t;
         self
     }
     /// Set pen stroke width.
@@ -105,26 +102,15 @@ impl Plotter {
     /// is changed again.
     ///
     /// * `width` Pen stroke width.
-    pub fn pen_width(&mut self, width: f32) -> &mut Self {
+    fn pen_width(&mut self, width: f32) {
         self.s_width = width;
-        self
     }
     /// Set stroke join style.
     ///
     /// * `js` Join style.
-    pub fn join_style(&mut self, js: JoinStyle) -> &mut Self {
+    pub fn set_join(&mut self, js: JoinStyle) -> &mut Self {
         self.join_style = js;
         self
-    }
-    /// Make a point.
-    fn make_point(&self, x: f32, y: f32, w: f32) -> Vec2w {
-        if self.absolute {
-            Vec2w::new(x, y, w)
-        } else {
-            let px = self.pen.v.x + x;
-            let py = self.pen.v.y + y;
-            Vec2w::new(px, py, w)
-        }
     }
     /// Move the pen.
     fn move_pen(&mut self, p: Vec2w) {
@@ -135,28 +121,54 @@ impl Plotter {
         let pt = self.transform * p.v;
         Vec2w::new(pt.x, pt.y, p.w)
     }
+    /// Add a path.
+    pub fn add_path(&mut self, p: Path2D) {
+        self.add_ops(p.iter());
+    }
+    /// Add a series of ops.
+    pub fn add_ops<'a, T>(&mut self, ops: T)
+        where T: Iterator<Item=&'a PathOp>
+    {
+        for op in ops {
+            self.add_op(op);
+        }
+    }
+    /// Add a path operation.
+    fn add_op(&mut self, op: &PathOp) {
+        match op {
+            &PathOp::Close()                 => self.close(),
+            &PathOp::Move(bx, by)            => self.move_to(bx, by),
+            &PathOp::Line(bx, by)            => self.line_to(bx, by),
+            &PathOp::Quad(bx, by, cx, cy)    => self.quad_to(bx, by, cx, cy),
+            &PathOp::Cubic(bx,by,cx,cy,dx,dy)=>self.cubic_to(bx,by,cx,cy,dx,dy),
+            &PathOp::PenWidth(w)             => self.pen_width(w),
+        };
+    }
+    /// Close current sub-path and move pen to origin.
+    fn close(&mut self) {
+        self.fig.close(true);
+        self.pen = Vec2w::new(0f32, 0f32, self.s_width);
+    }
     /// Move pen to a point.
     ///
     /// * `bx` X-position of point.
     /// * `by` Y-position of point.
-    pub fn move_to(&mut self, bx: f32, by: f32) -> &mut Self {
-        let p = self.make_point(bx, by, self.s_width);
+    fn move_to(&mut self, bx: f32, by: f32) {
+        let p = Vec2w::new(bx, by, self.s_width);
         self.fig.close(false);
         let b = self.transform_point(p);
         self.fig.add_point(b);
         self.move_pen(p);
-        self
     }
     /// Add a line from pen to a point.
     ///
     /// * `bx` X-position of end point.
     /// * `by` Y-position of end point.
-    pub fn line_to(&mut self, bx: f32, by: f32) -> &mut Self {
-        let p = self.make_point(bx, by, self.s_width);
+    fn line_to(&mut self, bx: f32, by: f32) {
+        let p = Vec2w::new(bx, by, self.s_width);
         let b = self.transform_point(p);
         self.fig.add_point(b);
         self.move_pen(p);
-        self
     }
     /// Add a quadratic bézier spline.
     ///
@@ -167,16 +179,15 @@ impl Plotter {
     /// * `by` Y-position of control point.
     /// * `cx` X-position of end point.
     /// * `cy` Y-position of end point.
-    pub fn quad_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32) -> &mut Self {
+    fn quad_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32) {
         let pen = self.pen;
-        let bb = self.make_point(bx, by, (pen.w + self.s_width) / 2f32);
-        let cc = self.make_point(cx, cy, self.s_width);
+        let bb = Vec2w::new(bx, by, (pen.w + self.s_width) / 2f32);
+        let cc = Vec2w::new(cx, cy, self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
         let c = self.transform_point(cc);
         self.quad_to_tran(a, b, c);
         self.move_pen(cc);
-        self
     }
     /// Add a quadratic bézier spline.
     ///
@@ -214,22 +225,19 @@ impl Plotter {
     /// * `cy` Y-position of second control point.
     /// * `dx` X-position of end point.
     /// * `dy` Y-position of end point.
-    pub fn cubic_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32, dx: f32,
-                    dy: f32) -> &mut Self
-    {
+    fn cubic_to(&mut self, bx: f32, by: f32, cx: f32, cy: f32, dx: f32, dy:f32){
         let pen = self.pen;
         let bw = float_lerp(pen.w, self.s_width, 1f32 / 3f32);
         let cw = float_lerp(pen.w, self.s_width, 2f32 / 3f32);
-        let bb = self.make_point(bx, by, bw);
-        let cc = self.make_point(cx, cy, cw);
-        let dd = self.make_point(dx, dy, self.s_width);
+        let bb = Vec2w::new(bx, by, bw);
+        let cc = Vec2w::new(cx, cy, cw);
+        let dd = Vec2w::new(dx, dy, self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
         let c = self.transform_point(cc);
         let d = self.transform_point(dd);
         self.cubic_to_tran(a, b, c, d);
         self.move_pen(dd);
-        self
     }
     /// Add a cubic bézier spline.
     ///
@@ -392,60 +400,5 @@ impl Plotter {
     /// Get the mask.
     pub fn mask(&self) -> &Mask {
         &self.mask
-    }
-}
-
-impl PlotterBuilder {
-    /// Create a new PlotterBuilder.
-    pub fn new() -> PlotterBuilder {
-        PlotterBuilder {
-            width    : 0,
-            height   : 0,
-            tol      : 0.3f32,
-            absolute : false,
-        }
-    }
-    /// Set width in pixels.
-    pub fn width(mut self, w: u32) -> PlotterBuilder {
-        self.width = w;
-        self
-    }
-    /// Set height in pixels.
-    pub fn height(mut self, h: u32) -> PlotterBuilder {
-        self.height = h;
-        self
-    }
-    /// Set tolerance threshold for curve decomposition.
-    pub fn tolerance(mut self, t: f32) -> PlotterBuilder {
-        self.tol = t.max(0.01f32);
-        self
-    }
-    /// Use absolute instead of relative coordinates.
-    pub fn absolute(mut self) -> PlotterBuilder {
-        self.absolute = true;
-        self
-    }
-    /// Build configured Plotter.
-    pub fn build(self) -> Plotter {
-        let w = if self.width > 0 { self.width } else { 100 };
-        let h = if self.height > 0 { self.height } else { 100 };
-        let len = w as usize;
-        // Capacity must be 8-element multiple (for SIMD)
-        let cap = ((len + 7) >> 3) << 3;
-        let mut sgn_area = vec![0i16; cap];
-        // Remove excess elements
-        for _ in 0..cap-len { sgn_area.pop(); };
-        Plotter {
-            fig        : Fig::new(),
-            sfig       : Fig::new(),
-            mask       : Mask::new(w, h),
-            sgn_area   : sgn_area,
-            pen        : Vec2w::new(0f32, 0f32, 1f32),
-            transform  : Transform::new(),
-            tol_sq     : self.tol * self.tol,
-            absolute   : self.absolute,
-            s_width    : 1f32,
-            join_style : JoinStyle::Miter(4f32),
-        }
     }
 }

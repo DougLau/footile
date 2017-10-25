@@ -1,20 +1,18 @@
-// over.rs      Example stroking over
+// over.rs
 extern crate footile;
 
-use footile::PlotterBuilder;
+use footile::{PathBuilder, Plotter};
 
 fn main() {
-    let mut p = PlotterBuilder::new()
-                               .width(64)
-                               .height(64)
-                               .build();
-    p.pen_width(8f32)
-     .move_to(32f32, 16f32)
-     .line_to(16f32, 16f32)
-     .line_to(-16f32, 16f32)
-     .line_to(-16f32, -16f32)
-     .line_to(16f32, -16f32)
-     .line_to(0f32, 32f32)
-     .stroke();
-    p.mask().write_png("./over.png").unwrap();
+    let path = PathBuilder::new().relative().pen_width(8f32)
+                           .move_to(32f32, 16f32)
+                           .line_to(16f32, 16f32)
+                           .line_to(-16f32, 16f32)
+                           .line_to(-16f32, -16f32)
+                           .line_to(16f32, -16f32)
+                           .line_to(0f32, 32f32)
+                           .build();
+    let mut p = Plotter::new(64, 64);
+    p.add_path(path);
+    p.stroke().mask().write_png("./over.png").unwrap();
 }

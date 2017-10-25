@@ -8,7 +8,7 @@ use std::io::Write;
 use std::ptr;
 use png;
 use png::HasParameters;
-use fig::FillRule;
+use path::FillRule;
 use imgbuf::{accumulate_non_zero, accumulate_odd};
 
 /// A Mask is an image with only an 8-bit alpha channel.
@@ -18,11 +18,14 @@ use imgbuf::{accumulate_non_zero, accumulate_odd};
 ///
 /// # Example
 /// ```
-/// use footile::PlotterBuilder;
-/// let mut p = PlotterBuilder::new().build();
-/// p.move_to(10f32, 10f32)
-///  .line_to(90f32, 90f32)
-///  .stroke();
+/// use footile::{PathBuilder, Plotter};
+/// let path = PathBuilder::new()
+///                        .move_to(10f32, 10f32)
+///                        .line_to(90f32, 90f32)
+///                        .build();
+/// let mut p = Plotter::new(100, 100);
+/// p.add_path(path);
+/// p.stroke();
 /// let m = p.mask();
 /// ```
 pub struct Mask {

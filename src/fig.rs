@@ -9,6 +9,7 @@ use std::fmt;
 use std::ops;
 use geom::{Vec2, Vec2w};
 use mask::Mask;
+use path::FillRule;
 
 /// Vertex ID
 pub type Vid = u16;
@@ -32,15 +33,6 @@ fn opposite(dir: FigDir) -> FigDir {
         FigDir::Forward => FigDir::Reverse,
         FigDir::Reverse => FigDir::Forward,
     }
-}
-
-/// Fill-rule for filling figures
-#[derive(Clone, Copy, Debug)]
-pub enum FillRule {
-    /// All points within bounds are filled
-    NonZero,
-    /// Alternate filling with figure outline
-    EvenOdd,
 }
 
 /// Sub-figure structure
