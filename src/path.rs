@@ -50,7 +50,6 @@ pub struct Path2D {
 ///                        .move_to(10f32, 10f32)
 ///                        .line_to(90f32, 90f32)
 ///                        .build();
-/// // Plot some stuff ...
 /// ```
 pub struct PathBuilder {
     ops      : Vec<PathOp>,

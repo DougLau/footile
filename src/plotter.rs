@@ -258,14 +258,14 @@ impl Plotter {
             self.cubic_to_tran(e, bc_cd, cd, d);
         }
     }
-    /// Fill path onto the mask.  The path is not affected.
+    /// Fill path onto the mask.
     ///
     /// * `rule` Fill rule.
     pub fn fill(&mut self, rule: FillRule) -> &mut Self {
         self.fig.fill(&mut self.mask, &mut self.sgn_area[..], rule);
         self
     }
-    /// Stroke path onto the mask.  The path is not affected.
+    /// Stroke path onto the mask.
     pub fn stroke(&mut self) -> &mut Self {
         let n_subs = self.fig.sub_count();
         for i in 0..n_subs {
