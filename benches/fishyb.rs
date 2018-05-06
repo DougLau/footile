@@ -33,6 +33,6 @@ fn make_fishy() -> Plotter {
                            .close().build();
     let mut p = Plotter::new(256, 256);
     p.set_transform(Transform::new_scale(2f32, 2f32));
-    p.add_path(fish);
+    p.add_ops(&fish);
     p
 }

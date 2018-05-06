@@ -15,7 +15,7 @@ fn main() {
         pb = pb.line_to(th.cos(), th.sin());
     }
     let path = pb.close().build();
-    p.add_path(path);
+    p.add_ops(&path);
     p.fill(FillRule::EvenOdd);
     p.mask().write_png("./heptagram.png").unwrap();
 }

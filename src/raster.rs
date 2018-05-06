@@ -1,6 +1,6 @@
 // raster.rs    A 2D raster image.
 //
-// Copyright (c) 2017  Douglas P Lau
+// Copyright (c) 2017-2018  Douglas P Lau
 //
 use std::fs::File;
 use std::io;
@@ -23,7 +23,7 @@ use png::HasParameters;
 ///                        .close().build();
 /// let mut p = Plotter::new(100, 100);
 /// let mut r = Raster::new(p.width(), p.height());
-/// p.add_path(path);
+/// p.add_ops(&path);
 /// p.stroke();
 /// r.composite(p.mask(), [208u8, 255u8, 208u8]);
 /// ```

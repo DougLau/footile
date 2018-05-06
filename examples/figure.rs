@@ -15,7 +15,7 @@ fn main() {
                            .line_to(12f32, -28f32)
                            .close().build();
     let mut p = Plotter::new(64, 64);
-    p.add_path(path);
+    p.add_ops(&path);
     p.fill(FillRule::NonZero);
     p.mask().write_png("./figure.png").unwrap();
 }

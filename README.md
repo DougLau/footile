@@ -14,7 +14,7 @@ let fish = PathBuilder::new().relative().pen_width(3f32)
                        .close().build();
 let mut p = Plotter::new(128, 128);
 let mut r = Raster::new(p.width(), p.height());
-p.add_path(fish);
+p.add_ops(&fish);
 p.fill(FillRule::NonZero);
 r.composite(p.mask(), [127u8, 96u8, 96u8]);
 p.clear().stroke();

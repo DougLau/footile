@@ -1,6 +1,6 @@
 // mask.rs    A 2D image mask.
 //
-// Copyright (c) 2017  Douglas P Lau
+// Copyright (c) 2017-2018  Douglas P Lau
 //
 use std::fs::File;
 use std::io;
@@ -24,7 +24,7 @@ use imgbuf::{accumulate_non_zero, accumulate_odd};
 ///                        .line_to(90f32, 90f32)
 ///                        .build();
 /// let mut p = Plotter::new(100, 100);
-/// p.add_path(path);
+/// p.add_ops(&path);
 /// p.stroke();
 /// let m = p.mask();
 /// ```

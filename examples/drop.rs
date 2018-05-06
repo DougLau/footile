@@ -11,6 +11,6 @@ fn main() {
                            .close()
                            .build();
     let mut p = Plotter::new(100, 100);
-    p.add_path(path);
+    p.add_ops(&path);
     p.stroke().mask().write_png("./drop.png").unwrap();
 }

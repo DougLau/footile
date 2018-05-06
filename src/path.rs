@@ -1,8 +1,7 @@
 // path.rs      2D vector paths.
 //
-// Copyright (c) 2017  Douglas P Lau
+// Copyright (c) 2017-2018  Douglas P Lau
 //
-use std::slice::Iter;
 
 /// Fill-rule for filling paths.
 #[derive(Clone,Copy,Debug)]
@@ -41,6 +40,12 @@ pub struct Path2D {
     ops : Vec<PathOp>,
 }
 
+/// IterPath2D is an iterator for Path2D structs.
+pub struct IterPath2D<'a> {
+    path : &'a Path2D,
+    pos  : usize,
+}
+
 /// Builder for [Path2D](struct.Path2D.html).
 ///
 /// # Example
@@ -60,8 +65,30 @@ pub struct PathBuilder {
 
 impl Path2D {
     /// Get an iterator of path operations.
-    pub fn iter(&self) -> Iter<PathOp> {
-        self.ops.iter()
+    pub fn iter(&self) -> IterPath2D {
+        IterPath2D {
+            path : self,
+            pos  : 0,
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a Path2D {
+    type Item = &'a PathOp;
+    type IntoIter = IterPath2D<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a> Iterator for IterPath2D<'a> {
+    type Item = &'a PathOp;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let p = self.pos;
+        self.pos += 1;
+        self.path.ops.get(p)
     }
 }
 

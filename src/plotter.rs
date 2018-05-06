@@ -1,9 +1,9 @@
 // plotter.rs      Vector path plotter.
 //
-// Copyright (c) 2017  Douglas P Lau
+// Copyright (c) 2017-2018  Douglas P Lau
 //
 use fig::{Fig, FigDir, Vid};
-use path::{FillRule, JoinStyle, Path2D, PathOp};
+use path::{FillRule, JoinStyle, PathOp};
 use geom::{Transform, Vec2, Vec2w, float_lerp, intersection};
 use mask::Mask;
 
@@ -23,7 +23,7 @@ use mask::Mask;
 ///                        .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
 ///                        .close().build();
 /// let mut p = Plotter::new(100, 100);
-/// p.add_path(path);
+/// p.add_ops(&path);
 /// p.stroke();
 /// ```
 pub struct Plotter {
@@ -121,13 +121,9 @@ impl Plotter {
         let pt = self.transform * p.v;
         Vec2w::new(pt.x, pt.y, p.w)
     }
-    /// Add a path.
-    pub fn add_path(&mut self, p: Path2D) {
-        self.add_ops(p.iter());
-    }
     /// Add a series of ops.
     pub fn add_ops<'a, T>(&mut self, ops: T)
-        where T: Iterator<Item=&'a PathOp>
+        where T: IntoIterator<Item=&'a PathOp>
     {
         for op in ops {
             self.add_op(op);
