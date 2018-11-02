@@ -7,7 +7,8 @@ fn main() {
     const PI: f32 = std::f32::consts::PI;
     let mut p = Plotter::new(100, 100);
     let h = (p.width() / 2u32) as f32;
-    p.set_transform(Transform::new_scale(h, h).translate(h, h));
+    let q = h / 2f32;
+    p.set_transform(Transform::new_scale(h, h).translate(q, q));
     let mut pb = PathBuilder::new();
     pb = pb.move_to(0f32.cos(), 0f32.sin());
     for n in 1..7 {
