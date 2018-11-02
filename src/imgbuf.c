@@ -115,7 +115,15 @@ void accumulate_odd_c(uint8_t *dst, int16_t *src, int len) {
     for ( ; i < len; i++) {
         s += src[i];
         src[i] = 0;
-        dst[i] = min(max(0, s), 255);
+        if (s & 0x100) {
+            if ((s & 0xff) == 0) {
+                dst[i] = 0xff;
+            } else {
+                dst[i] = 0x100 - (s & 0xff);
+            }
+        } else {
+            dst[i] = s & 0xff;
+        }
     }
 #endif
 }
