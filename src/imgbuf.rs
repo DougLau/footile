@@ -1,191 +1,159 @@
 // imgbuf.rs        Functions for blending image buffers.
 //
-// Copyright (c) 2017  Douglas P Lau
+// Copyright (c) 2017-2018  Douglas P Lau
 //
+use std::i16;
 
-/// Accumulate sums over signed ares.
+// Defining this allows easier testing of fallback configuration
+const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
+
+/// Accumulate signed area with non-zero fill rule.
+/// Source buffer is zeroed upon return.
+///
+/// * `dst` Destination buffer.
+/// * `src` Source buffer.
 pub(crate) fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
-    assert!(dst.len() == src.len());
-    let w = dst.len() as isize;
-    unsafe {
-        accumulate_non_zero_impl(dst.as_mut_ptr(), src.as_mut_ptr(), w);
+    assert!(dst.len() <= src.len());
+    if X86 {
+        unsafe {
+            accumulate_non_zero_x86(dst, src);
+        }
+    } else {
+        accumulate_non_zero_fallback(dst, src);
     }
 }
 
-/// Accumulate sums over signed ares.
-pub(crate) fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
-    assert!(dst.len() == src.len());
-    let w = dst.len() as isize;
-    unsafe {
-        accumulate_odd_impl(dst.as_mut_ptr(), src.as_mut_ptr(), w);
+/// Accumulate signed area with non-zero fill rule.
+fn accumulate_non_zero_fallback(dst: &mut [u8], src: &mut [i16]) {
+    let mut sum = 0;
+    for (d, s) in dst.iter_mut().zip(src.iter_mut()) {
+        sum += *s;
+        *s = 0;
+        *d = saturating_cast_i16_u8(sum);
     }
 }
 
-/* Accumulate signed area buffer and store in dest buffer.
- * Source buffer is zeroed upon return.
- *
- * dst: Destination buffer.
- * src: Source buffer.
- * len: Size of buffers.
- */
-#[cfg(
-    not(
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "ssse3"
-        )
-    )
-)]
-pub unsafe fn accumulate_non_zero_impl(dst: *mut u8, src: *mut i16, len: isize) {
-    let mut i = 0;
-    let mut s: i16 = 0;
-    while i < len {
-        s += *src.offset(i);
-        *src.offset(i) = 0;
-        *dst.offset(i) = s.max(0).min(255) as u8;
-        i += 1;
-    }
-}
-/* Accumulate signed area buffer and store in dest buffer.
- * Source buffer is zeroed upon return.
- *
- * dst: Destination buffer.
- * src: Source buffer.
- * len: Size of buffers.
- */
-#[cfg(
-    not(
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "ssse3"
-        )
-    )
-)]
-pub unsafe fn accumulate_odd_impl(dst: *mut u8, src: *mut i16, len: isize) {
-    let mut i = 0;
-    let mut s: i16 = 0;
-    while i < len {
-        s += *src.offset(i);
-        *src.offset(i) = 0;
-        *dst.offset(i) = if s & 0x100 != 0 {
-            if (s & 0xff) == 0 {
-                0xff
-            } else {
-                0x100 - (s & 0xff)
-            }
-        } else {
-            s & 0xff
-        } as u8;
-        i += 1;
+/// Cast an i16 to a u8 with saturation
+fn saturating_cast_i16_u8(v: i16) -> u8 {
+    match v {
+        i16::MIN...0   => 0,
+               1...254 => v as u8,
+        _              => 255,
     }
 }
 
-#[cfg(target_arch = "x86")]
-pub use std::arch::x86::{
-    __m128i, _mm_abs_epi16, _mm_add_epi16, _mm_and_si128, _mm_loadu_si128, _mm_packus_epi16,
-    _mm_set1_epi16, _mm_setzero_si128, _mm_shuffle_epi8, _mm_slli_si128, _mm_storel_epi64,
-    _mm_storeu_si128, _mm_sub_epi16,
-};
-#[cfg(target_arch = "x86_64")]
-pub use std::arch::x86_64::{
-    __m128i, _mm_abs_epi16, _mm_add_epi16, _mm_and_si128, _mm_loadu_si128, _mm_packus_epi16,
-    _mm_set1_epi16, _mm_setzero_si128, _mm_shuffle_epi8, _mm_slli_si128, _mm_storel_epi64,
-    _mm_storeu_si128, _mm_sub_epi16,
-};
+/// Accumulate signed area with non-zero fill rule.
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
 
-/* Accumulate signed area buffer and store in dest buffer.
- * Source buffer is zeroed upon return.
- *
- * dst: Destination buffer.
- * src: Source buffer.
- * len: Size of buffers.
- */
-#[cfg(
-    all(
-        any(target_arch = "x86", target_arch = "x86_64"),
-        target_feature = "ssse3"
-    )
-)]
-pub unsafe fn accumulate_non_zero_impl(dst: *mut u8, src: *mut i16, len: isize) {
-    let mut i = 0;
+    #[cfg(target_arch = "x86")]
+    use std::arch::x86::*;
+    #[cfg(target_arch = "x86_64")]
+    use std::arch::x86_64::*;
+
     let zero = _mm_setzero_si128();
-    let mut sum: __m128i = zero;
-    /* mask for shuffling final sum into all lanes */
-    let mask = _mm_set1_epi16(0xf0e);
-    loop {
-        let mut a: __m128i = _mm_loadu_si128(src.offset(i) as *const __m128i);
-        /* zeroing now is faster than memset later */
-        _mm_storeu_si128(src.offset(i) as *mut __m128i, zero);
-        /*   a7 a6 a5 a4 a3 a2 a1 a0 */
-        /* + a3 a2 a1 a0 __ __ __ __ */
+    let mut sum = zero;
+    // mask for shuffling final sum into all lanes
+    let mask = _mm_set1_epi16(0x0F0E);
+    for (d, s) in dst.chunks_mut(8).zip(src.chunks_mut(8)) {
+        let d = d.as_mut_ptr() as *mut __m128i;
+        let s = s.as_mut_ptr() as *mut __m128i;
+        // get 8 values from src
+        let mut a = _mm_loadu_si128(s);
+        // zeroing now is faster than memset later
+        _mm_storeu_si128(s, zero);
+        //   a7 a6 a5 a4 a3 a2 a1 a0
+        // + a3 a2 a1 a0 __ __ __ __
         a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
-        /* + a5 a4 a3 a2 a1 a0 __ __ */
-        /* + a1 a0 __ __ __ __ __ __ */
+        // + a5 a4 a3 a2 a1 a0 __ __
+        // + a1 a0 __ __ __ __ __ __
         a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
-        /* + a6 a5 a4 a3 a2 a1 a0 __ */
-        /* + a2 a1 a0 __ __ __ __ __ */
-        /* + a4 a3 a2 a1 a0 __ __ __ */
-        /* + a0 __ __ __ __ __ __ __ */
+        // + a6 a5 a4 a3 a2 a1 a0 __
+        // + a2 a1 a0 __ __ __ __ __
+        // + a4 a3 a2 a1 a0 __ __ __
+        // + a0 __ __ __ __ __ __ __
         a = _mm_add_epi16(a, _mm_slli_si128(a, 2));
+        // add in previous sum
         a = _mm_add_epi16(a, sum);
+        // pack to u8 using saturation
         let b = _mm_packus_epi16(a, a);
-        _mm_storel_epi64(dst.offset(i) as *mut __m128i, b);
-        i += 8;
-        /* breaking here saves one shuffle */
-        if i >= len {
-            break;
-        }
-        sum = _mm_shuffle_epi8(a, mask)
+        _mm_storel_epi64(d, b);
+        // shuffle sum into all lanes
+        sum = _mm_shuffle_epi8(a, mask);
     }
 }
 
-/* Accumulate signed area buffer and store in dest buffer.
- * Source buffer is zeroed upon return.
- *
- * dst: Destination buffer.
- * src: Source buffer.
- * len: Size of buffers.
- */
-#[cfg(
-    all(
-        any(target_arch = "x86", target_arch = "x86_64"),
-        target_feature = "ssse3"
-    )
-)]
-pub unsafe fn accumulate_odd_impl(dst: *mut u8, src: *mut i16, len: isize) {
-    let mut i = 0;
-    let zero = _mm_setzero_si128();
-    let mut sum: __m128i = zero;
-    /* mask for shuffling final sum into all lanes */
-    let mask = _mm_set1_epi16(0xf0e);
-    loop {
-        let mut a: __m128i = _mm_loadu_si128(src.offset(i) as *const __m128i);
-        /* zeroing now is faster than memset later */
-        _mm_storeu_si128(src.offset(i) as *mut __m128i, zero);
-        /*   a7 a6 a5 a4 a3 a2 a1 a0 */
-        /* + a3 a2 a1 a0 __ __ __ __ */
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
-        /* + a5 a4 a3 a2 a1 a0 __ __ */
-        /* + a1 a0 __ __ __ __ __ __ */
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
-        /* + a6 a5 a4 a3 a2 a1 a0 __ */
-        /* + a2 a1 a0 __ __ __ __ __ */
-        /* + a4 a3 a2 a1 a0 __ __ __ */
-        /* + a0 __ __ __ __ __ __ __ */
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 2));
-        a = _mm_add_epi16(a, sum);
-        let mut c = _mm_and_si128(a, _mm_set1_epi16(0xff));
-        let d = _mm_and_si128(a, _mm_set1_epi16(0x100));
-        c = _mm_sub_epi16(c, d);
-        c = _mm_abs_epi16(c);
-        let b = _mm_packus_epi16(c, c);
-        _mm_storel_epi64(dst.offset(i) as *mut __m128i, b);
-        i += 8;
-        /* breaking here saves one shuffle */
-        if i >= len {
-            break;
+/// Accumulate signed area with even-odd fill rule.
+/// Source buffer is zeroed upon return.
+///
+/// * `dst` Destination buffer.
+/// * `src` Source buffer.
+pub(crate) fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
+    assert!(dst.len() <= src.len());
+    if X86 {
+        unsafe {
+            accumulate_odd_x86(dst, src);
         }
-        sum = _mm_shuffle_epi8(a, mask)
+    } else {
+        accumulate_odd_fallback(dst, src);
+    }
+}
+
+/// Accumulate signed area with even-odd fill rule.
+fn accumulate_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
+    let mut sum = 0;
+    for (d, s) in dst.iter_mut().zip(src.iter_mut()) {
+        sum += *s;
+        *s = 0;
+        let v = sum & 0xFF;
+        let odd = sum & 0x100;
+        let c = (v - odd).abs();
+        *d = saturating_cast_i16_u8(c);
+    }
+}
+
+/// Accumulate signed area with even-odd fill rule.
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
+
+    #[cfg(target_arch = "x86")]
+    use std::arch::x86::*;
+    #[cfg(target_arch = "x86_64")]
+    use std::arch::x86_64::*;
+
+    let zero = _mm_setzero_si128();
+    let mut sum = zero;
+    // mask for shuffling final sum into all lanes
+    let mask = _mm_set1_epi16(0x0F0E);
+    for (d, s) in dst.chunks_mut(8).zip(src.chunks_mut(8)) {
+        let d = d.as_mut_ptr() as *mut __m128i;
+        let s = s.as_mut_ptr() as *mut __m128i;
+        // get 8 values from src
+        let mut a = _mm_loadu_si128(s);
+        // zeroing now is faster than memset later
+        _mm_storeu_si128(s, zero);
+        //   a7 a6 a5 a4 a3 a2 a1 a0
+        // + a3 a2 a1 a0 __ __ __ __
+        a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
+        // + a5 a4 a3 a2 a1 a0 __ __
+        // + a1 a0 __ __ __ __ __ __
+        a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
+        // + a6 a5 a4 a3 a2 a1 a0 __
+        // + a2 a1 a0 __ __ __ __ __
+        // + a4 a3 a2 a1 a0 __ __ __
+        // + a0 __ __ __ __ __ __ __
+        a = _mm_add_epi16(a, _mm_slli_si128(a, 2));
+        // add in previous sum
+        a = _mm_add_epi16(a, sum);
+        let mut v = _mm_and_si128(a, _mm_set1_epi16(0xFF));
+        let odd = _mm_and_si128(a, _mm_set1_epi16(0x100));
+        v = _mm_sub_epi16(v, odd);
+        v = _mm_abs_epi16(v);
+        // pack to u8 using saturation
+        let b = _mm_packus_epi16(v, v);
+        _mm_storel_epi64(d, b);
+        // shuffle sum into all lanes
+        sum = _mm_shuffle_epi8(a, mask);
     }
 }
 
