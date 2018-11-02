@@ -1,6 +1,6 @@
 // fig.rs    A 2D rasterizer.
 //
-// Copyright (c) 2017  Douglas P Lau
+// Copyright (c) 2017-2018  Douglas P Lau
 //
 use std::cmp;
 use std::cmp::Ordering;
@@ -562,7 +562,7 @@ impl<'a> Scanner<'a> {
     fn new(fig: &'a mut Fig, mask: &'a mut Mask, sgn_area: &'a mut [i16],
            dir: FigDir, rule: FillRule) -> Scanner<'a>
     {
-        assert!(mask.width() == sgn_area.len() as u32);
+        assert!(mask.width() <= sgn_area.len() as u32);
         let y_bot = Fixed::from_i32(mask.height() as i32);
         let edges = Vec::with_capacity(16);
         Scanner {
@@ -813,7 +813,7 @@ mod test {
     #[test]
     fn fig_9x1() {
         let mut m = Mask::new(9, 1);
-        let mut s = vec!(0i16; 9);
+        let mut s = vec!(0i16; 16);
         let mut f = Fig::new();
         f.add_point(Vec2w::new(0f32, 0f32, 1f32));
         f.add_point(Vec2w::new(9f32, 1f32, 1f32));
