@@ -6,7 +6,6 @@
 //! paths.  These are created using typical vector drawing primitives such as
 //! lines and bézier splines.
 //!
-extern crate libc;
 extern crate palette;
 extern crate png;
 
