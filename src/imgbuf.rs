@@ -35,11 +35,7 @@ fn accumulate_non_zero_fallback(dst: &mut [u8], src: &mut [i16]) {
 
 /// Cast an i16 to a u8 with saturation
 fn saturating_cast_i16_u8(v: i16) -> u8 {
-    match v {
-        i16::MIN...0   => 0,
-               1...254 => v as u8,
-        _              => 255,
-    }
+    v.max(0).min(255) as u8
 }
 
 /// Accumulate signed area with non-zero fill rule.
