@@ -2,7 +2,6 @@
 //
 // Copyright (c) 2017-2018  Douglas P Lau
 //
-use std::i16;
 
 // Defining this allows easier testing of fallback configuration
 const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
@@ -14,12 +13,10 @@ const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
 /// * `src` Source buffer.
 pub(crate) fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
-    if X86 {
-        unsafe {
-            accumulate_non_zero_x86(dst, src);
-        }
+    if X86 && is_x86_feature_detected!("ssse3") {
+        unsafe { accumulate_non_zero_x86(dst, src) }
     } else {
-        accumulate_non_zero_fallback(dst, src);
+        accumulate_non_zero_fallback(dst, src)
     }
 }
 
@@ -41,7 +38,6 @@ fn saturating_cast_i16_u8(v: i16) -> u8 {
 /// Accumulate signed area with non-zero fill rule.
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
-
     #[cfg(target_arch = "x86")]
     use std::arch::x86::*;
     #[cfg(target_arch = "x86_64")]
@@ -51,9 +47,13 @@ unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
     let mut sum = zero;
     // mask for shuffling final sum into all lanes
     let mask = _mm_set1_epi16(0x0F0E);
-    for (d, s) in dst.chunks_mut(8).zip(src.chunks_mut(8)) {
-        let d = d.as_mut_ptr() as *mut __m128i;
-        let s = s.as_mut_ptr() as *mut __m128i;
+    let len = dst.len().min(src.len());
+    let dst = dst.as_mut_ptr();
+    let src = src.as_mut_ptr();
+    for i in (0..len).step_by(8) {
+        let off = i as isize;
+        let d = dst.offset(off) as *mut __m128i;
+        let s = src.offset(off) as *mut __m128i;
         // get 8 values from src
         let mut a = _mm_loadu_si128(s);
         // zeroing now is faster than memset later
@@ -86,12 +86,10 @@ unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
 /// * `src` Source buffer.
 pub(crate) fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
-    if X86 {
-        unsafe {
-            accumulate_odd_x86(dst, src);
-        }
+    if X86 && is_x86_feature_detected!("ssse3") {
+        unsafe { accumulate_odd_x86(dst, src) }
     } else {
-        accumulate_odd_fallback(dst, src);
+        accumulate_odd_fallback(dst, src)
     }
 }
 
@@ -111,7 +109,6 @@ fn accumulate_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
 /// Accumulate signed area with even-odd fill rule.
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
-
     #[cfg(target_arch = "x86")]
     use std::arch::x86::*;
     #[cfg(target_arch = "x86_64")]
