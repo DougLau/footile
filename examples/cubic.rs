@@ -9,6 +9,5 @@ fn main() {
                            .cubic_to(64f32, -16f32, 64f32, 48f32, 0f32, 32f32)
                            .build();
     let mut p = Plotter::new(64, 64);
-    p.add_ops(&path);
-    p.stroke().mask().write_png("./cubic.png").unwrap();
+    p.stroke(&path).mask().write_png("./cubic.png").unwrap();
 }

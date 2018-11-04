@@ -10,6 +10,5 @@ fn main() {
                            .line_to(-16f32, -32f32)
                            .close().build();
     let mut p = Plotter::new(64, 64);
-    p.add_ops(&path);
-    p.stroke().mask().write_png("./stroke.png").unwrap();
+    p.stroke(&path).mask().write_png("./stroke.png").unwrap();
 }

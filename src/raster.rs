@@ -23,8 +23,7 @@ use png::HasParameters;
 ///                        .close().build();
 /// let mut p = Plotter::new(100, 100);
 /// let mut r = Raster::new(p.width(), p.height());
-/// p.add_ops(&path);
-/// p.stroke();
+/// p.stroke(&path);
 /// r.composite(p.mask(), [208u8, 255u8, 208u8]);
 /// ```
 pub struct Raster {

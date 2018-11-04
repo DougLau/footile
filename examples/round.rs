@@ -11,6 +11,5 @@ fn main() {
                            .build();
     let mut p = Plotter::new(100, 100);
     p.set_join(JoinStyle::Round);
-    p.add_ops(&path);
-    p.stroke().mask().write_png("./round.png").unwrap();
+    p.stroke(&path).mask().write_png("./round.png").unwrap();
 }

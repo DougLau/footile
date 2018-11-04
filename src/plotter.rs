@@ -23,8 +23,7 @@ use mask::Mask;
 ///                        .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
 ///                        .close().build();
 /// let mut p = Plotter::new(100, 100);
-/// p.add_ops(&path);
-/// p.stroke();
+/// p.stroke(&path);
 /// ```
 pub struct Plotter {
     fig        : Fig,           // drawing fig
@@ -122,7 +121,7 @@ impl Plotter {
         Vec2w::new(pt.x, pt.y, p.w)
     }
     /// Add a series of ops.
-    pub fn add_ops<'a, T>(&mut self, ops: T)
+    fn add_ops<'a, T>(&mut self, ops: T)
         where T: IntoIterator<Item=&'a PathOp>
     {
         for op in ops {
@@ -256,13 +255,22 @@ impl Plotter {
     }
     /// Fill path onto the mask.
     ///
+    /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill(&mut self, rule: FillRule) -> &mut Self {
+    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Self
+        where T: IntoIterator<Item=&'a PathOp>
+    {
+        self.add_ops(ops);
         self.fig.fill(&mut self.mask, &mut self.sgn_area[..], rule);
         self
     }
     /// Stroke path onto the mask.
-    pub fn stroke(&mut self) -> &mut Self {
+    ///
+    /// * `ops` PathOp iterator.
+    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Self
+        where T: IntoIterator<Item=&'a PathOp>
+    {
+        self.add_ops(ops);
         let n_subs = self.fig.sub_count();
         for i in 0..n_subs {
             self.stroke_sub(i);

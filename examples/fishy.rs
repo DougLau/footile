@@ -19,14 +19,12 @@ fn main() {
                           .build();
     let mut p = Plotter::new(128, 128);
     let mut r = Raster::new(p.width(), p.height());
-    p.add_ops(&fish);
-    p.fill(FillRule::NonZero);
+    p.fill(&fish, FillRule::NonZero);
     r.composite(p.mask(), [127u8, 96u8, 96u8]);
-    p.clear().stroke();
+    p.clear().stroke(&fish);
     r.composite(p.mask(), [255u8, 208u8, 208u8]);
     p.clear().reset();
-    p.add_ops(&eye);
-    p.stroke();
+    p.stroke(&eye);
     r.composite(p.mask(), [0u8, 0u8, 0u8]);
     r.write_png("./fishy.png").unwrap();
 }

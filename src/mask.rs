@@ -24,8 +24,7 @@ use imgbuf::{accumulate_non_zero, accumulate_odd};
 ///                        .line_to(90f32, 90f32)
 ///                        .build();
 /// let mut p = Plotter::new(100, 100);
-/// p.add_ops(&path);
-/// p.stroke();
+/// p.stroke(&path);
 /// let m = p.mask();
 /// ```
 pub struct Mask {
