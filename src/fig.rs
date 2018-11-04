@@ -12,7 +12,7 @@ use mask::Mask;
 use path::FillRule;
 
 /// Vertex ID
-pub type Vid = u16;
+type Vid = u16;
 
 /// Fixed-point type for fast calculations
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -22,7 +22,7 @@ struct Fixed {
 
 /// Figure direction enum
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub enum FigDir {
+enum FigDir {
     Forward,
     Reverse,
 }
@@ -502,8 +502,7 @@ impl Fig {
     /// * `mask` Output mask.
     /// * `sgn_area` Signed area buffer.
     /// * `rule` Fill rule.
-    pub fn fill(&mut self, mask: &mut Mask, sgn_area: &mut [i16],rule: FillRule)
-    {
+    pub fn fill(&self, mask: &mut Mask, sgn_area: &mut [i16], rule: FillRule) {
         let n_points = self.points.len() as Vid;
         let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
         vids.sort_by(|a,b| self.compare_vids(*a, *b));
@@ -521,7 +520,7 @@ impl Fig {
 
 impl<'a> Scanner<'a> {
     /// Create a new figure scanner struct
-    fn new(fig: &'a mut Fig, mask: &'a mut Mask, sgn_area: &'a mut [i16],
+    fn new(fig: &'a Fig, mask: &'a mut Mask, sgn_area: &'a mut [i16],
            dir: FigDir, rule: FillRule) -> Scanner<'a>
     {
         assert!(mask.width() <= sgn_area.len() as u32);

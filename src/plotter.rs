@@ -3,9 +3,9 @@
 // Copyright (c) 2017-2018  Douglas P Lau
 //
 use fig::Fig;
-use stroker::{Dir, Stroke, Vid};
+use stroker::Stroke;
 use path::{FillRule, JoinStyle, PathOp};
-use geom::{Transform, Vec2, Vec2w, float_lerp, intersection};
+use geom::{Transform, Vec2, Vec2w, float_lerp};
 use mask::Mask;
 
 /// Plotter for 2D vector paths.
@@ -306,145 +306,12 @@ impl Plotter {
     pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Self
         where T: IntoIterator<Item=&'a PathOp>
     {
-        let mut stroke = Stroke::new();
-        let mut sfig = Fig::new();
+        let mut stroke = Stroke::new(self.join_style, self.tol_sq);
         self.add_ops(ops, &mut stroke);
-        let n_subs = stroke.sub_count();
-        for i in 0..n_subs {
-            self.stroke_sub(&stroke, &mut sfig, i);
-        }
-        sfig.fill(&mut self.mask, &mut self.sgn_area[..], FillRule::NonZero);
+        // FIXME: this should create a new PathOp iterator
+        let fig = stroke.to_fig();
+        fig.fill(&mut self.mask, &mut self.sgn_area[..], FillRule::NonZero);
         self
-    }
-    /// Stroke one sub-figure.
-    fn stroke_sub(&mut self, stroke: &Stroke, sfig: &mut Fig, i: usize) {
-        if stroke.sub_points(i) > 0 {
-            let start = stroke.sub_start(i);
-            let end = stroke.sub_end(i);
-            let joined = stroke.sub_joined(i);
-            self.stroke_side(stroke, sfig, i, start, Dir::Forward);
-            if joined {
-                sfig.close(true);
-            }
-            self.stroke_side(stroke, sfig, i, end, Dir::Reverse);
-            sfig.close(joined);
-        }
-    }
-    /// Stroke one side of a sub-figure to another figure.
-    fn stroke_side(&mut self, stroke: &Stroke, sfig: &mut Fig, i: usize,
-        start: Vid, dir: Dir)
-    {
-        let mut xr: Option<(Vec2, Vec2)> = None;
-        let mut v0 = start;
-        let mut v1 = stroke.next(v0, dir);
-        let joined = stroke.sub_joined(i);
-        for _ in 0..stroke.sub_points(i) {
-            let p0 = stroke.get_point(v0);
-            let p1 = stroke.get_point(v1);
-            let bounds = self.stroke_offset(p0, p1);
-            let (pr0, pr1) = bounds;
-            if let Some((xr0, xr1)) = xr {
-                self.stroke_join(sfig, p0, xr0, xr1, pr0, pr1);
-            } else if !joined {
-                self.stroke_point(sfig, pr0);
-            }
-            xr = Some(bounds);
-            v0 = v1;
-            v1 = stroke.next(v1, dir);
-        }
-        if !joined {
-            if let Some((_, xr1)) = xr {
-                self.stroke_point(sfig, xr1);
-            }
-        }
-    }
-    /// Offset segment by half stroke width.
-    ///
-    /// * `p0` First point.
-    /// * `p1` Second point.
-    fn stroke_offset(&self, p0: Vec2w, p1: Vec2w) -> (Vec2, Vec2) {
-        // FIXME: scale offset to allow user units as well as pixel units
-        let pp0 = p0.v;
-        let pp1 = p1.v;
-        let vr = (pp1 - pp0).right().normalize();
-        let pr0 = pp0 + vr * (p0.w / 2f32);
-        let pr1 = pp1 + vr * (p1.w / 2f32);
-        (pr0, pr1)
-    }
-    /// Add a point to stroke figure.
-    fn stroke_point(&mut self, sfig: &mut Fig, pt: Vec2) {
-        sfig.add_point(Vec2w::new(pt.x, pt.y, 1f32));
-    }
-    /// Add a stroke join.
-    ///
-    /// * `p` Join point (with stroke width).
-    /// * `a0` First point of A segment.
-    /// * `a1` Second point of A segment.
-    /// * `b0` First point of B segment.
-    /// * `b1` Second point of B segment.
-    fn stroke_join(&mut self, sfig: &mut Fig, p: Vec2w, a0: Vec2, a1: Vec2,
-        b0: Vec2, b1: Vec2)
-    {
-        match self.join_style {
-            JoinStyle::Miter(ml) => self.stroke_miter(sfig, a0, a1, b0, b1, ml),
-            JoinStyle::Bevel     => self.stroke_bevel(sfig, a1, b0),
-            JoinStyle::Round     => self.stroke_round(sfig, p, a0, a1, b0, b1),
-        }
-    }
-    /// Add a miter join.
-    fn stroke_miter(&mut self, sfig: &mut Fig, a0: Vec2, a1: Vec2, b0: Vec2,
-        b1: Vec2, ml: f32)
-    {
-        // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
-        //      so: stroke_width / miter_length = sin ( theta / 2 )
-        if ml > 0f32 {
-            // Minimum stroke:miter ratio
-            let sm_min = 1f32 / ml;
-            let th = (a1 - a0).angle_rel(b0 - b1);
-            let sm = (th / 2f32).sin().abs();
-            if sm >= sm_min && sm < 1f32 {
-                // Calculate miter point
-                if let Some(xp) = intersection(a0, a1, b0, b1) {
-                    self.stroke_point(sfig, xp);
-                    return;
-                }
-            }
-        }
-        self.stroke_bevel(sfig, a1, b0);
-    }
-    /// Add a bevel join.
-    fn stroke_bevel(&mut self, sfig: &mut Fig, a1: Vec2, b0: Vec2) {
-        self.stroke_point(sfig, a1);
-        self.stroke_point(sfig, b0);
-    }
-    /// Add a round join.
-    ///
-    /// * `p` Join point (with stroke width).
-    /// * `a1` Second point of A segment.
-    /// * `b0` First point of B segment.
-    fn stroke_round(&mut self, sfig: &mut Fig, p: Vec2w, a0: Vec2, a1: Vec2,
-        b0: Vec2, b1: Vec2)
-    {
-        let th = (a1 - a0).angle_rel(b0 - b1);
-        if th <= 0f32 {
-            self.stroke_bevel(sfig, a1, b0);
-        } else {
-            self.stroke_point(sfig, a1);
-            self.stroke_arc(sfig, p, a1, b0);
-        }
-    }
-    /// Add a stroke arc.
-    fn stroke_arc(&mut self, sfig: &mut Fig, p: Vec2w, a: Vec2, b: Vec2) {
-        let p2 = p.v;
-        let vr = (b - a).right().normalize();
-        let c = p2 + vr * (p.w / 2f32);
-        let ab = a.midpoint(b);
-        if self.is_within_tolerance2(c, ab) {
-            self.stroke_point(sfig, b);
-        } else {
-            self.stroke_arc(sfig, p, a, c);
-            self.stroke_arc(sfig, p, c, b);
-        }
     }
     /// Get the mask.
     pub fn mask(&self) -> &Mask {
