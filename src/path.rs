@@ -25,11 +25,17 @@ pub enum JoinStyle {
 
 /// Path operation.
 pub enum PathOp {
+    /// Close the path
     Close(),
+    /// Move to (x, y)
     Move(f32, f32),
+    /// Straight line to (x, y)
     Line(f32, f32),
+    /// Quadratic bézier curve (cx, cy, x, y)
     Quad(f32, f32, f32, f32),
+    /// Cubic bézier curve (ax, ay, bx, by, x, y)
     Cubic(f32, f32, f32, f32, f32, f32),
+    /// Set pen width (for stroking)
     PenWidth(f32),
 }
 

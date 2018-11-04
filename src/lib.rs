@@ -19,6 +19,6 @@ mod raster;
 
 pub use geom::Transform;
 pub use mask::Mask;
-pub use path::{FillRule, JoinStyle, Path2D, PathBuilder};
+pub use path::{FillRule, JoinStyle, Path2D, PathBuilder, PathOp};
 pub use plotter::Plotter;
 pub use raster::Raster;
