@@ -73,7 +73,7 @@ impl Plotter {
         self.mask.height()
     }
     /// Reset path and pen.
-    pub fn reset(&mut self) -> &mut Self {
+    fn reset(&mut self) -> &mut Self {
         self.fig.reset();
         self.sfig.reset();
         self.pen = Vec2w::new(0f32, 0f32, self.s_width);
@@ -124,6 +124,7 @@ impl Plotter {
     fn add_ops<'a, T>(&mut self, ops: T)
         where T: IntoIterator<Item=&'a PathOp>
     {
+        self.reset();
         for op in ops {
             self.add_op(op);
         }

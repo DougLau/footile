@@ -23,8 +23,7 @@ fn main() {
     r.composite(p.mask(), [127u8, 96u8, 96u8]);
     p.clear().stroke(&fish);
     r.composite(p.mask(), [255u8, 208u8, 208u8]);
-    p.clear().reset();
-    p.stroke(&eye);
+    p.clear().stroke(&eye);
     r.composite(p.mask(), [0u8, 0u8, 0u8]);
     r.write_png("./fishy.png").unwrap();
 }

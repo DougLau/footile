@@ -16,7 +16,7 @@ let mut p = Plotter::new(128, 128);
 let mut r = Raster::new(p.width(), p.height());
 p.fill(&fish, FillRule::NonZero);
 r.composite(p.mask(), [127u8, 96u8, 96u8]);
-p.clear().stroke();
+p.clear().stroke(&fish);
 r.composite(p.mask(), [255u8, 208u8, 208u8]);
 r.write_png("./fishy.png")?;
 ```
