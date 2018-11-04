@@ -516,12 +516,6 @@ impl Fig {
             sub.done = true;
         }
     }
-    /// Reset the figure (clear all points).
-    pub fn reset(&mut self) {
-        self.points.clear();
-        self.subs.clear();
-        self.subs.push(SubFig::new(0 as Vid));
-    }
     /// Compare two figure vertex IDs
     fn compare_vids(&self, v0: Vid, v1: Vid) -> Ordering {
         let p0 = self.get_point2(v0);
