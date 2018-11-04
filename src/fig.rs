@@ -219,16 +219,6 @@ impl SubFig {
             },
         }
     }
-    /// Get count of points
-    fn count(&self) -> Vid {
-        if self.joined {
-            self.n_points + 1 as Vid
-        } else if self.n_points > 0 {
-            self.n_points - 1 as Vid
-        } else {
-            0 as Vid
-        }
-    }
 }
 
 impl Edge {
@@ -357,27 +347,6 @@ impl Fig {
         subs.push(SubFig::new(0 as Vid));
         Fig { points: points, subs: subs }
     }
-    /// Get the count of sub-figures
-    pub fn sub_count(&self) -> usize {
-        self.subs.len()
-    }
-    /// Get start of a sub-figure
-    pub fn sub_start(&self, i: usize) -> Vid {
-        self.subs[i].start
-    }
-    /// Get end of a sub-figure
-    pub fn sub_end(&self, i: usize) -> Vid {
-        let sub = &self.subs[i];
-        sub.next(sub.start, FigDir::Reverse)
-    }
-    /// Check if a sub-figure is joined
-    pub fn sub_joined(&self, i: usize) -> bool {
-        self.subs[i].joined
-    }
-    /// Get the number of points in a sub-figure
-    pub fn sub_points(&self, i: usize) -> Vid {
-        self.subs[i].count()
-    }
     /// Get the current sub-figure
     fn sub_current(&mut self) -> &mut SubFig {
         let len = self.subs.len();
@@ -406,7 +375,7 @@ impl Fig {
         unreachable!();
     }
     /// Get next vertex
-    pub fn next(&self, vid: Vid, dir: FigDir) -> Vid {
+    fn next(&self, vid: Vid, dir: FigDir) -> Vid {
         let sub = self.sub_at(vid);
         sub.next(vid, dir)
     }
@@ -467,13 +436,13 @@ impl Fig {
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
-    pub fn get_point(&self, vid: Vid) -> Vec2w {
+    fn get_point(&self, vid: Vid) -> Vec2w {
         self.points[vid as usize]
     }
     /// Get a point (Vec2).
     ///
     /// * `vid` Vertex ID.
-    pub fn get_point2(&self, vid: Vid) -> Vec2 {
+    fn get_point2(&self, vid: Vid) -> Vec2 {
         self.points[vid as usize].v
     }
     /// Get Y value at a vertex.

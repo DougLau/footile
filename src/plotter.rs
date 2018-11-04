@@ -2,7 +2,8 @@
 //
 // Copyright (c) 2017-2018  Douglas P Lau
 //
-use fig::{Fig, FigDir, Vid};
+use fig::Fig;
+use stroker::{Dir, Stroke, Vid};
 use path::{FillRule, JoinStyle, PathOp};
 use geom::{Transform, Vec2, Vec2w, float_lerp, intersection};
 use mask::Mask;
@@ -53,6 +54,15 @@ impl PlotDest for Fig {
     }
     fn close(&mut self, joined: bool) {
         Fig::close(self, joined);
+    }
+}
+
+impl PlotDest for Stroke {
+    fn add_point(&mut self, pt: Vec2w) {
+        Stroke::add_point(self, pt);
+    }
+    fn close(&mut self, joined: bool) {
+        Stroke::close(self, joined);
     }
 }
 
@@ -296,41 +306,41 @@ impl Plotter {
     pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Self
         where T: IntoIterator<Item=&'a PathOp>
     {
-        let mut fig = Fig::new();
+        let mut stroke = Stroke::new();
         let mut sfig = Fig::new();
-        self.add_ops(ops, &mut fig);
-        let n_subs = fig.sub_count();
+        self.add_ops(ops, &mut stroke);
+        let n_subs = stroke.sub_count();
         for i in 0..n_subs {
-            self.stroke_sub(&fig, &mut sfig, i);
+            self.stroke_sub(&stroke, &mut sfig, i);
         }
         sfig.fill(&mut self.mask, &mut self.sgn_area[..], FillRule::NonZero);
         self
     }
     /// Stroke one sub-figure.
-    fn stroke_sub(&mut self, fig: &Fig, sfig: &mut Fig, i: usize) {
-        if fig.sub_points(i) > 0 {
-            let start = fig.sub_start(i);
-            let end = fig.sub_end(i);
-            let joined = fig.sub_joined(i);
-            self.stroke_side(fig, sfig, i, start, FigDir::Forward);
+    fn stroke_sub(&mut self, stroke: &Stroke, sfig: &mut Fig, i: usize) {
+        if stroke.sub_points(i) > 0 {
+            let start = stroke.sub_start(i);
+            let end = stroke.sub_end(i);
+            let joined = stroke.sub_joined(i);
+            self.stroke_side(stroke, sfig, i, start, Dir::Forward);
             if joined {
                 sfig.close(true);
             }
-            self.stroke_side(fig, sfig, i, end, FigDir::Reverse);
+            self.stroke_side(stroke, sfig, i, end, Dir::Reverse);
             sfig.close(joined);
         }
     }
     /// Stroke one side of a sub-figure to another figure.
-    fn stroke_side(&mut self, fig: &Fig, sfig: &mut Fig, i: usize, start: Vid,
-        dir: FigDir)
+    fn stroke_side(&mut self, stroke: &Stroke, sfig: &mut Fig, i: usize,
+        start: Vid, dir: Dir)
     {
         let mut xr: Option<(Vec2, Vec2)> = None;
         let mut v0 = start;
-        let mut v1 = fig.next(v0, dir);
-        let joined = fig.sub_joined(i);
-        for _ in 0..fig.sub_points(i) {
-            let p0 = fig.get_point(v0);
-            let p1 = fig.get_point(v1);
+        let mut v1 = stroke.next(v0, dir);
+        let joined = stroke.sub_joined(i);
+        for _ in 0..stroke.sub_points(i) {
+            let p0 = stroke.get_point(v0);
+            let p1 = stroke.get_point(v1);
             let bounds = self.stroke_offset(p0, p1);
             let (pr0, pr1) = bounds;
             if let Some((xr0, xr1)) = xr {
@@ -340,7 +350,7 @@ impl Plotter {
             }
             xr = Some(bounds);
             v0 = v1;
-            v1 = fig.next(v1, dir);
+            v1 = stroke.next(v1, dir);
         }
         if !joined {
             if let Some((_, xr1)) = xr {
