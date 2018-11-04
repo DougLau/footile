@@ -1,22 +1,20 @@
-#![feature(test)]
-extern crate test;
+#[macro_use]
+extern crate criterion;
 extern crate footile;
 
 use footile::*;
-use test::Bencher;
+use criterion::Criterion;
 
-#[bench]
-fn fill_fishy(b: &mut Bencher) {
-    b.iter(|| fill_fishy2())
+fn fill_fishy(c: &mut Criterion) {
+    c.bench_function("fill_fishy", |b| b.iter(|| fill_fishy2()));
 }
 
 fn fill_fishy2() {
     make_fishy().fill(FillRule::NonZero);
 }
 
-#[bench]
-fn stroke_fishy(b: &mut Bencher) {
-    b.iter(|| stroke_fishy2())
+fn stroke_fishy(c: &mut Criterion) {
+    c.bench_function("stroke_fishy", |b| b.iter(|| stroke_fishy2()));
 }
 
 fn stroke_fishy2() {
@@ -36,3 +34,6 @@ fn make_fishy() -> Plotter {
     p.add_ops(&fish);
     p
 }
+
+criterion_group!(benches, fill_fishy, stroke_fishy);
+criterion_main!(benches);

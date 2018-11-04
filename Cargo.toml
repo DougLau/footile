@@ -11,3 +11,10 @@ repository = "https://github.com/DougLau/footile"
 [dependencies]
 png = "0.10"
 palette = "0.2"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "fishyb"
+harness = false
