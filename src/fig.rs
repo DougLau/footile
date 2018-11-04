@@ -66,7 +66,6 @@ pub struct Fig {
 }
 
 /// Figure scanner structure
-#[allow(dead_code)]
 struct Scanner<'a> {
     fig      : &'a Fig,         // the figure
     mask     : &'a mut Mask,    // alpha mask
