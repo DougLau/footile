@@ -308,10 +308,8 @@ impl Plotter {
     {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
         self.add_ops(ops, &mut stroke);
-        // FIXME: this should create a new PathOp iterator
-        let fig = stroke.to_fig();
-        fig.fill(&mut self.mask, &mut self.sgn_area[..], FillRule::NonZero);
-        self
+        let ops = stroke.path_ops();
+        self.fill(ops.iter(), FillRule::NonZero)
     }
     /// Get the mask.
     pub fn mask(&self) -> &Mask {

@@ -3,9 +3,8 @@
 // Copyright (c) 2017-2018  Douglas P Lau
 //
 use std::fmt;
-use fig::Fig;
 use geom::{Vec2, Vec2w, intersection};
-use path::JoinStyle;
+use path::{JoinStyle, PathOp};
 
 /// Vertex ID
 type Vid = u16;
@@ -194,31 +193,34 @@ impl Stroke {
             sub.done = true;
         }
     }
-    /// Create a fig of the stroke
-    pub fn to_fig(&self) -> Fig {
-        let mut fig = Fig::new();
+    /// Create path ops of the stroke
+    pub fn path_ops(&self) -> Vec<PathOp> {
+        // FIXME: this should make a lazy iterator
+        let mut ops = vec!();
         let n_subs = self.sub_count();
         for i in 0..n_subs {
-            self.stroke_sub(&mut fig, i);
+            self.stroke_sub(&mut ops, i);
         }
-        fig
+        ops
     }
     /// Stroke one sub-figure.
-    fn stroke_sub(&self, fig: &mut Fig, i: usize) {
+    fn stroke_sub(&self, ops: &mut Vec<PathOp>, i: usize) {
         if self.sub_points(i) > 0 {
             let start = self.sub_start(i);
             let end = self.sub_end(i);
             let joined = self.sub_joined(i);
-            self.stroke_side(fig, i, start, Dir::Forward);
+            self.stroke_side(ops, i, start, Dir::Forward);
             if joined {
-                fig.close(true);
+                ops.push(PathOp::Close());
             }
-            self.stroke_side(fig, i, end, Dir::Reverse);
-            fig.close(joined);
+            self.stroke_side(ops, i, end, Dir::Reverse);
+            ops.push(PathOp::Close());
         }
     }
     /// Stroke one side of a sub-figure to another figure.
-    fn stroke_side(&self, fig: &mut Fig, i: usize, start: Vid, dir: Dir) {
+    fn stroke_side(&self, ops: &mut Vec<PathOp>, i: usize, start: Vid,
+        dir: Dir)
+    {
         let mut xr: Option<(Vec2, Vec2)> = None;
         let mut v0 = start;
         let mut v1 = self.next(v0, dir);
@@ -229,9 +231,9 @@ impl Stroke {
             let bounds = self.stroke_offset(p0, p1);
             let (pr0, pr1) = bounds;
             if let Some((xr0, xr1)) = xr {
-                self.stroke_join(fig, p0, xr0, xr1, pr0, pr1);
+                self.stroke_join(ops, p0, xr0, xr1, pr0, pr1);
             } else if !joined {
-                self.stroke_point(fig, pr0);
+                self.stroke_point(ops, pr0);
             }
             xr = Some(bounds);
             v0 = v1;
@@ -239,7 +241,7 @@ impl Stroke {
         }
         if !joined {
             if let Some((_, xr1)) = xr {
-                self.stroke_point(fig, xr1);
+                self.stroke_point(ops, xr1);
             }
         }
     }
@@ -257,8 +259,8 @@ impl Stroke {
         (pr0, pr1)
     }
     /// Add a point to stroke figure.
-    fn stroke_point(&self, fig: &mut Fig, pt: Vec2) {
-        fig.add_point(Vec2w::new(pt.x, pt.y, 1f32));
+    fn stroke_point(&self, ops: &mut Vec<PathOp>, pt: Vec2) {
+        ops.push(PathOp::Line(pt.x, pt.y));
     }
     /// Add a stroke join.
     ///
@@ -267,17 +269,17 @@ impl Stroke {
     /// * `a1` Second point of A segment.
     /// * `b0` First point of B segment.
     /// * `b1` Second point of B segment.
-    fn stroke_join(&self, fig: &mut Fig, p: Vec2w, a0: Vec2, a1: Vec2,
+    fn stroke_join(&self, ops: &mut Vec<PathOp>, p: Vec2w, a0: Vec2, a1: Vec2,
         b0: Vec2, b1: Vec2)
     {
         match self.join_style {
-            JoinStyle::Miter(ml) => self.stroke_miter(fig, a0, a1, b0, b1, ml),
-            JoinStyle::Bevel     => self.stroke_bevel(fig, a1, b0),
-            JoinStyle::Round     => self.stroke_round(fig, p, a0, a1, b0, b1),
+            JoinStyle::Miter(ml) => self.stroke_miter(ops, a0, a1, b0, b1, ml),
+            JoinStyle::Bevel     => self.stroke_bevel(ops, a1, b0),
+            JoinStyle::Round     => self.stroke_round(ops, p, a0, a1, b0, b1),
         }
     }
     /// Add a miter join.
-    fn stroke_miter(&self, fig: &mut Fig, a0: Vec2, a1: Vec2, b0: Vec2,
+    fn stroke_miter(&self, ops: &mut Vec<PathOp>, a0: Vec2, a1: Vec2, b0: Vec2,
         b1: Vec2, ml: f32)
     {
         // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
@@ -290,45 +292,45 @@ impl Stroke {
             if sm >= sm_min && sm < 1f32 {
                 // Calculate miter point
                 if let Some(xp) = intersection(a0, a1, b0, b1) {
-                    self.stroke_point(fig, xp);
+                    self.stroke_point(ops, xp);
                     return;
                 }
             }
         }
-        self.stroke_bevel(fig, a1, b0);
+        self.stroke_bevel(ops, a1, b0);
     }
     /// Add a bevel join.
-    fn stroke_bevel(&self, fig: &mut Fig, a1: Vec2, b0: Vec2) {
-        self.stroke_point(fig, a1);
-        self.stroke_point(fig, b0);
+    fn stroke_bevel(&self, ops: &mut Vec<PathOp>, a1: Vec2, b0: Vec2) {
+        self.stroke_point(ops, a1);
+        self.stroke_point(ops, b0);
     }
     /// Add a round join.
     ///
     /// * `p` Join point (with stroke width).
     /// * `a1` Second point of A segment.
     /// * `b0` First point of B segment.
-    fn stroke_round(&self, fig: &mut Fig, p: Vec2w, a0: Vec2, a1: Vec2,
+    fn stroke_round(&self, ops: &mut Vec<PathOp>, p: Vec2w, a0: Vec2, a1: Vec2,
         b0: Vec2, b1: Vec2)
     {
         let th = (a1 - a0).angle_rel(b0 - b1);
         if th <= 0f32 {
-            self.stroke_bevel(fig, a1, b0);
+            self.stroke_bevel(ops, a1, b0);
         } else {
-            self.stroke_point(fig, a1);
-            self.stroke_arc(fig, p, a1, b0);
+            self.stroke_point(ops, a1);
+            self.stroke_arc(ops, p, a1, b0);
         }
     }
     /// Add a stroke arc.
-    fn stroke_arc(&self, fig: &mut Fig, p: Vec2w, a: Vec2, b: Vec2) {
+    fn stroke_arc(&self, ops: &mut Vec<PathOp>, p: Vec2w, a: Vec2, b: Vec2) {
         let p2 = p.v;
         let vr = (b - a).right().normalize();
         let c = p2 + vr * (p.w / 2f32);
         let ab = a.midpoint(b);
         if self.is_within_tolerance2(c, ab) {
-            self.stroke_point(fig, b);
+            self.stroke_point(ops, b);
         } else {
-            self.stroke_arc(fig, p, a, c);
-            self.stroke_arc(fig, p, c, b);
+            self.stroke_arc(ops, p, a, c);
+            self.stroke_arc(ops, p, c, b);
         }
     }
 }
