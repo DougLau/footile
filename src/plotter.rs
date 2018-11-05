@@ -99,10 +99,9 @@ impl Plotter {
     pub fn height(&self) -> u32 {
         self.mask.height()
     }
-    /// Reset path and pen.
-    fn reset(&mut self) -> &mut Self {
+    /// Reset pen.
+    fn reset(&mut self) {
         self.pen = Vec2w::new(0f32, 0f32, self.s_width);
-        self
     }
     /// Clear the mask.
     pub fn clear(&mut self) -> &mut Self {
@@ -169,7 +168,7 @@ impl Plotter {
     /// Close current sub-path and move pen to origin.
     fn close<D: PlotDest>(&mut self, dst: &mut D) {
         dst.close(true);
-        self.pen = Vec2w::new(0f32, 0f32, self.s_width);
+        self.reset();
     }
     /// Move pen to a point.
     ///
