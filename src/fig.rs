@@ -39,7 +39,6 @@ fn opposite(dir: FigDir) -> FigDir {
 struct SubFig {
     start    : Vid,     // starting point
     n_points : Vid,     // number of points
-    joined   : bool,    // joined ends flag
     done     : bool,    // done flag
 }
 
@@ -195,7 +194,6 @@ impl SubFig {
         SubFig {
             start    : start,
             n_points : 0 as Vid,
-            joined   : false,
             done     : false,
         }
     }
@@ -476,12 +474,9 @@ impl Fig {
         }
     }
     /// Close the current sub-figure.
-    ///
-    /// * `joined` If true, join ends of sub-figure.
-    pub fn close(&mut self, joined: bool) {
+    pub fn close(&mut self, _joined: bool) {
         if self.points.len() > 0 {
             let sub = self.sub_current();
-            sub.joined = joined;
             sub.done = true;
         }
     }
