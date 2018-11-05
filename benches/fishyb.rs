@@ -5,12 +5,16 @@ extern crate footile;
 use footile::*;
 use criterion::Criterion;
 
-fn fill_fishy(c: &mut Criterion) {
-    c.bench_function("fill_fishy", |b| b.iter(|| fill_fishy2()));
+fn fill_fishy_256(c: &mut Criterion) {
+    c.bench_function("fill_fishy_256", |b| b.iter(|| fill_fishy2(256)));
 }
 
-fn fill_fishy2() {
-    make_plotter().fill(&make_fishy(), FillRule::NonZero);
+fn fill_fishy_1024(c: &mut Criterion) {
+    c.bench_function("fill_fishy_1024", |b| b.iter(|| fill_fishy2(1024)));
+}
+
+fn fill_fishy2(i: u32) {
+    make_plotter(i).fill(&make_fishy(), FillRule::NonZero);
 }
 
 fn stroke_fishy(c: &mut Criterion) {
@@ -18,11 +22,11 @@ fn stroke_fishy(c: &mut Criterion) {
 }
 
 fn stroke_fishy2() {
-    make_plotter().stroke(&make_fishy());
+    make_plotter(256).stroke(&make_fishy());
 }
 
-fn make_plotter() -> Plotter {
-    let mut p = Plotter::new(256, 256);
+fn make_plotter(i: u32) -> Plotter {
+    let mut p = Plotter::new(i, i);
     p.set_transform(Transform::new_scale(2f32, 2f32));
     p
 }
@@ -38,5 +42,5 @@ fn make_fishy() -> Path2D {
                 .build()
 }
 
-criterion_group!(benches, fill_fishy, stroke_fishy);
+criterion_group!(benches, fill_fishy_256, fill_fishy_1024, stroke_fishy);
 criterion_main!(benches);
