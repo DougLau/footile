@@ -6,15 +6,35 @@ use footile::*;
 use criterion::Criterion;
 
 fn fill_fishy_256(c: &mut Criterion) {
-    c.bench_function("fill_fishy_256", |b| b.iter(|| fill_fishy2(256)));
+    c.bench_function("fill_fishy_256", |b| b.iter(|| fill_fishy(256)));
 }
 
-fn fill_fishy_1024(c: &mut Criterion) {
-    c.bench_function("fill_fishy_1024", |b| b.iter(|| fill_fishy2(1024)));
+fn fill_fishy_512(c: &mut Criterion) {
+    c.bench_function("fill_fishy_512", |b| b.iter(|| fill_fishy(512)));
 }
 
-fn fill_fishy2(i: u32) {
+fn fill_fishy(i: u32) {
     make_plotter(i).fill(&make_fishy(), FillRule::NonZero);
+}
+
+fn compose_fishy_256(c: &mut Criterion) {
+    let mut p = make_plotter(256);
+    p.fill(&make_fishy(), FillRule::NonZero);
+    c.bench_function("compose_fishy_256", move |b| {
+        let mut r = Raster::new(p.width(), p.height());
+        let m = p.mask();
+        b.iter(|| r.composite(m, [127u8, 96u8, 96u8]))
+    });
+}
+
+fn compose_fishy_512(c: &mut Criterion) {
+    let mut p = make_plotter(512);
+    p.fill(&make_fishy(), FillRule::NonZero);
+    c.bench_function("compose_fishy_512", move |b| {
+        let mut r = Raster::new(p.width(), p.height());
+        let m = p.mask();
+        b.iter(|| r.composite(m, [127u8, 96u8, 96u8]))
+    });
 }
 
 fn stroke_fishy(c: &mut Criterion) {
@@ -42,5 +62,6 @@ fn make_fishy() -> Path2D {
                 .build()
 }
 
-criterion_group!(benches, fill_fishy_256, fill_fishy_1024, stroke_fishy);
+criterion_group!(benches, fill_fishy_256, fill_fishy_512, compose_fishy_256,
+    compose_fishy_512, stroke_fishy);
 criterion_main!(benches);
