@@ -1,7 +1,7 @@
 // fishy.rs
 extern crate footile;
 
-use footile::{FillRule, PathBuilder, Plotter, Raster};
+use footile::{Color,FillRule,PathBuilder,Plotter,Raster};
 
 fn main() {
     let fish = PathBuilder::new().relative().pen_width(3f32)
@@ -20,10 +20,10 @@ fn main() {
     let mut p = Plotter::new(128, 128);
     let mut r = Raster::new(p.width(), p.height());
     p.fill(&fish, FillRule::NonZero);
-    r.composite(p.mask(), [127u8, 96u8, 96u8]);
+    r.composite(p.mask(), Color::rgb(127, 96, 96));
     p.clear().stroke(&fish);
-    r.composite(p.mask(), [255u8, 208u8, 208u8]);
+    r.composite(p.mask(), Color::rgb(255, 208, 208));
     p.clear().stroke(&eye);
-    r.composite(p.mask(), [0u8, 0u8, 0u8]);
+    r.composite(p.mask(), Color::rgb(0, 0, 0));
     r.write_png("./fishy.png").unwrap();
 }

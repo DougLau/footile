@@ -9,11 +9,83 @@ use mask::Mask;
 use png;
 use png::HasParameters;
 
+/// Simple RGB color
+#[derive(Clone,Copy,Debug)]
+pub struct Color {
+    red: u8,
+    green: u8,
+    blue: u8,
+    alpha: u8,
+}
+
+impl From<i32> for Color {
+    fn from(rgba: i32) -> Self {
+        let red   = (rgba >>  0) as u8;
+        let green = (rgba >>  8) as u8;
+        let blue  = (rgba >> 16) as u8;
+        let alpha = (rgba >> 24) as u8;
+        Color::rgba(red, green, blue, alpha)
+    }
+}
+
+impl From<Color> for i32 {
+    fn from(c: Color) -> i32 {
+        let red   = (c.red()   as i32) << 0;
+        let green = (c.green() as i32) << 8;
+        let blue  = (c.blue()  as i32) << 16;
+        let alpha = (c.alpha() as i32) << 24;
+        red | green | blue | alpha
+    }
+}
+
+impl Color {
+    pub fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
+        Color { red, green, blue, alpha }
+    }
+    pub fn rgb(red: u8, green: u8, blue: u8) -> Self {
+        Color::rgba(red, green, blue, 0xFF)
+    }
+    fn premultiply_alpha(self, alpha: u8) -> Self {
+        let red   = scale_u8(self.red(), alpha);
+        let green = scale_u8(self.green(), alpha);
+        let blue  = scale_u8(self.blue(), alpha);
+        let alpha = scale_u8(self.alpha(), alpha);
+        Color::rgba(red, green, blue, alpha)
+    }
+    fn unpremultiply_alpha(self) -> Self {
+        let alpha = self.alpha();
+        let red   = unscale_u8(self.red(), alpha);
+        let green = unscale_u8(self.green(), alpha);
+        let blue  = unscale_u8(self.blue(), alpha);
+        Color::rgba(red, green, blue, alpha)
+    }
+    pub fn red(self) -> u8 {
+        self.red
+    }
+    pub fn green(self) -> u8 {
+        self.green
+    }
+    pub fn blue(self) -> u8 {
+        self.blue
+    }
+    pub fn alpha(self) -> u8 {
+        self.alpha
+    }
+    fn over(self, bot: Color) -> Self {
+        let ia = 255 - self.alpha();
+        let red   = self.red()   + scale_u8(bot.red(), ia);
+        let green = self.green() + scale_u8(bot.green(), ia);
+        let blue  = self.blue()  + scale_u8(bot.blue(), ia);
+        let alpha = self.alpha() + scale_u8(bot.alpha(), ia);
+        Color::rgba(red, green, blue, alpha)
+    }
+}
+
 /// A raster image to composite plot output.
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder, Plotter, Raster};
+/// use footile::{Color,PathBuilder,Plotter,Raster};
 /// let path = PathBuilder::new().pen_width(5f32)
 ///                        .move_to(16f32, 48f32)
 ///                        .line_to(32f32, 0f32)
@@ -22,7 +94,7 @@ use png::HasParameters;
 /// let mut p = Plotter::new(100, 100);
 /// let mut r = Raster::new(p.width(), p.height());
 /// p.stroke(&path);
-/// r.composite(p.mask(), [208u8, 255u8, 208u8]);
+/// r.composite(p.mask(), Color::rgb(208, 255, 208));
 /// ```
 pub struct Raster {
     width  : u32,
@@ -30,11 +102,11 @@ pub struct Raster {
     pixels : Vec<u8>,
 }
 
-/// Scale a u8 value by another (mapping range to 0-1)
+/// Scale a u8 value by another (for alpha blending)
 fn scale_u8(a: u8, b: u8) -> u8 {
     let aa = a as u32;
     let bb = b as u32;
-    let c = (aa * bb + 255) >> 8;
+    let c = (aa * bb + 255) >> 8; // cheaper version of divide by 255
     c as u8
 }
 
@@ -57,7 +129,7 @@ impl Raster {
     pub fn new(width: u32, height: u32) -> Raster {
         let n = width as usize * height as usize * 4 as usize;
         let pixels = vec![0u8; n];
-        Raster { width: width, height: height, pixels: pixels }
+        Raster { width, height, pixels }
     }
     /// Clear all pixels.
     pub fn clear(&mut self) {
@@ -70,31 +142,20 @@ impl Raster {
     /// Composite a color with a mask.
     ///
     /// * `mask` Mask for compositing.
-    /// * `clr` RGB color.
-    pub fn composite(&mut self, mask: &Mask, clr: [u8; 3]) {
+    /// * `clr` Color to composite.
+    pub fn composite(&mut self, mask: &Mask, clr: Color) {
         self.composite_fallback(mask, clr);
     }
     /// Composite a color with a mask (slow fallback).
-    fn composite_fallback(&mut self, mask: &Mask, clr: [u8; 3]) {
+    fn composite_fallback(&mut self, mask: &Mask, clr: Color) {
         for (p, m) in self.pixels.chunks_mut(4).zip(mask.iter()) {
-            let a = *m;         // src alpha
-            let ia = 255 - a;   // 1 - src alpha
-            let src = (scale_u8(clr[0], a),     // src red
-                       scale_u8(clr[1], a),     // src green
-                       scale_u8(clr[2], a),     // src blue
-                       a);                      // src alpha
-            let dst = (scale_u8(p[0], p[3]),    // dst red
-                       scale_u8(p[1], p[3]),    // dst green
-                       scale_u8(p[2], p[3]),    // dst blue
-                       p[3]);                   // dst alpha
-            let out = (src.0 + scale_u8(dst.0, ia),
-                       src.1 + scale_u8(dst.1, ia),
-                       src.2 + scale_u8(dst.2, ia),
-                       src.3 + scale_u8(dst.3, ia));
-            p[0] = unscale_u8(out.0, out.3);
-            p[1] = unscale_u8(out.1, out.3);
-            p[2] = unscale_u8(out.2, out.3);
-            p[3] = out.3;
+            let top = clr.premultiply_alpha(*m);
+            let bot = Color::rgb(p[0], p[1], p[2]).premultiply_alpha(p[3]);
+            let out = top.over(bot).unpremultiply_alpha();
+            p[0] = out.red();
+            p[1] = out.green();
+            p[2] = out.blue();
+            p[3] = out.alpha();
         }
     }
     /// Write the raster to a PNG (portable network graphics) file.

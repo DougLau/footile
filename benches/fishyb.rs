@@ -23,7 +23,7 @@ fn compose_fishy_256(c: &mut Criterion) {
     c.bench_function("compose_fishy_256", move |b| {
         let mut r = Raster::new(p.width(), p.height());
         let m = p.mask();
-        b.iter(|| r.composite(m, [127u8, 96u8, 96u8]))
+        b.iter(|| r.composite(m, Color::rgb(127, 96, 96)))
     });
 }
 
@@ -33,7 +33,7 @@ fn compose_fishy_512(c: &mut Criterion) {
     c.bench_function("compose_fishy_512", move |b| {
         let mut r = Raster::new(p.width(), p.height());
         let m = p.mask();
-        b.iter(|| r.composite(m, [127u8, 96u8, 96u8]))
+        b.iter(|| r.composite(m, Color::rgb(127, 96, 96)))
     });
 }
 
