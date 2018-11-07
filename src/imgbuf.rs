@@ -45,8 +45,6 @@ fn saturating_cast_i16_u8(v: i16) -> u8 {
 unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
     let zero = _mm_setzero_si128();
     let mut sum = zero;
-    // mask for shuffling final sum into all lanes
-    let mask = _mm_set1_epi16(0x0F0E);
     let len = dst.len().min(src.len());
     let dst = dst.as_mut_ptr();
     let src = src.as_mut_ptr();
@@ -75,7 +73,7 @@ unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
         let b = _mm_packus_epi16(a, a);
         _mm_storel_epi64(d, b);
         // shuffle sum into all lanes
-        sum = _mm_shuffle_epi8(a, mask);
+        sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
     }
 }
 
@@ -111,8 +109,6 @@ fn accumulate_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
 unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
     let zero = _mm_setzero_si128();
     let mut sum = zero;
-    // mask for shuffling final sum into all lanes
-    let mask = _mm_set1_epi16(0x0F0E);
     for (d, s) in dst.chunks_mut(8).zip(src.chunks_mut(8)) {
         let d = d.as_mut_ptr() as *mut __m128i;
         let s = s.as_mut_ptr() as *mut __m128i;
@@ -141,7 +137,7 @@ unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
         let b = _mm_packus_epi16(v, v);
         _mm_storel_epi64(d, b);
         // shuffle sum into all lanes
-        sum = _mm_shuffle_epi8(a, mask);
+        sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
     }
 }
 
