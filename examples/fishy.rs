@@ -21,9 +21,9 @@ fn main() {
     let mut r = Raster::new(p.width(), p.height());
     p.fill(&fish, FillRule::NonZero);
     r.composite(p.mask(), Color::rgb(127, 96, 96));
-    p.clear().stroke(&fish);
+    p.clear_mask().stroke(&fish);
     r.composite(p.mask(), Color::rgb(255, 208, 208));
-    p.clear().stroke(&eye);
+    p.clear_mask().stroke(&eye);
     r.composite(p.mask(), Color::rgb(0, 0, 0));
     r.write_png("./fishy.png").unwrap();
 }

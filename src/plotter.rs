@@ -104,7 +104,7 @@ impl Plotter {
         self.pen = Vec2w::new(0f32, 0f32, self.s_width);
     }
     /// Clear the mask.
-    pub fn clear(&mut self) -> &mut Self {
+    pub fn clear_mask(&mut self) -> &mut Self {
         self.mask.clear();
         self
     }
