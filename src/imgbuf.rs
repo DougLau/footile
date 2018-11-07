@@ -3,6 +3,11 @@
 // Copyright (c) 2017-2018  Douglas P Lau
 //
 
+#[cfg(target_arch = "x86")]
+use std::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
+
 // Defining this allows easier testing of fallback configuration
 const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
 
@@ -38,11 +43,6 @@ fn saturating_cast_i16_u8(v: i16) -> u8 {
 /// Accumulate signed area with non-zero fill rule.
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
-    #[cfg(target_arch = "x86")]
-    use std::arch::x86::*;
-    #[cfg(target_arch = "x86_64")]
-    use std::arch::x86_64::*;
-
     let zero = _mm_setzero_si128();
     let mut sum = zero;
     // mask for shuffling final sum into all lanes
@@ -109,11 +109,6 @@ fn accumulate_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
 /// Accumulate signed area with even-odd fill rule.
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
-    #[cfg(target_arch = "x86")]
-    use std::arch::x86::*;
-    #[cfg(target_arch = "x86_64")]
-    use std::arch::x86_64::*;
-
     let zero = _mm_setzero_si128();
     let mut sum = zero;
     // mask for shuffling final sum into all lanes
