@@ -3,7 +3,7 @@ A 2D vector graphics library written in Rust
 
 ## Example
 ```rust
-use footile::{FillRule, PathBuilder, Plotter, Raster};
+use footile::{Color,FillRule,PathBuilder,Plotter,Raster};
 
 let fish = PathBuilder::new().relative().pen_width(3f32)
                        .move_to(112f32, 24f32)
@@ -15,8 +15,8 @@ let fish = PathBuilder::new().relative().pen_width(3f32)
 let mut p = Plotter::new(128, 128);
 let mut r = Raster::new(p.width(), p.height());
 p.fill(&fish, FillRule::NonZero);
-r.composite(p.mask(), [127u8, 96u8, 96u8]);
+r.composite(p.mask(), Color::rgb(127, 96, 96));
 p.clear().stroke(&fish);
-r.composite(p.mask(), [255u8, 208u8, 208u8]);
+r.composite(p.mask(), Color::rgb(255, 208, 208));
 r.write_png("./fishy.png")?;
 ```
