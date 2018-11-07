@@ -6,8 +6,6 @@ use std::fs::File;
 use std::io;
 use std::ptr;
 use mask::Mask;
-use palette::Rgba;
-use palette::Blend;
 use png;
 use png::HasParameters;
 
@@ -30,6 +28,25 @@ pub struct Raster {
     width  : u32,
     height : u32,
     pixels : Vec<u8>,
+}
+
+/// Scale a u8 value by another (mapping range to 0-1)
+fn scale_u8(a: u8, b: u8) -> u8 {
+    let aa = a as u32;
+    let bb = b as u32;
+    let c = (aa * bb + 255) >> 8;
+    c as u8
+}
+
+/// Unscale a u8
+fn unscale_u8(a: u8, b: u8) -> u8 {
+    if b > 0 {
+        let aa = (a as u32) << 8;
+        let bb = b as u32;
+        (aa / bb).min(255) as u8
+    } else {
+        0
+    }
 }
 
 impl Raster {
@@ -55,15 +72,29 @@ impl Raster {
     /// * `mask` Mask for compositing.
     /// * `clr` RGB color.
     pub fn composite(&mut self, mask: &Mask, clr: [u8; 3]) {
+        self.composite_fallback(mask, clr);
+    }
+    /// Composite a color with a mask (slow fallback).
+    fn composite_fallback(&mut self, mask: &Mask, clr: [u8; 3]) {
         for (p, m) in self.pixels.chunks_mut(4).zip(mask.iter()) {
-            let src = Rgba::<f32>::new_u8(clr[0], clr[1], clr[2], *m);
-            let dst = Rgba::<f32>::new_u8(p[0], p[1], p[2], p[3]);
-            let c = src.over(dst);
-            let d = c.to_pixel::<[u8; 4]>();
-            p[0] = d[0];
-            p[1] = d[1];
-            p[2] = d[2];
-            p[3] = d[3];
+            let a = *m;         // src alpha
+            let ia = 255 - a;   // 1 - src alpha
+            let src = (scale_u8(clr[0], a),     // src red
+                       scale_u8(clr[1], a),     // src green
+                       scale_u8(clr[2], a),     // src blue
+                       a);                      // src alpha
+            let dst = (scale_u8(p[0], p[3]),    // dst red
+                       scale_u8(p[1], p[3]),    // dst green
+                       scale_u8(p[2], p[3]),    // dst blue
+                       p[3]);                   // dst alpha
+            let out = (src.0 + scale_u8(dst.0, ia),
+                       src.1 + scale_u8(dst.1, ia),
+                       src.2 + scale_u8(dst.2, ia),
+                       src.3 + scale_u8(dst.3, ia));
+            p[0] = unscale_u8(out.0, out.3);
+            p[1] = unscale_u8(out.1, out.3);
+            p[2] = unscale_u8(out.2, out.3);
+            p[3] = out.3;
         }
     }
     /// Write the raster to a PNG (portable network graphics) file.
