@@ -1,9 +1,10 @@
 // fishy.rs
 extern crate footile;
 
+use std::error::Error;
 use footile::{Color,FillRule,PathBuilder,Plotter};
 
-fn main() {
+fn main() -> Result<(), Box<Error>> {
     let fish = PathBuilder::new().relative().pen_width(3f32)
                            .move_to(112f32, 24f32)
                            .line_to(-32f32, 24f32)
@@ -21,5 +22,6 @@ fn main() {
     p.fill(&fish, FillRule::NonZero).composite(Color::rgb(127, 96, 96));
     p.stroke(&fish).composite(Color::rgb(255, 208, 208));
     p.stroke(&eye).composite(Color::rgb(0, 0, 0));
-    p.raster().unwrap().write_png("./fishy.png").unwrap();
+    p.raster().unwrap().write_png("./fishy.png")?;
+    Ok(())
 }
