@@ -2,6 +2,7 @@
 //
 // Copyright (c) 2017-2018  Douglas P Lau
 //
+use std::io;
 use fig::Fig;
 use geom::{Transform, Vec2, Vec2w, float_lerp};
 use path::{FillRule, JoinStyle, PathOp};
@@ -13,8 +14,10 @@ use stroker::Stroke;
 ///
 /// This is a software vector rasterizer featuring high quality anti-aliasing.
 /// Paths can be created using [PathBuilder](struct.PathBuilder.html).
-/// When a plot is complete, a [Mask](struct.Mask.html) of the result can be
-/// used to composite a [Raster](struct.Raster.html).
+/// The plotter contains a [Mask](struct.Mask.html) of the current plot, which
+/// is affected by fill and stroke calls.  Using the color_over method will
+/// cause a [Raster](struct.Raster.html) to be created with the same height and
+/// width as the mask.
 ///
 /// # Example
 /// ```
@@ -313,10 +316,10 @@ impl Plotter {
         let ops = stroke.path_ops();
         self.fill(ops.iter(), FillRule::NonZero)
     }
-    /// Composite a color with the mask onto the raster.
+    /// Composite mask with a color onto raster, using "over".
     ///
     /// * `clr` Color to composite.
-    pub fn composite(&mut self, clr: Color) -> &mut Self {
+    pub fn color_over(&mut self, clr: Color) -> &mut Self {
         if self.raster.is_none() {
             self.raster = Some(Raster::new(self.width(), self.height()));
         }
@@ -332,5 +335,14 @@ impl Plotter {
     /// Get the raster.
     pub fn raster(&self) -> Option<&Raster> {
         self.raster.as_ref()
+    }
+    /// Write the plot to a PNG (portable network graphics) file.
+    ///
+    /// * `filename` Name of file to write.
+    pub fn write_png(&self, filename: &str) -> io::Result<()> {
+        match self.raster {
+            Some(ref r) => r.write_png(filename),
+            None        => self.mask.write_png(filename),
+        }
     }
 }

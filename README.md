@@ -13,7 +13,7 @@ let fish = PathBuilder::new().relative().pen_width(3f32)
                        .line_to(-16f32, -40f32)
                        .close().build();
 let mut p = Plotter::new(128, 128);
-p.fill(&fish, FillRule::NonZero).composite(Color::rgb(127, 96, 96));
-p.stroke(&fish).composite(Color::rgb(255, 208, 208));
-p.raster().unwrap().write_png("./fishy.png")?;
+p.fill(&fish, FillRule::NonZero).color_over(Color::rgb(127, 96, 96));
+p.stroke(&fish).color_over(Color::rgb(255, 208, 208));
+p.write_png("./fishy.png")?;
 ```

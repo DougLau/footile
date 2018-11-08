@@ -3,7 +3,7 @@ extern crate footile;
 
 use footile::{PathBuilder, Plotter};
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative().pen_width(3f32)
                            .move_to(50f32, 34f32)
                            .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
@@ -11,5 +11,5 @@ fn main() {
                            .close()
                            .build();
     let mut p = Plotter::new(100, 100);
-    p.stroke(&path).mask().write_png("./drop.png").unwrap();
+    p.stroke(&path).write_png("./drop.png")
 }

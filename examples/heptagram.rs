@@ -3,7 +3,7 @@ extern crate footile;
 
 use footile::{FillRule, PathBuilder, Plotter, Transform};
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     const PI: f32 = std::f32::consts::PI;
     let mut p = Plotter::new(100, 100);
     let h = (p.width() / 2u32) as f32;
@@ -17,5 +17,5 @@ fn main() {
     }
     let path = pb.close().build();
     p.fill(&path, FillRule::EvenOdd);
-    p.mask().write_png("./heptagram.png").unwrap();
+    p.write_png("./heptagram.png")
 }

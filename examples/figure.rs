@@ -3,7 +3,7 @@ extern crate footile;
 
 use footile::{FillRule, PathBuilder, Plotter};
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative()
                            .move_to(4f32, 4f32)
                            .line_to(28f32, 12f32)
@@ -16,5 +16,5 @@ fn main() {
                            .close().build();
     let mut p = Plotter::new(64, 64);
     p.fill(&path, FillRule::NonZero);
-    p.mask().write_png("./figure.png").unwrap();
+    p.write_png("./figure.png")
 }

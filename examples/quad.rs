@@ -3,11 +3,11 @@ extern crate footile;
 
 use footile::{PathBuilder, Plotter};
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative().pen_width(2f32)
                            .move_to(0f32, 16f32)
                            .quad_to(100f32, 16f32, 0f32, 32f32)
                            .build();
     let mut p = Plotter::new(64, 64);
-    p.stroke(&path).mask().write_png("./quad.png").unwrap();
+    p.stroke(&path).write_png("./quad.png")
 }
