@@ -89,6 +89,10 @@ impl Mask {
         let t = s + self.width as usize;
         &mut self.pixels[s..t]
     }
+    /// Get pixel slice
+    pub fn pixels(&self) -> &[u8] {
+        &self.pixels[..]
+    }
     /// Write the mask to a PGM (portable gray map) file.
     ///
     /// * `filename` Name of file to write.

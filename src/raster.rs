@@ -9,6 +9,14 @@ use mask::Mask;
 use png;
 use png::HasParameters;
 
+#[cfg(target_arch = "x86")]
+use std::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
+
+// Defining this allows easier testing of fallback configuration
+const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
+
 /// Simple RGB color
 #[derive(Clone,Copy,Debug)]
 pub struct Color {
@@ -110,6 +118,22 @@ fn scale_u8(a: u8, b: u8) -> u8 {
     c as u8
 }
 
+/// Scale packed u8 values from `a` by `b` (for alpha blending)
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+unsafe fn scale_u8x16_x86(a: __m128i, b: __m128i) -> __m128i {
+    let a_even = _mm_unpacklo_epi8(a, _mm_setzero_si128());
+    let b_even = _mm_unpacklo_epi8(b, _mm_setzero_si128());
+    // For even lanes, (a * b + 255) >> 8  -- (less work than / 255)
+    let even = _mm_mullo_epi16(a_even, b_even);
+    let even = _mm_srli_epi16(_mm_add_epi16(even, _mm_set1_epi16(255)), 8);
+    let a_odd = _mm_unpackhi_epi8(a, _mm_setzero_si128());
+    let b_odd = _mm_unpackhi_epi8(b, _mm_setzero_si128());
+    // For even lanes, (a * b + 255) >> 8  -- (less work than / 255)
+    let odd = _mm_mullo_epi16(a_odd, b_odd);
+    let odd = _mm_srli_epi16(_mm_add_epi16(odd, _mm_set1_epi16(255)), 8);
+    _mm_packus_epi16(even, odd)
+}
+
 /// Unscale a u8
 fn unscale_u8(a: u8, b: u8) -> u8 {
     if b > 0 {
@@ -119,6 +143,15 @@ fn unscale_u8(a: u8, b: u8) -> u8 {
     } else {
         0
     }
+}
+
+/// Swizzle alpha values (xxx3xxx2xxx1xxx0 => 3333222211110000)
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+unsafe fn swizzle_alpha_x86(v: __m128i) -> __m128i {
+        _mm_shuffle_epi8(v, _mm_set_epi8(15, 15, 15, 15,
+                                         11, 11, 11, 11,
+                                          7,  7,  7,  7,
+                                          3,  3,  3,  3))
 }
 
 impl Raster {
@@ -144,7 +177,11 @@ impl Raster {
     /// * `mask` Mask for compositing.
     /// * `clr` Color to composite.
     pub fn composite(&mut self, mask: &Mask, clr: Color) {
-        self.composite_fallback(mask, clr);
+        if X86 && is_x86_feature_detected!("ssse3") {
+            unsafe { self.composite_x86(mask, clr) }
+        } else {
+            self.composite_fallback(mask, clr);
+        }
     }
     /// Composite a color with a mask (slow fallback).
     fn composite_fallback(&mut self, mask: &Mask, clr: Color) {
@@ -156,6 +193,42 @@ impl Raster {
             p[1] = out.green();
             p[2] = out.blue();
             p[3] = out.alpha();
+        }
+    }
+    /// Composite a color with a mask.
+    #[cfg(any(target_arch="x86", target_arch="x86_64"))]
+    unsafe fn composite_x86(&mut self, mask: &Mask, clr: Color) {
+        let clr = _mm_set1_epi32(clr.into());
+        let src = mask.pixels();
+        let dst = &mut self.pixels[..];
+        let len = src.len().min(dst.len() / 4);
+        let dst = dst.as_mut_ptr();
+        let src = src.as_ptr();
+        // 4 pixels at a time
+        for i in (0..len).step_by(4) {
+            let off = i as isize;
+            let dst = dst.offset(off * 4) as *mut __m128i;
+            let src = src.offset(off) as *const i32;
+            // get 4 alpha values from src,
+            // then shuffle: 0123012301230123 => 0000111122223333
+            let ta = _mm_shuffle_epi8(_mm_set1_epi32(*src),
+                                      _mm_set_epi8(3, 3, 3, 3,
+                                                   2, 2, 2, 2,
+                                                   1, 1, 1, 1,
+                                                   0, 0, 0, 0));
+            // premultiply alpha for `top` color
+            let top = scale_u8x16_x86(clr, ta);
+            // swizzle final alpha: xxx0xxx1xxx2xxx3 => 0000111122223333
+            let alpha = swizzle_alpha_x86(top);
+            // inverse alpha (255 - alpha)
+            let ialpha = _mm_subs_epu8(_mm_set1_epi8(255u8 as i8), alpha);
+            // get RGBA values from dst
+            let bot = _mm_loadu_si128(dst);
+            // FIXME: color fringing bug around here
+            // compose top over bot
+            let out = _mm_adds_epi8(top, scale_u8x16_x86(bot, ialpha));
+            // store blended pixels
+            _mm_storeu_si128(dst, out);
         }
     }
     /// Divide alpha (remove premultiplied alpha)
