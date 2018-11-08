@@ -323,9 +323,10 @@ impl Plotter {
         if self.raster.is_none() {
             self.raster = Some(Raster::new(self.width(), self.height()));
         }
-        let mut r = self.raster.take().unwrap();
-        r.composite(self.mask(), clr);
-        self.raster = Some(r);
+        if let Some(mut r) = self.raster.take() {
+            r.composite(self.mask(), clr);
+            self.raster = Some(r);
+        }
         self.clear_mask()
     }
     /// Get the mask.
@@ -339,10 +340,11 @@ impl Plotter {
     /// Write the plot to a PNG (portable network graphics) file.
     ///
     /// * `filename` Name of file to write.
-    pub fn write_png(&self, filename: &str) -> io::Result<()> {
-        match self.raster {
-            Some(ref r) => r.write_png(filename),
-            None        => self.mask.write_png(filename),
+    pub fn write_png(&mut self, filename: &str) -> io::Result<()> {
+        if let Some(r) = self.raster.take() {
+            r.write_png(filename)
+        } else {
+            self.mask.write_png(filename)
         }
     }
 }

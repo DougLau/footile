@@ -45,14 +45,14 @@ impl Color {
     pub fn rgb(red: u8, green: u8, blue: u8) -> Self {
         Color::rgba(red, green, blue, 0xFF)
     }
-    fn premultiply_alpha(self, alpha: u8) -> Self {
+    fn multiply_alpha(self, alpha: u8) -> Self {
         let red   = scale_u8(self.red(), alpha);
         let green = scale_u8(self.green(), alpha);
         let blue  = scale_u8(self.blue(), alpha);
         let alpha = scale_u8(self.alpha(), alpha);
         Color::rgba(red, green, blue, alpha)
     }
-    fn unpremultiply_alpha(self) -> Self {
+    fn divide_alpha(self) -> Self {
         let alpha = self.alpha();
         let red   = unscale_u8(self.red(), alpha);
         let green = unscale_u8(self.green(), alpha);
@@ -106,7 +106,7 @@ pub struct Raster {
 fn scale_u8(a: u8, b: u8) -> u8 {
     let aa = a as u32;
     let bb = b as u32;
-    let c = (aa * bb + 255) >> 8; // cheaper version of divide by 255
+    let c = (aa * bb + 255) >> 8; // cheaper approximation of divide by 255
     c as u8
 }
 
@@ -149,9 +149,19 @@ impl Raster {
     /// Composite a color with a mask (slow fallback).
     fn composite_fallback(&mut self, mask: &Mask, clr: Color) {
         for (p, m) in self.pixels.chunks_mut(4).zip(mask.iter()) {
-            let top = clr.premultiply_alpha(*m);
-            let bot = Color::rgb(p[0], p[1], p[2]).premultiply_alpha(p[3]);
-            let out = top.over(bot).unpremultiply_alpha();
+            let top = clr.multiply_alpha(*m);
+            let bot = Color::rgba(p[0], p[1], p[2], p[3]);
+            let out = top.over(bot);
+            p[0] = out.red();
+            p[1] = out.green();
+            p[2] = out.blue();
+            p[3] = out.alpha();
+        }
+    }
+    /// Divide alpha (remove premultiplied alpha)
+    fn divide_alpha(&mut self) {
+        for p in self.pixels.chunks_mut(4) {
+            let out = Color::rgba(p[0], p[1], p[2], p[3]).divide_alpha();
             p[0] = out.red();
             p[1] = out.green();
             p[2] = out.blue();
@@ -161,7 +171,8 @@ impl Raster {
     /// Write the raster to a PNG (portable network graphics) file.
     ///
     /// * `filename` Name of file to write.
-    pub fn write_png(&self, filename: &str) -> io::Result<()> {
+    pub fn write_png(mut self, filename: &str) -> io::Result<()> {
+        self.divide_alpha();
         let fl = File::create(filename)?;
         let ref mut bw = io::BufWriter::new(fl);
         let mut enc = png::Encoder::new(bw, self.width, self.height);
