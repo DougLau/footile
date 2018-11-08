@@ -56,25 +56,33 @@ unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
         let mut a = _mm_loadu_si128(s);
         // zeroing now is faster than memset later
         _mm_storeu_si128(s, zero);
-        //   a7 a6 a5 a4 a3 a2 a1 a0
-        // + a3 a2 a1 a0 __ __ __ __
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
-        // + a5 a4 a3 a2 a1 a0 __ __
-        // + a1 a0 __ __ __ __ __ __
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
-        // + a6 a5 a4 a3 a2 a1 a0 __
-        // + a2 a1 a0 __ __ __ __ __
-        // + a4 a3 a2 a1 a0 __ __ __
-        // + a0 __ __ __ __ __ __ __
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 2));
+        // accumulate sum thru 8 pixels
+        a = accumulate_i16x8_x86(a);
         // add in previous sum
         a = _mm_add_epi16(a, sum);
         // pack to u8 using saturation
         let b = _mm_packus_epi16(a, a);
+        // store result to dest
         _mm_storel_epi64(d, b);
-        // shuffle sum into all lanes
+        // shuffle sum into all 16-bit lanes
         sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
     }
+}
+
+/// Accumulate signed area sum thru 8 pixels.
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+unsafe fn accumulate_i16x8_x86(mut a: __m128i) -> __m128i {
+    //   a7 a6 a5 a4 a3 a2 a1 a0
+    // + a3 a2 a1 a0 __ __ __ __
+    a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
+    // + a5 a4 a3 a2 a1 a0 __ __
+    // + a1 a0 __ __ __ __ __ __
+    a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
+    // + a6 a5 a4 a3 a2 a1 a0 __
+    // + a2 a1 a0 __ __ __ __ __
+    // + a4 a3 a2 a1 a0 __ __ __
+    // + a0 __ __ __ __ __ __ __
+    _mm_add_epi16(a, _mm_slli_si128(a, 2))
 }
 
 /// Accumulate signed area with even-odd fill rule.
@@ -116,17 +124,8 @@ unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
         let mut a = _mm_loadu_si128(s);
         // zeroing now is faster than memset later
         _mm_storeu_si128(s, zero);
-        //   a7 a6 a5 a4 a3 a2 a1 a0
-        // + a3 a2 a1 a0 __ __ __ __
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
-        // + a5 a4 a3 a2 a1 a0 __ __
-        // + a1 a0 __ __ __ __ __ __
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
-        // + a6 a5 a4 a3 a2 a1 a0 __
-        // + a2 a1 a0 __ __ __ __ __
-        // + a4 a3 a2 a1 a0 __ __ __
-        // + a0 __ __ __ __ __ __ __
-        a = _mm_add_epi16(a, _mm_slli_si128(a, 2));
+        // accumulate sum thru 8 pixels
+        a = accumulate_i16x8_x86(a);
         // add in previous sum
         a = _mm_add_epi16(a, sum);
         let mut v = _mm_and_si128(a, _mm_set1_epi16(0xFF));
@@ -135,8 +134,9 @@ unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
         v = _mm_abs_epi16(v);
         // pack to u8 using saturation
         let b = _mm_packus_epi16(v, v);
+        // store result to dest
         _mm_storel_epi64(d, b);
-        // shuffle sum into all lanes
+        // shuffle sum into all 16-bit lanes
         sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
     }
 }
