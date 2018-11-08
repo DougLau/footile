@@ -3,10 +3,11 @@
 // Copyright (c) 2017-2018  Douglas P Lau
 //
 use fig::Fig;
-use stroker::Stroke;
-use path::{FillRule, JoinStyle, PathOp};
 use geom::{Transform, Vec2, Vec2w, float_lerp};
+use path::{FillRule, JoinStyle, PathOp};
 use mask::Mask;
+use raster::{Color,Raster};
+use stroker::Stroke;
 
 /// Plotter for 2D vector paths.
 ///
@@ -28,6 +29,7 @@ use mask::Mask;
 /// ```
 pub struct Plotter {
     mask       : Mask,          // image mask
+    raster     : Option<Raster>,// image raster
     sgn_area   : Vec<i16>,      // signed area buffer
     pen        : Vec2w,         // current pen position and width
     transform  : Transform,     // user to pixel affine transform
@@ -83,6 +85,7 @@ impl Plotter {
         for _ in 0..cap-len { sgn_area.pop(); };
         Plotter {
             mask       : Mask::new(w, h),
+            raster     : None,
             sgn_area   : sgn_area,
             pen        : Vec2w::new(0f32, 0f32, 1f32),
             transform  : Transform::new(),
@@ -310,8 +313,24 @@ impl Plotter {
         let ops = stroke.path_ops();
         self.fill(ops.iter(), FillRule::NonZero)
     }
+    /// Composite a color with the mask onto the raster.
+    ///
+    /// * `clr` Color to composite.
+    pub fn composite(&mut self, clr: Color) -> &mut Self {
+        if self.raster.is_none() {
+            self.raster = Some(Raster::new(self.width(), self.height()));
+        }
+        let mut r = self.raster.take().unwrap();
+        r.composite(self.mask(), clr);
+        self.raster = Some(r);
+        self.clear_mask()
+    }
     /// Get the mask.
     pub fn mask(&self) -> &Mask {
         &self.mask
+    }
+    /// Get the raster.
+    pub fn raster(&self) -> Option<&Raster> {
+        self.raster.as_ref()
     }
 }
