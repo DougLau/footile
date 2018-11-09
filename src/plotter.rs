@@ -324,7 +324,7 @@ impl Plotter {
             self.raster = Some(Raster::new(self.width(), self.height()));
         }
         if let Some(mut r) = self.raster.take() {
-            r.composite(self.mask(), clr);
+            r.color_over(self.mask(), clr);
             self.raster = Some(r);
         }
         self.clear_mask()

@@ -89,7 +89,7 @@ impl Color {
     }
 }
 
-/// A raster image to composite plot output.
+/// A raster image.
 ///
 /// # Example
 /// ```
@@ -102,7 +102,7 @@ impl Color {
 /// let mut p = Plotter::new(100, 100);
 /// let mut r = Raster::new(p.width(), p.height());
 /// p.stroke(&path);
-/// r.composite(p.mask(), Color::rgb(208, 255, 208));
+/// r.color_over(p.mask(), Color::rgb(208, 255, 208));
 /// ```
 pub struct Raster {
     width  : u32,
@@ -172,19 +172,19 @@ impl Raster {
             ptr::write_bytes(pix, 0u8, len);
         }
     }
-    /// Composite a color with a mask.
+    /// Composite a color with a mask, using "over".
     ///
     /// * `mask` Mask for compositing.
     /// * `clr` Color to composite.
-    pub fn composite(&mut self, mask: &Mask, clr: Color) {
+    pub fn color_over(&mut self, mask: &Mask, clr: Color) {
         if X86 && is_x86_feature_detected!("ssse3") {
-            unsafe { self.composite_x86(mask, clr) }
+            unsafe { self.color_over_x86(mask, clr) }
         } else {
-            self.composite_fallback(mask, clr);
+            self.color_over_fallback(mask, clr);
         }
     }
     /// Composite a color with a mask (slow fallback).
-    fn composite_fallback(&mut self, mask: &Mask, clr: Color) {
+    fn color_over_fallback(&mut self, mask: &Mask, clr: Color) {
         for (p, m) in self.pixels.chunks_mut(4).zip(mask.iter()) {
             let top = clr.multiply_alpha(*m);
             let bot = Color::rgba(p[0], p[1], p[2], p[3]);
@@ -197,7 +197,7 @@ impl Raster {
     }
     /// Composite a color with a mask.
     #[cfg(any(target_arch="x86", target_arch="x86_64"))]
-    unsafe fn composite_x86(&mut self, mask: &Mask, clr: Color) {
+    unsafe fn color_over_x86(&mut self, mask: &Mask, clr: Color) {
         let clr = _mm_set1_epi32(clr.into());
         let src = mask.pixels();
         let dst = &mut self.pixels[..];
