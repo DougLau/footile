@@ -112,9 +112,9 @@ pub struct Raster {
 
 /// Scale a u8 value by another (for alpha blending)
 fn scale_u8(a: u8, b: u8) -> u8 {
-    let aa = a as u32;
-    let bb = b as u32;
-    let c = (aa * bb + 255) >> 8; // cheaper approximation of divide by 255
+    // cheap alternative to divide by 255
+    let c = a as u32 * b as u32;
+    let c = ((c + 1) + (c >> 8)) >> 8;
     c as u8
 }
 
@@ -128,7 +128,7 @@ unsafe fn scale_u8x16_x86(a: __m128i, b: __m128i) -> __m128i {
     let even = _mm_srli_epi16(_mm_add_epi16(even, _mm_set1_epi16(255)), 8);
     let a_odd = _mm_unpackhi_epi8(a, _mm_setzero_si128());
     let b_odd = _mm_unpackhi_epi8(b, _mm_setzero_si128());
-    // For even lanes, (a * b + 255) >> 8  -- (less work than / 255)
+    // For odd lanes, (a * b + 255) >> 8  -- (less work than / 255)
     let odd = _mm_mullo_epi16(a_odd, b_odd);
     let odd = _mm_srli_epi16(_mm_add_epi16(odd, _mm_set1_epi16(255)), 8);
     _mm_packus_epi16(even, odd)
@@ -145,13 +145,22 @@ fn unscale_u8(a: u8, b: u8) -> u8 {
     }
 }
 
-/// Swizzle alpha values (xxx3xxx2xxx1xxx0 => 3333222211110000)
+/// Swizzle alpha mask (xxxxxxxxxxxx3210 => 3333222211110000)
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+unsafe fn swizzle_mask_x86(v: __m128i) -> __m128i {
+    _mm_shuffle_epi8(v, _mm_set_epi8(3, 3, 3, 3,
+                                     2, 2, 2, 2,
+                                     1, 1, 1, 1,
+                                     0, 0, 0, 0))
+}
+
+/// Swizzle alpha values (3xxx2xxx1xxx0xxx => 3333222211110000)
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
 unsafe fn swizzle_alpha_x86(v: __m128i) -> __m128i {
-        _mm_shuffle_epi8(v, _mm_set_epi8(15, 15, 15, 15,
-                                         11, 11, 11, 11,
-                                          7,  7,  7,  7,
-                                          3,  3,  3,  3))
+    _mm_shuffle_epi8(v, _mm_set_epi8(15, 15, 15, 15,
+                                     11, 11, 11, 11,
+                                      7,  7,  7,  7,
+                                      3,  3,  3,  3))
 }
 
 impl Raster {
@@ -210,23 +219,18 @@ impl Raster {
             let dst = dst.offset(off * 4) as *mut __m128i;
             let src = src.offset(off) as *const i32;
             // get 4 alpha values from src,
-            // then shuffle: 0123012301230123 => 0000111122223333
-            let ta = _mm_shuffle_epi8(_mm_set1_epi32(*src),
-                                      _mm_set_epi8(3, 3, 3, 3,
-                                                   2, 2, 2, 2,
-                                                   1, 1, 1, 1,
-                                                   0, 0, 0, 0));
-            // premultiply alpha for `top` color
+            // then shuffle: xxxxxxxxxxxx3210 => 3333222211110000
+            let ta = swizzle_mask_x86(_mm_set1_epi32(*src));
+            // multiply alpha for `top` color
             let top = scale_u8x16_x86(clr, ta);
-            // swizzle final alpha: xxx0xxx1xxx2xxx3 => 0000111122223333
+            // swizzle final alpha: 3xxx2xxx1xxx0xxx => 3333222211110000
             let alpha = swizzle_alpha_x86(top);
             // inverse alpha (255 - alpha)
             let ialpha = _mm_subs_epu8(_mm_set1_epi8(255u8 as i8), alpha);
             // get RGBA values from dst
             let bot = _mm_loadu_si128(dst);
-            // FIXME: color fringing bug around here
             // compose top over bot
-            let out = _mm_adds_epi8(top, scale_u8x16_x86(bot, ialpha));
+            let out = _mm_adds_epu8(top, scale_u8x16_x86(bot, ialpha));
             // store blended pixels
             _mm_storeu_si128(dst, out);
         }
