@@ -53,13 +53,6 @@ impl Color {
     pub fn rgb(red: u8, green: u8, blue: u8) -> Self {
         Color::rgba(red, green, blue, 0xFF)
     }
-    fn multiply_alpha(self, alpha: u8) -> Self {
-        let red   = scale_u8(self.red(), alpha);
-        let green = scale_u8(self.green(), alpha);
-        let blue  = scale_u8(self.blue(), alpha);
-        let alpha = scale_u8(self.alpha(), alpha);
-        Color::rgba(red, green, blue, alpha)
-    }
     fn divide_alpha(self) -> Self {
         let alpha = self.alpha();
         let red   = unscale_u8(self.red(), alpha);
@@ -79,14 +72,26 @@ impl Color {
     pub fn alpha(self) -> u8 {
         self.alpha
     }
-    fn over(self, bot: Color) -> Self {
-        let ia = 255 - self.alpha();
-        let red   = self.red()   + scale_u8(bot.red(), ia);
-        let green = self.green() + scale_u8(bot.green(), ia);
-        let blue  = self.blue()  + scale_u8(bot.blue(), ia);
-        let alpha = self.alpha() + scale_u8(bot.alpha(), ia);
+    fn over_alpha(self, bot: Color, alpha: u8) -> Self {
+        // NOTE: `bot + alpha * (top - bot)` is equivalent to
+        //       `alpha * top + (1 - alpha) * bot`, but faster.
+        let r = self.red()   as i32 - bot.red()   as i32;
+        let g = self.green() as i32 - bot.green() as i32;
+        let b = self.blue()  as i32 - bot.blue()  as i32;
+        let a = self.alpha() as i32 - bot.alpha() as i32;
+        let red   = (bot.red()   as i32 + scale_i32(r, alpha)) as u8;
+        let green = (bot.green() as i32 + scale_i32(g, alpha)) as u8;
+        let blue  = (bot.blue()  as i32 + scale_i32(b, alpha)) as u8;
+        let alpha = (bot.alpha() as i32 + scale_i32(a, alpha)) as u8;
         Color::rgba(red, green, blue, alpha)
     }
+}
+
+/// Scale a u8 value by another (for alpha blending)
+fn scale_i32(a: i32, b: u8) -> i32 {
+    // cheap alternative to divide by 255
+    let c = a * b as i32;
+    (((c + 1) + (c >> 8)) >> 8) as i32
 }
 
 /// A raster image.
@@ -108,14 +113,6 @@ pub struct Raster {
     width  : u32,
     height : u32,
     pixels : Vec<u8>,
-}
-
-/// Scale a u8 value by another (for alpha blending)
-fn scale_u8(a: u8, b: u8) -> u8 {
-    // cheap alternative to divide by 255
-    let c = a as u32 * b as u32;
-    let c = ((c + 1) + (c >> 8)) >> 8;
-    c as u8
 }
 
 /// Scale packed u8 values from `a` by `b` (for alpha blending)
@@ -195,9 +192,8 @@ impl Raster {
     /// Composite a color with a mask (slow fallback).
     fn color_over_fallback(&mut self, mask: &Mask, clr: Color) {
         for (p, m) in self.pixels.chunks_mut(4).zip(mask.iter()) {
-            let top = clr.multiply_alpha(*m);
             let bot = Color::rgba(p[0], p[1], p[2], p[3]);
-            let out = top.over(bot);
+            let out = clr.over_alpha(bot, *m);
             p[0] = out.red();
             p[1] = out.green();
             p[2] = out.blue();
