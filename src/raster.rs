@@ -115,20 +115,44 @@ pub struct Raster {
     pixels : Vec<u8>,
 }
 
-/// Scale packed u8 values from `a` by `b` (for alpha blending)
+/// Composite packed u8 values using `over`.
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
-unsafe fn scale_u8x16_x86(a: __m128i, b: __m128i) -> __m128i {
-    let a_even = _mm_unpacklo_epi8(a, _mm_setzero_si128());
+unsafe fn over_alpha_u8x16_x86(t: __m128i, b: __m128i, a: __m128i) -> __m128i {
+    // Since alpha can range from 0 to 255 and (t - b) can range from -255 to
+    // +255, we would need 17 bits to store the result of a multiplication.
+    // Instead, shift alpha right by 1 bit (divide by 2).  Afterwards, we can
+    // shift back by one less bit (in scale_i16_to_u8_x86).
+    // For even lanes: b + alpha * (t - b)
+    let t_even = _mm_unpacklo_epi8(t, _mm_setzero_si128());
     let b_even = _mm_unpacklo_epi8(b, _mm_setzero_si128());
-    // For even lanes, (a * b + 255) >> 8  -- (less work than / 255)
-    let even = _mm_mullo_epi16(a_even, b_even);
-    let even = _mm_srli_epi16(_mm_add_epi16(even, _mm_set1_epi16(255)), 8);
-    let a_odd = _mm_unpackhi_epi8(a, _mm_setzero_si128());
+    let a_even = _mm_unpacklo_epi8(a, _mm_setzero_si128());
+    let a_even = _mm_srli_epi16(a_even, 1);
+    let even = _mm_mullo_epi16(a_even, _mm_sub_epi16(t_even, b_even));
+    let even = scale_i16_to_u8_x86(even);
+    let even = _mm_add_epi16(b_even, even);
+    // For odd lanes: b + alpha * (t - b)
+    let t_odd = _mm_unpackhi_epi8(t, _mm_setzero_si128());
     let b_odd = _mm_unpackhi_epi8(b, _mm_setzero_si128());
-    // For odd lanes, (a * b + 255) >> 8  -- (less work than / 255)
-    let odd = _mm_mullo_epi16(a_odd, b_odd);
-    let odd = _mm_srli_epi16(_mm_add_epi16(odd, _mm_set1_epi16(255)), 8);
+    let a_odd = _mm_unpackhi_epi8(a, _mm_setzero_si128());
+    let a_odd = _mm_srli_epi16(a_odd, 1);
+    let odd = _mm_mullo_epi16(a_odd, _mm_sub_epi16(t_odd, b_odd));
+    let odd = scale_i16_to_u8_x86(odd);
+    let odd = _mm_add_epi16(b_odd, odd);
     _mm_packus_epi16(even, odd)
+}
+
+/// Scale i16 values (result of "u7" * "i9") into u8.
+#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+unsafe fn scale_i16_to_u8_x86(v: __m128i) -> __m128i {
+    // To scale into a u8, we would normally divide by 255.  This is equivalent
+    // to: ((v + 1) + (v >> 8)) >> 8
+    // For the last right shift, we use 7 instead to simulate multiplying by
+    // 2.  This is necessary because alpha was shifted right by 1 bit to allow
+    // fitting 17 bits of data into epi16 lanes.
+    _mm_srai_epi16(_mm_add_epi16(_mm_add_epi16(v,
+                                               _mm_set1_epi16(1)),
+                                 _mm_srai_epi16(v, 8)),
+                   7)
 }
 
 /// Unscale a u8
@@ -149,15 +173,6 @@ unsafe fn swizzle_mask_x86(v: __m128i) -> __m128i {
                                      2, 2, 2, 2,
                                      1, 1, 1, 1,
                                      0, 0, 0, 0))
-}
-
-/// Swizzle alpha values (3xxx2xxx1xxx0xxx => 3333222211110000)
-#[cfg(any(target_arch="x86", target_arch="x86_64"))]
-unsafe fn swizzle_alpha_x86(v: __m128i) -> __m128i {
-    _mm_shuffle_epi8(v, _mm_set_epi8(15, 15, 15, 15,
-                                     11, 11, 11, 11,
-                                      7,  7,  7,  7,
-                                      3,  3,  3,  3))
 }
 
 impl Raster {
@@ -216,17 +231,11 @@ impl Raster {
             let src = src.offset(off) as *const i32;
             // get 4 alpha values from src,
             // then shuffle: xxxxxxxxxxxx3210 => 3333222211110000
-            let ta = swizzle_mask_x86(_mm_set1_epi32(*src));
-            // multiply alpha for `top` color
-            let top = scale_u8x16_x86(clr, ta);
-            // swizzle final alpha: 3xxx2xxx1xxx0xxx => 3333222211110000
-            let alpha = swizzle_alpha_x86(top);
-            // inverse alpha (255 - alpha)
-            let ialpha = _mm_subs_epu8(_mm_set1_epi8(255u8 as i8), alpha);
+            let alpha = swizzle_mask_x86(_mm_set1_epi32(*src));
             // get RGBA values from dst
             let bot = _mm_loadu_si128(dst);
             // compose top over bot
-            let out = _mm_adds_epu8(top, scale_u8x16_x86(bot, ialpha));
+            let out = over_alpha_u8x16_x86(clr, bot, alpha);
             // store blended pixels
             _mm_storeu_si128(dst, out);
         }
