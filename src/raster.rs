@@ -27,6 +27,7 @@ pub struct Color {
 }
 
 impl From<i32> for Color {
+    /// Get a color from an i32 (alpha in high byte)
     fn from(rgba: i32) -> Self {
         let red   = (rgba >>  0) as u8;
         let green = (rgba >>  8) as u8;
@@ -37,6 +38,7 @@ impl From<i32> for Color {
 }
 
 impl From<Color> for i32 {
+    /// Get an i32 from a Color (alpha in high byte)
     fn from(c: Color) -> i32 {
         let red   = (c.red()   as i32) << 0;
         let green = (c.green() as i32) << 8;
@@ -47,12 +49,15 @@ impl From<Color> for i32 {
 }
 
 impl Color {
+    /// Build a color by specifying red, green, blue and alpha values.
     pub fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
         Color { red, green, blue, alpha }
     }
+    /// Build an opaque color by specifying red, green and blue values.
     pub fn rgb(red: u8, green: u8, blue: u8) -> Self {
         Color::rgba(red, green, blue, 0xFF)
     }
+    /// Divide alpha out of red, green and blue components.
     fn divide_alpha(self) -> Self {
         let alpha = self.alpha();
         let red   = unscale_u8(self.red(), alpha);
@@ -60,18 +65,23 @@ impl Color {
         let blue  = unscale_u8(self.blue(), alpha);
         Color::rgba(red, green, blue, alpha)
     }
+    /// Get the red component value.
     pub fn red(self) -> u8 {
         self.red
     }
+    /// Get the green component value.
     pub fn green(self) -> u8 {
         self.green
     }
+    /// Get the blue component value.
     pub fn blue(self) -> u8 {
         self.blue
     }
+    /// Get the alpha component value.
     pub fn alpha(self) -> u8 {
         self.alpha
     }
+    /// Composite the color with another, using "over".
     fn over_alpha(self, bot: Color, alpha: u8) -> Self {
         // NOTE: `bot + alpha * (top - bot)` is equivalent to
         //       `alpha * top + (1 - alpha) * bot`, but faster.
@@ -87,10 +97,10 @@ impl Color {
     }
 }
 
-/// Scale a u8 value by another (for alpha blending)
+/// Scale an i32 value by a u8 (for alpha blending)
 fn scale_i32(a: i32, b: u8) -> i32 {
-    // cheap alternative to divide by 255
     let c = a * b as i32;
+    // cheap alternative to divide by 255
     (((c + 1) + (c >> 8)) >> 8) as i32
 }
 

@@ -110,13 +110,13 @@ impl PathBuilder {
         }
     }
     /// Use absolute coordinates for subsequent operations.
-    ///
-    /// This is the default setting.
     pub fn absolute(mut self) -> Self {
         self.absolute = true;
         self
     }
     /// Use relative coordinates for subsequent operations.
+    ///
+    /// This is the default setting.
     pub fn relative(mut self) -> Self {
         self.absolute = false;
         self
