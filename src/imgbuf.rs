@@ -16,7 +16,7 @@ const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
 ///
 /// * `dst` Destination buffer.
 /// * `src` Source buffer.
-pub(crate) fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
+pub fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
     if X86 && is_x86_feature_detected!("ssse3") {
         unsafe { accumulate_non_zero_x86(dst, src) }
@@ -90,7 +90,7 @@ unsafe fn accumulate_i16x8_x86(mut a: __m128i) -> __m128i {
 ///
 /// * `dst` Destination buffer.
 /// * `src` Source buffer.
-pub(crate) fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
+pub fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
     if X86 && is_x86_feature_detected!("ssse3") {
         unsafe { accumulate_odd_x86(dst, src) }
