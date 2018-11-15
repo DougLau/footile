@@ -57,8 +57,8 @@ impl PlotDest for Fig {
     fn add_point(&mut self, pt: Vec2w) {
         Fig::add_point(self, pt.v);
     }
-    fn close(&mut self, joined: bool) {
-        Fig::close(self, joined);
+    fn close(&mut self, _joined: bool) {
+        Fig::close(self);
     }
 }
 
@@ -302,6 +302,8 @@ impl Plotter {
     {
         let mut fig = Fig::new();
         self.add_ops(ops, &mut fig);
+        // Closing figure required to handle coincident start/end points
+        fig.close();
         fig.fill(&mut self.mask, &mut self.sgn_area[..], rule);
         self
     }

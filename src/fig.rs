@@ -359,6 +359,21 @@ impl Fig {
         let sub = self.sub_current();
         sub.n_points += 1;
     }
+    /// Check if current sub-figure is done.
+    fn sub_is_done(&self) -> bool {
+        self.subs.last().unwrap().done
+    }
+    /// Mark sub-figure done.
+    fn sub_set_done(&mut self) {
+        let start = { self.sub_current().start };
+        let pt = self.get_point(start);
+        let c = self.coincident(pt);
+        if c { self.points.pop(); }
+        let sub = self.sub_current();
+        assert!(sub.n_points > 0);
+        sub.done = true;
+        if c { sub.n_points -= 1; }
+    }
     /// Get the sub-figure at a specified vertex ID
     fn sub_at(&self, vid: Vid) -> &SubFig {
         for sub in self.subs.iter() {
@@ -444,7 +459,7 @@ impl Fig {
     pub fn add_point(&mut self, pt: Vec2) {
         let n_pts = self.points.len();
         if n_pts < Vid::max_value() as usize {
-            let done = self.sub_current().done;
+            let done = self.sub_is_done();
             if done {
                 self.sub_add();
             }
@@ -463,10 +478,12 @@ impl Fig {
         }
     }
     /// Close the current sub-figure.
-    pub fn close(&mut self, _joined: bool) {
+    ///
+    /// NOTE: This must be called before filling in order to handle coincident
+    ///       start/end points.
+    pub fn close(&mut self) {
         if self.points.len() > 0 {
-            let sub = self.sub_current();
-            sub.done = true;
+            self.sub_set_done();
         }
     }
     /// Compare two figure vertex IDs
@@ -743,6 +760,7 @@ mod test {
         f.add_point(Vec2::new(0f32, 0f32));
         f.add_point(Vec2::new(3f32, 3f32));
         f.add_point(Vec2::new(0f32, 3f32));
+        f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         let p: Vec<_> = m.iter().cloned().collect();
         assert!(p == [128, 0, 0, 255, 128, 0, 255, 255, 128]);
@@ -755,6 +773,7 @@ mod test {
         f.add_point(Vec2::new(0f32, 0f32));
         f.add_point(Vec2::new(9f32, 1f32));
         f.add_point(Vec2::new(0f32, 1f32));
+        f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         let p: Vec<_> = m.iter().cloned().collect();
         assert!(p == [242, 214, 186, 158, 130, 102, 74, 46, 18]);
