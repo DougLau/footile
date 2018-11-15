@@ -6,19 +6,13 @@ use std::cmp;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
-use std::ops;
 use geom::Vec2;
 use mask::Mask;
 use path::FillRule;
+use fixed::Fixed;
 
 /// Vertex ID
 type Vid = u16;
-
-/// Fixed-point type for fast calculations
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct Fixed {
-    v: i32,
-}
 
 /// Figure direction enum
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -77,115 +71,14 @@ struct Scanner<'a> {
     y_bot    : Fixed,           // Y at bottom of mask
 }
 
-/// Number of bits at fixed point
-const FRAC_BITS: i32 = 16;
-
-/// Mask of fixed fractional bits
-const FRAC_MASK: i32 = ((1 << FRAC_BITS) - 1);
-
-/// Fixed-point constants
-const FX_ZERO: Fixed = Fixed { v: 0 };
-const FX_ONE: Fixed = Fixed { v: 1 << FRAC_BITS };
-const FX_HALF: Fixed = Fixed { v: 1 << (FRAC_BITS - 1) };
-const FX_EPSILON: Fixed = Fixed { v: 1 };
-
-impl fmt::Debug for Fixed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_f32())
-    }
+/// Compare two f32 for fixed-point equality
+fn cmp_fixed(a: f32, b: f32) -> Ordering {
+    Fixed::from(a).cmp(&Fixed::from(b))
 }
 
-impl ops::Add for Fixed {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        if cfg!(saturating_fixed) {
-            return Fixed { v: self.v.saturating_add(other.v) };
-        }
-        Fixed { v: self.v + other.v }
-    }
-}
-
-impl ops::Sub for Fixed {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self {
-        if cfg!(saturating_fixed) {
-            return Fixed { v: self.v.saturating_sub(other.v) };
-        }
-        Fixed { v: self.v - other.v }
-    }
-}
-
-impl ops::Mul for Fixed {
-    type Output = Self;
-
-    fn mul(self, other: Self) -> Self {
-        let v: i64 = (self.v as i64 * other.v as i64) >> FRAC_BITS;
-        if cfg!(saturating_fixed) {
-            if v > i32::max_value() as i64 {
-                return Fixed { v: i32::max_value() };
-            } else if v < i32::min_value() as i64 {
-                return Fixed { v: i32::min_value() };
-            }
-        }
-        Fixed { v: v as i32 }
-    }
-}
-
-impl ops::Div for Fixed {
-    type Output = Self;
-
-    fn div(self, other: Self) -> Self {
-        let v = ((self.v as i64) << (FRAC_BITS as i64)) / other.v as i64;
-        if cfg!(saturating_fixed) {
-            if v > i32::max_value() as i64 {
-                return Fixed { v: i32::max_value() };
-            } else if v < i32::min_value() as i64 {
-                return Fixed { v: i32::min_value() };
-            }
-        }
-        Fixed { v: v as i32 }
-    }
-}
-
-impl Fixed {
-    fn from_i32(v: i32) -> Fixed {
-        Fixed { v: v << FRAC_BITS }
-    }
-    fn from_f32(v: f32) -> Fixed {
-        Fixed { v: (v * (FX_ONE.v as f32)) as i32 }
-    }
-    fn to_i32(self) -> i32 {
-        self.v >> FRAC_BITS
-    }
-    fn to_f32(self) -> f32 {
-        self.v as f32 / (FX_ONE.v as f32)
-    }
-    fn abs(self) -> Fixed {
-        Fixed { v: self.v.abs() }
-    }
-    fn floor(self) -> Fixed {
-        Fixed { v: self.v & !FRAC_MASK }
-    }
-    fn ceil(self) -> Fixed {
-        (self - FX_EPSILON).floor() + FX_ONE
-    }
-    fn frac(self) -> Fixed {
-        Fixed { v: self.v & FRAC_MASK }
-    }
-    fn avg(self, other: Fixed) -> Fixed {
-        let v = self.v + other.v >> 1;
-        Fixed { v: v }
-    }
-    /// Compare two f32 for fixed-point equality
-    fn cmp_f32(a: f32, b: f32) -> Ordering {
-        Fixed::from_f32(a).v.cmp(&Fixed::from_f32(b).v)
-    }
-    /// Get the line of a value
-    fn line_of(self) -> i32 {
-        (self - FX_EPSILON).to_i32()
-    }
+/// Get the line of a value
+fn line_of(f: Fixed) -> i32 {
+    (f - Fixed::EPSILON).into()
 }
 
 impl SubFig {
@@ -223,17 +116,17 @@ impl Edge {
     /// Create a new edge
     fn new(v0: Vid, v1: Vid, p0: Vec2, p1: Vec2, dir: FigDir) -> Edge {
         assert!(v0 != v1);
-        let dx = Fixed::from_f32(p1.x - p0.x);  // delta X
-        let dy = Fixed::from_f32(p1.y - p0.y);  // delta Y
-        assert!(dy > FX_ZERO);
+        let dx = Fixed::from(p1.x - p0.x);  // delta X
+        let dy = Fixed::from(p1.y - p0.y);  // delta Y
+        assert!(dy > Fixed::ZERO);
         let step_pix = Edge::calculate_step(dx, dy);
         let islope = dx / dy;
-        let y0 = Fixed::from_f32(p0.y);
-        let y1 = Fixed::from_f32(p1.y);
-        let y0f = if y0.frac() > FX_ZERO { Some(y0.to_i32()) } else { None };
-        let y1f = if y1.frac() > FX_ZERO { Some(y1.to_i32()) } else { None };
+        let y0 = Fixed::from(p0.y);
+        let y1 = Fixed::from(p1.y);
+        let y0f = if y0.fract() > Fixed::ZERO { Some(y0.into()) } else { None };
+        let y1f = if y1.fract() > Fixed::ZERO { Some(y1.into()) } else { None };
         let fm = (y0.ceil() - y0) * islope;
-        let x_bot = fm + Fixed::from_f32(p0.x);
+        let x_bot = fm + Fixed::from(p0.x);
         Edge {
             v1       : v1,
             y0f      : y0f,
@@ -242,16 +135,16 @@ impl Edge {
             step_pix : step_pix,
             islope   : islope,
             x_bot    : x_bot,
-            min_x    : FX_ZERO,
-            max_x    : FX_ZERO,
+            min_x    : Fixed::ZERO,
+            max_x    : Fixed::ZERO,
         }
     }
     /// Calculate the step for each pixel on an edge
     fn calculate_step(dx: Fixed, dy: Fixed) -> Fixed {
-        if dx != FX_ZERO {
-            cmp::min(FX_ONE, (dy / dx).abs())
+        if dx != Fixed::ZERO {
+            cmp::min(Fixed::ONE, (dy / dx).abs())
         } else {
-            FX_ZERO
+            Fixed::ZERO
         }
     }
     /// Check if edge is partial at a given row.
@@ -278,24 +171,24 @@ impl Edge {
     }
     /// Get the minimum X pixel
     fn min_pix(&self) -> i32 {
-        self.min_x.to_i32()
+        self.min_x.into()
     }
     /// Get the maximum X pixel
     fn max_pix(&self) -> i32 {
-        self.max_x.to_i32()
+        self.max_x.into()
     }
     /// Get coverage of first pixel on edge.
     fn first_cov(&self) -> Fixed {
         let r = if self.min_pix() == self.max_pix() {
-            (FX_ONE - self.x_mid().frac())
+            (Fixed::ONE - self.x_mid().fract())
         } else {
-            (FX_ONE - self.min_x.frac()) * FX_HALF
+            (Fixed::ONE - self.min_x.fract()) * Fixed::HALF
         };
         self.step_cov(r)
     }
     /// Get pixel coverage.
     fn step_cov(&self, r: Fixed) -> Fixed {
-        if self.step_pix > FX_ZERO {
+        if self.step_pix > Fixed::ZERO {
             r * self.step_pix
         } else {
             r
@@ -310,7 +203,7 @@ impl Edge {
         let w = area.len() as i32;
         let ed = if self.dir == dir { 1i16 } else { -1i16 };
         let s_0 = pixel_cov(self.first_cov());
-        let s_n = pixel_cov(self.step_cov(FX_ONE));
+        let s_n = pixel_cov(self.step_cov(Fixed::ONE));
         assert!(s_n > 0);
         let mut cc = s_0;
         let mut cov = 0i16;
@@ -396,7 +289,7 @@ impl Fig {
         let mut v = sub.next(vid, dir);
         while v != vid {
             let y = self.get_y(v);
-            if Fixed::cmp_f32(py, y) != Equal {
+            if cmp_fixed(py, y) != Equal {
                 return v;
             }
             v = sub.next(v, dir);
@@ -410,7 +303,7 @@ impl Fig {
         let mut v = sub.next(vid, dir);
         while v != vid {
             let p = self.get_point(v);
-            if p.x < pp.x || Fixed::cmp_f32(pp.y, p.y) != Equal {
+            if p.x < pp.x || cmp_fixed(pp.y, p.y) != Equal {
                 return v;
             }
             v = sub.next(v, dir);
@@ -425,7 +318,7 @@ impl Fig {
         let mut v = sub.next(vid, dir);
         while v != vid {
             let y = self.get_y(v);
-            if Fixed::cmp_f32(py, y) != Equal {
+            if cmp_fixed(py, y) != Equal {
                 return vp;
             }
             vp = v;
@@ -491,7 +384,7 @@ impl Fig {
     fn compare_vids(&self, v0: Vid, v1: Vid) -> Ordering {
         let p0 = self.get_point(v0);
         let p1 = self.get_point(v1);
-        match Fixed::cmp_f32(p0.y, p1.y) {
+        match cmp_fixed(p0.y, p1.y) {
             Less    => Less,
             Greater => Greater,
             Equal   => {
@@ -529,7 +422,7 @@ impl<'a> Scanner<'a> {
            dir: FigDir, rule: FillRule) -> Scanner<'a>
     {
         assert!(mask.width() <= sgn_area.len() as u32);
-        let y_bot = Fixed::from_i32(mask.height() as i32);
+        let y_bot = Fixed::from(mask.height() as i32);
         let edges = Vec::with_capacity(16);
         Scanner {
             fig      : fig,
@@ -538,15 +431,15 @@ impl<'a> Scanner<'a> {
             edges    : edges,
             dir      : dir,
             rule     : rule,
-            y_now    : FX_ZERO,
-            y_prev   : FX_ZERO,
+            y_now    : Fixed::ZERO,
+            y_prev   : Fixed::ZERO,
             y_bot    : y_bot,
         }
     }
     /// Scan figure to a given vertex
     fn scan_vertex(&mut self, vid: Vid) {
         let y = self.get_y(vid);
-        let y_vtx = Fixed::from_f32(y);
+        let y_vtx = Fixed::from(y);
         if self.edges.len() > 0 {
             self.scan_to_y(y_vtx);
         } else {
@@ -566,11 +459,11 @@ impl<'a> Scanner<'a> {
                 self.scan_accumulate();
             }
             self.y_prev = self.y_now;
-            self.y_now = cmp::min(y_vtx, self.y_now.floor() + FX_ONE);
+            self.y_now = cmp::min(y_vtx, self.y_now.floor() + Fixed::ONE);
             if self.is_next_line() {
                 self.advance_edges();
             }
-            if self.y_now > FX_ZERO {
+            if self.y_now > Fixed::ZERO {
                 if self.is_partial() {
                     self.scan_partial();
                 }
@@ -582,15 +475,15 @@ impl<'a> Scanner<'a> {
     }
     /// Check if scan is complete (reached bottom of mask)
     fn is_complete(&self) -> bool {
-        self.y_now.line_of() >= self.y_bot.line_of()
+        line_of(self.y_now) >= line_of(self.y_bot)
     }
     /// Check if scan is at bottom of line
     fn is_line_bottom(&self) -> bool {
-        self.y_now.frac() == FX_ZERO
+        self.y_now.fract() == Fixed::ZERO
     }
     /// Check if scan has advanced to the next line
     fn is_next_line(&self) -> bool {
-        self.y_now.line_of() > self.y_prev.line_of()
+        line_of(self.y_now) > line_of(self.y_prev)
     }
     /// Advance all edges to the next line
     fn advance_edges(&mut self) {
@@ -600,7 +493,7 @@ impl<'a> Scanner<'a> {
     }
     /// Check if current scan line is partial
     fn is_partial(&self) -> bool {
-        (self.y_now - self.y_prev) < FX_ONE
+        (self.y_now - self.y_prev) < Fixed::ONE
     }
     /// Scan partial edges
     fn scan_partial(&mut self) {
@@ -609,7 +502,7 @@ impl<'a> Scanner<'a> {
         if cov_full <= 0i16 {
             return;
         }
-        let y = self.y_now.line_of();
+        let y = line_of(self.y_now);
         let y_bot = self.y_now.ceil();
         let ypb = y_bot - self.y_prev;
         let ynb = y_bot - self.y_now;
@@ -623,7 +516,7 @@ impl<'a> Scanner<'a> {
     }
     /// Scan full edges.
     fn scan_full(&mut self) {
-        let y = self.y_now.line_of();
+        let y = line_of(self.y_now);
         let mut area = &mut self.sgn_area;
         for e in self.edges.iter_mut() {
             if !e.is_partial(y) {
@@ -634,18 +527,18 @@ impl<'a> Scanner<'a> {
     }
     /// Accumulate signed area to mask.
     fn scan_accumulate(&mut self) {
-        if self.y_now > FX_ZERO && self.y_now <= self.y_bot {
-            let y = self.y_now.line_of() as u32;
+        if self.y_now > Fixed::ZERO && self.y_now <= self.y_bot {
+            let y = line_of(self.y_now) as u32;
             self.mask.scan_accumulate(self.sgn_area, y, self.rule);
         }
     }
     /// Get full scan coverage
     fn scan_coverage(&self) -> i16 {
         assert!(self.y_now > self.y_prev);
-        assert!(self.y_now <= self.y_prev + FX_ONE);
-        let scan_now = pixel_cov(self.y_now.frac());
-        let scan_prev = pixel_cov(self.y_prev.frac());
-        if scan_now == scan_prev && self.y_now.frac() > FX_ZERO {
+        assert!(self.y_now <= self.y_prev + Fixed::ONE);
+        let scan_now = pixel_cov(self.y_now.fract());
+        let scan_prev = pixel_cov(self.y_prev.fract());
+        if scan_now == scan_prev && self.y_now.fract() > Fixed::ZERO {
             0
         } else if scan_now > scan_prev {
             scan_now - scan_prev
@@ -659,8 +552,8 @@ impl<'a> Scanner<'a> {
         let vn = self.fig.next_edge(vid, FigDir::Forward);
         if (vp != vid) && (vn != vid) {
             let y = self.get_y(vid);
-            let cp = Fixed::cmp_f32(self.get_y(vp), y);
-            let cn = Fixed::cmp_f32(self.get_y(vn), y);
+            let cp = cmp_fixed(self.get_y(vp), y);
+            let cn = cmp_fixed(self.get_y(vn), y);
             match (cp, cn) {
                 (Less,    Less)    => self.edge_merge(vid),
                 (Greater, Greater) => self.edge_split(vp, vn),
@@ -716,9 +609,9 @@ impl<'a> Scanner<'a> {
 /// fcov Total coverage (0 to 1 fixed-point).
 /// return Total pixel coverage (0 to 256).
 fn pixel_cov(fcov: Fixed) -> i16 {
-    assert!(fcov >= FX_ZERO && fcov <= FX_ONE);
+    assert!(fcov >= Fixed::ZERO && fcov <= Fixed::ONE);
     // Round to nearest cov value
-    let n = (fcov.v + (1 << 7)) >> 8;
+    let n: i32 = (fcov << 8).round().into();
     n as i16
 }
 
@@ -726,35 +619,11 @@ fn pixel_cov(fcov: Fixed) -> i16 {
 mod test {
     use super::*;
     #[test]
-    fn test_fixed() {
-        let a = Fixed::from_i32(37);
-        let b = Fixed::from_i32(3);
-        let c = Fixed::from_f32(1.5f32);
-        let d = Fixed::from_f32(-2.5f32);
-        let e = Fixed::from_i32(128);
-        assert!(a.to_i32() == 37);
-        assert!(a.floor() == a);
-        assert!(a.ceil() == a);
-        assert!(a * b == Fixed::from_i32(111));
-        assert!(a / b == Fixed::from_f32(12.33333f32));
-        assert!(b.floor() == b);
-        assert!(b.ceil() == b);
-        assert!(c.floor() == Fixed::from_i32(1));
-        assert!(c.ceil() == Fixed::from_i32(2));
-        assert!(c.frac() == Fixed::from_f32(0.5f32));
-        assert!(d.abs() == Fixed::from_f32(2.5f32));
-        assert!(d.frac() == Fixed::from_f32(0.5f32));
-        assert!(d.floor() == Fixed::from_i32(-3));
-        assert!(d.ceil() == Fixed::from_i32(-2));
-        assert!(cmp::min(a, b) == b);
-        assert!(cmp::max(a, b) == a);
-        assert!(a.avg(b) == Fixed::from_i32(20));
-        assert!(b.avg(c) == Fixed::from_f32(2.25f32));
-        assert!((e * e).to_i32() == 16384);
-        assert!(Fixed::cmp_f32(0f32, 0f32) == Ordering::Equal);
-        assert!(Fixed::cmp_f32(0f32, 0.00001f32) == Ordering::Equal);
-        assert!(Fixed::cmp_f32(0f32, 0.0001f32) == Ordering::Less);
-        assert!(Fixed::cmp_f32(0f32, -0.0001f32) == Ordering::Greater);
+    fn compare_fixed() {
+        assert!(cmp_fixed(0f32, 0f32) == Ordering::Equal);
+        assert!(cmp_fixed(0f32, 0.00001f32) == Ordering::Equal);
+        assert!(cmp_fixed(0f32, 0.0001f32) == Ordering::Less);
+        assert!(cmp_fixed(0f32, -0.0001f32) == Ordering::Greater);
     }
     #[test]
     fn fig_3x3() {

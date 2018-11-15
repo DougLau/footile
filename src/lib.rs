@@ -12,6 +12,7 @@ mod imgbuf;
 mod geom;
 mod mask;
 mod fig;
+mod fixed;
 mod stroker;
 mod path;
 mod plotter;
