@@ -77,6 +77,7 @@ impl Mask {
         rule: FillRule)
     {
         assert!(self.width <= sgn_area.len() as u32);
+        assert!(row < self.height);
         let dst = self.scan_line(row);
         match rule {
             FillRule::NonZero => accumulate_non_zero(dst, sgn_area),

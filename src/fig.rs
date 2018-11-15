@@ -631,7 +631,7 @@ impl<'a> Scanner<'a> {
     }
     /// Accumulate signed area to mask.
     fn scan_accumulate(&mut self) {
-        if self.y_now > FX_ZERO {
+        if self.y_now > FX_ZERO && self.y_now <= self.y_bot {
             let y = self.y_now.line_of() as u32;
             self.mask.scan_accumulate(self.sgn_area, y, self.rule);
         }
