@@ -159,7 +159,7 @@ impl Stroke {
     }
     /// Add a point.
     ///
-    /// * `pt` Point to add (z indicates stroke width).
+    /// * `pt` Point to add (w indicates stroke width).
     pub fn add_point(&mut self, pt: Vec2w) {
         let n_pts = self.points.len();
         if n_pts < Vid::max_value() as usize {
