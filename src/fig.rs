@@ -435,9 +435,10 @@ impl Fig {
     }
     /// Get direction from top vertex.
     fn get_dir(&self, vid: Vid) -> FigDir {
+        let p = self.get_point(vid);
         let p0 = self.get_point(self.next(vid, FigDir::Forward));
         let p1 = self.get_point(self.next(vid, FigDir::Reverse));
-        if p0.x < p1.x {
+        if (p1 - p).widdershins(p0 - p) {
             FigDir::Forward
         } else {
             FigDir::Reverse

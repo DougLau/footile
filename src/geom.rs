@@ -1,6 +1,6 @@
 // geom.rs    Simple geometry stuff.
 //
-// Copyright (c) 2017  Douglas P Lau
+// Copyright (c) 2017-2018  Douglas P Lau
 //
 use std::f32;
 use std::ops;
@@ -140,7 +140,6 @@ impl Vec2 {
     ///
     /// The Vec2 should be initialized as edges pointing toward the same vertex.
     /// Returns true if the winding order is widdershins (counter-clockwise).
-    #[allow(dead_code)]
     pub fn widdershins(self, other: Self) -> bool {
         // Cross product (with Z zero) is used to determine the winding order.
         (self.x * other.y) > (other.x * self.y)
@@ -381,6 +380,9 @@ mod test {
         assert!(a.midpoint(b) == Vec2::new(2.5f32, 2.5f32));
         assert!(a.left() == Vec2::new(-1f32, 2f32));
         assert!(a.right() == Vec2::new(1f32, -2f32));
+        assert!(a.widdershins(b));
+        assert!(!b.widdershins(a));
+        assert!(b.widdershins(c));
         assert!(a.angle_rel(b) == -0.4636476f32);
         assert!(c.angle_rel(Vec2::new(1f32, 1f32)) == 1.5707963f32);
         assert!(Vec2::new(-1f32, -1f32).angle_rel(c) == 1.5707965f32);
