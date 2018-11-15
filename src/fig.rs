@@ -506,17 +506,20 @@ impl Fig {
     /// * `rule` Fill rule.
     pub fn fill(&self, mask: &mut Mask, sgn_area: &mut [i16], rule: FillRule) {
         let n_points = self.points.len() as Vid;
-        let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
-        vids.sort_by(|a,b| self.compare_vids(*a, *b));
-        let dir = self.get_dir(vids[0]);
-        let mut scan = Scanner::new(self, mask, sgn_area, dir, rule);
-        for vid in vids {
-            if scan.is_complete() {
-                break;
+        if n_points > 0 {
+            assert!(self.sub_is_done());
+            let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
+            vids.sort_by(|a,b| self.compare_vids(*a, *b));
+            let dir = self.get_dir(vids[0]);
+            let mut scan = Scanner::new(self, mask, sgn_area, dir, rule);
+            for vid in vids {
+                if scan.is_complete() {
+                    break;
+                }
+                scan.scan_vertex(vid);
             }
-            scan.scan_vertex(vid);
+            scan.scan_accumulate();
         }
-        scan.scan_accumulate();
     }
 }
 
