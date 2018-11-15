@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
 use std::ops;
-use geom::{Vec2, Vec2w};
+use geom::Vec2;
 use mask::Mask;
 use path::FillRule;
 
@@ -60,7 +60,7 @@ struct Edge {
 /// an image [Mask](struct.Mask.html).
 ///
 pub struct Fig {
-    points : Vec<Vec2w>,        // all points
+    points : Vec<Vec2>,         // all points
     subs   : Vec<SubFig>,       // all sub-figures
 }
 
@@ -221,19 +221,19 @@ impl SubFig {
 
 impl Edge {
     /// Create a new edge
-    fn new(v0: Vid, v1: Vid, p0: Vec2w, p1: Vec2w, dir: FigDir) -> Edge {
+    fn new(v0: Vid, v1: Vid, p0: Vec2, p1: Vec2, dir: FigDir) -> Edge {
         assert!(v0 != v1);
-        let dx = Fixed::from_f32(p1.v.x - p0.v.x);  // delta X
-        let dy = Fixed::from_f32(p1.v.y - p0.v.y);  // delta Y
+        let dx = Fixed::from_f32(p1.x - p0.x);  // delta X
+        let dy = Fixed::from_f32(p1.y - p0.y);  // delta Y
         assert!(dy > FX_ZERO);
         let step_pix = Edge::calculate_step(dx, dy);
         let islope = dx / dy;
-        let y0 = Fixed::from_f32(p0.v.y);
-        let y1 = Fixed::from_f32(p1.v.y);
+        let y0 = Fixed::from_f32(p0.y);
+        let y1 = Fixed::from_f32(p1.y);
         let y0f = if y0.frac() > FX_ZERO { Some(y0.to_i32()) } else { None };
         let y1f = if y1.frac() > FX_ZERO { Some(y1.to_i32()) } else { None };
         let fm = (y0.ceil() - y0) * islope;
-        let x_bot = fm + Fixed::from_f32(p0.v.x);
+        let x_bot = fm + Fixed::from_f32(p0.x);
         Edge {
             v1       : v1,
             y0f      : y0f,
@@ -393,11 +393,11 @@ impl Fig {
     }
     /// Get the next vertex for an edge change
     fn next_edge(&self, vid: Vid, dir: FigDir) -> Vid {
-        let pp = self.get_point2(vid);
+        let pp = self.get_point(vid);
         let sub = self.sub_at(vid);
         let mut v = sub.next(vid, dir);
         while v != vid {
-            let p = self.get_point2(v);
+            let p = self.get_point(v);
             if p.x < pp.x || Fixed::cmp_f32(pp.y, p.y) != Equal {
                 return v;
             }
@@ -423,8 +423,8 @@ impl Fig {
     }
     /// Get direction from top vertex.
     fn get_dir(&self, vid: Vid) -> FigDir {
-        let p0 = self.get_point2(self.next(vid, FigDir::Forward));
-        let p1 = self.get_point2(self.next(vid, FigDir::Reverse));
+        let p0 = self.get_point(self.next(vid, FigDir::Forward));
+        let p1 = self.get_point(self.next(vid, FigDir::Reverse));
         if p0.x < p1.x {
             FigDir::Forward
         } else {
@@ -434,23 +434,17 @@ impl Fig {
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
-    fn get_point(&self, vid: Vid) -> Vec2w {
+    fn get_point(&self, vid: Vid) -> Vec2 {
         self.points[vid as usize]
-    }
-    /// Get a point (Vec2).
-    ///
-    /// * `vid` Vertex ID.
-    fn get_point2(&self, vid: Vid) -> Vec2 {
-        self.points[vid as usize].v
     }
     /// Get Y value at a vertex.
     fn get_y(&self, vid: Vid) -> f32 {
-        self.get_point2(vid).y
+        self.get_point(vid).y
     }
     /// Add a point.
     ///
-    /// * `pt` Point to add (z indicates stroke width).
-    pub fn add_point(&mut self, pt: Vec2w) {
+    /// * `pt` Point to add.
+    pub fn add_point(&mut self, pt: Vec2) {
         let n_pts = self.points.len();
         if n_pts < Vid::max_value() as usize {
             let done = self.sub_current().done;
@@ -464,11 +458,11 @@ impl Fig {
         }
     }
     /// Check if a point is coincident with previous point.
-    fn coincident(&self, pt: Vec2w) -> bool {
+    fn coincident(&self, pt: Vec2) -> bool {
         let n = self.points.len();
         if n > 0 {
             let p = self.points[n - 1];
-            p.v == pt.v
+            p == pt
         } else {
             false
         }
@@ -482,8 +476,8 @@ impl Fig {
     }
     /// Compare two figure vertex IDs
     fn compare_vids(&self, v0: Vid, v1: Vid) -> Ordering {
-        let p0 = self.get_point2(v0);
-        let p1 = self.get_point2(v1);
+        let p0 = self.get_point(v0);
+        let p1 = self.get_point(v1);
         match Fixed::cmp_f32(p0.y, p1.y) {
             Less    => Less,
             Greater => Greater,
@@ -751,9 +745,9 @@ mod test {
         let mut m = Mask::new(3, 3);
         let mut s = vec!(0i16; 3);
         let mut f = Fig::new();
-        f.add_point(Vec2w::new(0f32, 0f32, 1f32));
-        f.add_point(Vec2w::new(3f32, 3f32, 1f32));
-        f.add_point(Vec2w::new(0f32, 3f32, 1f32));
+        f.add_point(Vec2::new(0f32, 0f32));
+        f.add_point(Vec2::new(3f32, 3f32));
+        f.add_point(Vec2::new(0f32, 3f32));
         f.fill(&mut m, &mut s, FillRule::NonZero);
         let mut p = m.iter();
         assert!(*p.next().unwrap() == 128u8);
@@ -771,9 +765,9 @@ mod test {
         let mut m = Mask::new(9, 1);
         let mut s = vec!(0i16; 16);
         let mut f = Fig::new();
-        f.add_point(Vec2w::new(0f32, 0f32, 1f32));
-        f.add_point(Vec2w::new(9f32, 1f32, 1f32));
-        f.add_point(Vec2w::new(0f32, 1f32, 1f32));
+        f.add_point(Vec2::new(0f32, 0f32));
+        f.add_point(Vec2::new(9f32, 1f32));
+        f.add_point(Vec2::new(0f32, 1f32));
         f.fill(&mut m, &mut s, FillRule::NonZero);
         let mut p = m.iter();
         assert!(*p.next().unwrap() == 242u8);

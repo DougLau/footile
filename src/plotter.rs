@@ -55,7 +55,7 @@ trait PlotDest {
 
 impl PlotDest for Fig {
     fn add_point(&mut self, pt: Vec2w) {
-        Fig::add_point(self, pt);
+        Fig::add_point(self, pt.v);
     }
     fn close(&mut self, joined: bool) {
         Fig::close(self, joined);
