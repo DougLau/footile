@@ -343,12 +343,11 @@ impl Fig {
         let points = Vec::with_capacity(1024);
         let mut subs = Vec::with_capacity(16);
         subs.push(SubFig::new(0 as Vid));
-        Fig { points: points, subs: subs }
+        Fig { points, subs }
     }
     /// Get the current sub-figure
     fn sub_current(&mut self) -> &mut SubFig {
-        let len = self.subs.len();
-        &mut self.subs[len - 1]
+        self.subs.last_mut().unwrap()
     }
     /// Add a new sub-figure
     fn sub_add(&mut self) {
@@ -362,9 +361,7 @@ impl Fig {
     }
     /// Get the sub-figure at a specified vertex ID
     fn sub_at(&self, vid: Vid) -> &SubFig {
-        let n_subs = self.subs.len();
-        for i in 0..n_subs {
-            let sub = &self.subs[i];
+        for sub in self.subs.iter() {
             if vid < sub.start + sub.n_points {
                 return sub;
             }
@@ -459,10 +456,8 @@ impl Fig {
     }
     /// Check if a point is coincident with previous point.
     fn coincident(&self, pt: Vec2) -> bool {
-        let n = self.points.len();
-        if n > 0 {
-            let p = self.points[n - 1];
-            p == pt
+        if let Some(p) = self.points.last() {
+            pt == *p
         } else {
             false
         }
@@ -681,14 +676,14 @@ impl<'a> Scanner<'a> {
     /// Update one edge at a regular vertex
     fn edge_regular(&mut self, vid: Vid) {
         let fig = &self.fig;
-        for i in 0..self.edges.len() {
-            if vid == self.edges[i].v1 {
-                let dir = self.edges[i].dir;
+        for e in self.edges.iter_mut() {
+            if vid == e.v1 {
+                let dir = e.dir;
                 let vn = fig.next_y(vid, dir);          // Find lower vertex
                 let v = fig.next_y(vn, opposite(dir));  // Find upper vertex
                 let p = fig.get_point(v);
                 let pn = fig.get_point(vn);
-                self.edges[i] = Edge::new(v, vn, p, pn, dir);
+                *e = Edge::new(v, vn, p, pn, dir);
                 break;
             }
         }
@@ -743,41 +738,25 @@ mod test {
     #[test]
     fn fig_3x3() {
         let mut m = Mask::new(3, 3);
-        let mut s = vec!(0i16; 3);
+        let mut s = vec!(0; 3);
         let mut f = Fig::new();
         f.add_point(Vec2::new(0f32, 0f32));
         f.add_point(Vec2::new(3f32, 3f32));
         f.add_point(Vec2::new(0f32, 3f32));
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        let mut p = m.iter();
-        assert!(*p.next().unwrap() == 128u8);
-        assert!(*p.next().unwrap() == 0u8);
-        assert!(*p.next().unwrap() == 0u8);
-        assert!(*p.next().unwrap() == 255u8);
-        assert!(*p.next().unwrap() == 128u8);
-        assert!(*p.next().unwrap() == 0u8);
-        assert!(*p.next().unwrap() == 255u8);
-        assert!(*p.next().unwrap() == 255u8);
-        assert!(*p.next().unwrap() == 128u8);
+        let p: Vec<_> = m.iter().cloned().collect();
+        assert!(p == [128, 0, 0, 255, 128, 0, 255, 255, 128]);
     }
     #[test]
     fn fig_9x1() {
         let mut m = Mask::new(9, 1);
-        let mut s = vec!(0i16; 16);
+        let mut s = vec!(0; 16);
         let mut f = Fig::new();
         f.add_point(Vec2::new(0f32, 0f32));
         f.add_point(Vec2::new(9f32, 1f32));
         f.add_point(Vec2::new(0f32, 1f32));
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        let mut p = m.iter();
-        assert!(*p.next().unwrap() == 242u8);
-        assert!(*p.next().unwrap() == 214u8);
-        assert!(*p.next().unwrap() == 186u8);
-        assert!(*p.next().unwrap() == 158u8);
-        assert!(*p.next().unwrap() == 130u8);
-        assert!(*p.next().unwrap() == 102u8);
-        assert!(*p.next().unwrap() == 74u8);
-        assert!(*p.next().unwrap() == 46u8);
-        assert!(*p.next().unwrap() == 18u8);
+        let p: Vec<_> = m.iter().cloned().collect();
+        assert!(p == [242, 214, 186, 158, 130, 102, 74, 46, 18]);
     }
 }
