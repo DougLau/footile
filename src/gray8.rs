@@ -60,7 +60,7 @@ impl pixel::Format for Gray8 {
 
 /// Composite a color with a mask (slow fallback).
 fn over_fallback(pix: &mut [Gray8], mask: &Mask, clr: Gray8) {
-    for (bot, m) in pix.iter_mut().zip(mask.iter()) {
+    for (bot, m) in pix.iter_mut().zip(mask.pixels()) {
         *bot = clr.over_alpha(*bot, *m);
     }
 }

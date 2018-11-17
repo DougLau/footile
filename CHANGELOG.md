@@ -1,6 +1,7 @@
 ## [Unreleased]
 ### Added
 * Rgba32, Gray8 pixel formats.
+* Raster::width(), height() and pixels()
 ### Changed
 * Raster and Plotter now have pixel format type parameters.
 * Plotter::color_over renamed to over.

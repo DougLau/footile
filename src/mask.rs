@@ -55,9 +55,9 @@ impl Mask {
     pub(crate) fn height(&self) -> u32 {
         self.height
     }
-    /// Get pixel iterator
-    pub(crate) fn iter(&self) -> ::std::slice::Iter<u8> {
-        self.pixels.iter()
+    /// Get pixel slice
+    pub fn pixels(&self) -> &[u8] {
+        &self.pixels
     }
     /// Clear the mask.
     pub(crate) fn clear(&mut self) {
@@ -89,10 +89,6 @@ impl Mask {
         let s = (row * self.width) as usize;
         let t = s + self.width as usize;
         &mut self.pixels[s..t]
-    }
-    /// Get pixel slice
-    pub fn pixels(&self) -> &[u8] {
-        &self.pixels[..]
     }
     /// Write the mask to a PGM (portable gray map) file.
     ///

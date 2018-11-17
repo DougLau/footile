@@ -635,7 +635,7 @@ mod test {
         f.add_point(Vec2::new(0f32, 3f32));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        let p: Vec<_> = m.iter().cloned().collect();
+        let p: Vec<_> = m.pixels().iter().cloned().collect();
         assert!(p == [128, 0, 0, 255, 128, 0, 255, 255, 128]);
     }
     #[test]
@@ -648,7 +648,7 @@ mod test {
         f.add_point(Vec2::new(0f32, 1f32));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        let p: Vec<_> = m.iter().cloned().collect();
+        let p: Vec<_> = m.pixels().iter().cloned().collect();
         assert!(p == [242, 214, 186, 158, 130, 102, 74, 46, 18]);
     }
 }

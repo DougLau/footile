@@ -42,6 +42,18 @@ impl<F: Format> Raster<F> {
         let pixels = vec![F::default(); n];
         Raster { width, height, pixels }
     }
+    /// Get raster width.
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+    /// Get raster height.
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+    /// Get a slice of all pixels.
+    pub fn pixels(&self) -> &[F] {
+        &self.pixels
+    }
     /// Clear all pixels.
     pub fn clear(&mut self) {
         for p in self.pixels.iter_mut() {
@@ -65,7 +77,7 @@ impl<F: Format> Raster<F> {
         let mut enc = png::Encoder::new(bw, self.width, self.height);
         enc.set(F::color_type()).set(png::BitDepth::Eight);
         let mut writer = enc.write_header()?;
-        let pix = F::as_u8_slice(&self.pixels[..]);
+        let pix = F::as_u8_slice(&self.pixels);
         writer.write_image_data(pix)?;
         Ok(())
     }

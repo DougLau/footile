@@ -36,8 +36,6 @@ impl From<Rgba32> for i32 {
     }
 }
 
-
-
 impl Rgba32 {
     /// Build a color by specifying red, green, blue and alpha values.
     pub fn new(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
@@ -203,7 +201,7 @@ unsafe fn scale_i16_to_u8_x86(v: __m128i) -> __m128i {
 
 /// Composite a color with a mask (slow fallback).
 fn over_fallback(pix: &mut [Rgba32], mask: &Mask, clr: Rgba32) {
-    for (bot, m) in pix.iter_mut().zip(mask.iter()) {
+    for (bot, m) in pix.iter_mut().zip(mask.pixels()) {
         let mut out = clr.over_alpha(*bot, *m);
         *bot = out;
     }
