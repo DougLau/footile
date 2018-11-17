@@ -344,6 +344,11 @@ impl<F: Format> Plotter<F> {
     }
     /// Write the plot to a PNG (portable network graphics) file.
     ///
+    /// This is convenience function to write the contained image.
+    /// If a raster exists (once the mask has been composited with `over`),
+    /// it will be written.  Otherwise, the mask will be written.
+    /// After writing a raster, it will be dropped.
+    ///
     /// * `filename` Name of file to write.
     pub fn write_png(&mut self, filename: &str) -> io::Result<()> {
         if let Some(r) = self.raster.take() {
