@@ -3,7 +3,7 @@ A 2D vector graphics library written in Rust
 
 ## Example
 ```rust
-use footile::{Color,FillRule,PathBuilder,Plotter};
+use footile::{FillRule,PathBuilder,Plotter,Rgba32};
 
 let fish = PathBuilder::new().relative().pen_width(3f32)
                        .move_to(112f32, 24f32)
@@ -13,7 +13,7 @@ let fish = PathBuilder::new().relative().pen_width(3f32)
                        .line_to(-16f32, -40f32)
                        .close().build();
 let mut p = Plotter::new(128, 128);
-p.fill(&fish, FillRule::NonZero).color_over(Color::rgb(127, 96, 96));
-p.stroke(&fish).color_over(Color::rgb(255, 208, 208));
+p.fill(&fish, FillRule::NonZero).over(Rgba32::rgb(127, 96, 96));
+p.stroke(&fish).over(Rgba32::rgb(255, 208, 208));
 p.write_png("./fishy.png")?;
 ```

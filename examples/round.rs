@@ -1,7 +1,7 @@
 // round.rs
 extern crate footile;
 
-use footile::{JoinStyle, PathBuilder, Plotter};
+use footile::{Gray8,JoinStyle,PathBuilder,Plotter};
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative().pen_width(40f32)
@@ -9,7 +9,7 @@ fn main() -> Result<(), std::io::Error> {
                            .line_to(50f32, 0f32)
                            .line_to(0f32, -50f32)
                            .build();
-    let mut p = Plotter::new(100, 100);
+    let mut p = Plotter::<Gray8>::new(100, 100);
     p.set_join(JoinStyle::Round);
     p.stroke(&path).write_png("./round.png")
 }

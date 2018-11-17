@@ -7,38 +7,39 @@ use fig::Fig;
 use geom::{Transform, Vec2, Vec2w, float_lerp};
 use path::{FillRule, JoinStyle, PathOp};
 use mask::Mask;
-use raster::{Color,Raster};
+use pixel::Format;
+use raster::Raster;
 use stroker::Stroke;
 
 /// Plotter for 2D vector paths.
 ///
-/// This is a software vector rasterizer featuring high quality anti-aliasing.
+/// This is a software vector rasterizer featuring anti-aliasing.
 /// Paths can be created using [PathBuilder](struct.PathBuilder.html).
 /// The plotter contains a [Mask](struct.Mask.html) of the current plot, which
-/// is affected by fill and stroke calls.  Using the color_over method will
-/// cause a [Raster](struct.Raster.html) to be created with the same height and
-/// width as the mask.
+/// is affected by fill and stroke calls.  Using the over method will cause a
+/// [Raster](struct.Raster.html) to be created with the same height and width
+/// as the mask.
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder, Plotter};
+/// use footile::{PathBuilder,Plotter,Rgba32};
 /// let path = PathBuilder::new().pen_width(3f32)
 ///                        .move_to(50f32, 34f32)
 ///                        .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
 ///                        .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
 ///                        .close().build();
-/// let mut p = Plotter::new(100, 100);
+/// let mut p = Plotter::<Rgba32>::new(100, 100);
 /// p.stroke(&path);
 /// ```
-pub struct Plotter {
-    mask       : Mask,          // image mask
-    raster     : Option<Raster>,// image raster
-    sgn_area   : Vec<i16>,      // signed area buffer
-    pen        : Vec2w,         // current pen position and width
-    transform  : Transform,     // user to pixel affine transform
-    tol_sq     : f32,           // curve decomposition tolerance squared
-    s_width    : f32,           // current stroke width
-    join_style : JoinStyle,     // current join style
+pub struct Plotter<F: Format> {
+    mask       : Mask,              // image mask
+    raster     : Option<Raster<F>>, // image raster
+    sgn_area   : Vec<i16>,          // signed area buffer
+    pen        : Vec2w,             // current pen position and width
+    transform  : Transform,         // user to pixel affine transform
+    tol_sq     : f32,               // curve decomposition tolerance squared
+    s_width    : f32,               // current stroke width
+    join_style : JoinStyle,         // current join style
 }
 
 /// Plot destination
@@ -71,12 +72,14 @@ impl PlotDest for Stroke {
     }
 }
 
-impl Plotter {
+impl<F: Format> Plotter<F> {
     /// Create a new plotter.
     ///
+    /// * `F` pixel format: [Gray8](struct.Gray8.html)
+    ///                  or [Rgba32](struct.Rgba32.html).
     /// * `width` Width in pixels.
     /// * `height` Height in pixels.
-    pub fn new(width: u32, height: u32) -> Plotter {
+    pub fn new(width: u32, height: u32) -> Plotter<F> {
         let tol = 0.3f32;
         let w = if width > 0 { width } else { 100 };
         let h = if height > 0 { height } else { 100 };
@@ -321,12 +324,12 @@ impl Plotter {
     /// Composite mask with a color onto raster, using "over".
     ///
     /// * `clr` Color to composite.
-    pub fn color_over(&mut self, clr: Color) -> &mut Self {
+    pub fn over(&mut self, clr: F) -> &mut Self {
         if self.raster.is_none() {
-            self.raster = Some(Raster::new(self.width(), self.height()));
+            self.raster = Some(Raster::<F>::new(self.width(), self.height()));
         }
         if let Some(mut r) = self.raster.take() {
-            r.color_over(self.mask(), clr);
+            r.over(self.mask(), clr);
             self.raster = Some(r);
         }
         self.clear_mask()
@@ -336,7 +339,7 @@ impl Plotter {
         &self.mask
     }
     /// Get the raster.
-    pub fn raster(&self) -> Option<&Raster> {
+    pub fn raster(&self) -> Option<&Raster<F>> {
         self.raster.as_ref()
     }
     /// Write the plot to a PNG (portable network graphics) file.

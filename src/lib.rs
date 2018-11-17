@@ -10,16 +10,21 @@ extern crate png;
 
 mod imgbuf;
 mod geom;
+mod gray8;
 mod mask;
 mod fig;
 mod fixed;
-mod stroker;
 mod path;
+mod pixel;
 mod plotter;
 mod raster;
+mod rgba32;
+mod stroker;
 
 pub use geom::Transform;
+pub use gray8::Gray8;
 pub use mask::Mask;
 pub use path::{FillRule, JoinStyle, Path2D, PathBuilder, PathOp};
 pub use plotter::Plotter;
-pub use raster::{Color,Raster};
+pub use raster::Raster;
+pub use rgba32::Rgba32;
