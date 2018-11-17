@@ -115,10 +115,10 @@ impl SubFig {
 impl Edge {
     /// Create a new edge
     fn new(v0: Vid, v1: Vid, p0: Vec2, p1: Vec2, dir: FigDir) -> Edge {
-        assert!(v0 != v1);
+        debug_assert!(v0 != v1);
         let dx = Fixed::from(p1.x - p0.x);  // delta X
         let dy = Fixed::from(p1.y - p0.y);  // delta Y
-        assert!(dy > Fixed::ZERO);
+        debug_assert!(dy > Fixed::ZERO);
         let step_pix = Edge::calculate_step(dx, dy);
         let islope = dx / dy;
         let y0 = Fixed::from(p0.y);
@@ -204,7 +204,7 @@ impl Edge {
         let ed = if self.dir == dir { 1i16 } else { -1i16 };
         let s_0 = pixel_cov(self.first_cov());
         let s_n = pixel_cov(self.step_cov(Fixed::ONE));
-        assert!(s_n > 0);
+        debug_assert!(s_n > 0);
         let mut cc = s_0;
         let mut cov = 0i16;
         let mut x = self.min_pix();
@@ -263,7 +263,7 @@ impl Fig {
         let c = self.coincident(pt);
         if c { self.points.pop(); }
         let sub = self.sub_current();
-        assert!(sub.n_points > 0);
+        debug_assert!(sub.n_points > 0);
         sub.done = true;
         if c { sub.n_points -= 1; }
     }
@@ -400,7 +400,7 @@ impl Fig {
     pub fn fill(&self, mask: &mut Mask, sgn_area: &mut [i16], rule: FillRule) {
         let n_points = self.points.len() as Vid;
         if n_points > 0 {
-            assert!(self.sub_is_done());
+            debug_assert!(self.sub_is_done());
             let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
             vids.sort_by(|a,b| self.compare_vids(*a, *b));
             let dir = self.get_dir(vids[0]);
@@ -498,8 +498,8 @@ impl<'a> Scanner<'a> {
     /// Scan partial edges
     fn scan_partial(&mut self) {
         let cov_full = self.scan_coverage();
-        assert!(cov_full <= 256i16);
-        if cov_full <= 0i16 {
+        debug_assert!(cov_full <= 256);
+        if cov_full <= 0 {
             return;
         }
         let y = line_of(self.y_now);
@@ -534,8 +534,8 @@ impl<'a> Scanner<'a> {
     }
     /// Get full scan coverage
     fn scan_coverage(&self) -> i16 {
-        assert!(self.y_now > self.y_prev);
-        assert!(self.y_now <= self.y_prev + Fixed::ONE);
+        debug_assert!(self.y_now > self.y_prev);
+        debug_assert!(self.y_now <= self.y_prev + Fixed::ONE);
         let scan_now = pixel_cov(self.y_now.fract());
         let scan_prev = pixel_cov(self.y_prev.fract());
         if scan_now == scan_prev && self.y_now.fract() > Fixed::ZERO {
@@ -609,7 +609,7 @@ impl<'a> Scanner<'a> {
 /// fcov Total coverage (0 to 1 fixed-point).
 /// return Total pixel coverage (0 to 256).
 fn pixel_cov(fcov: Fixed) -> i16 {
-    assert!(fcov >= Fixed::ZERO && fcov <= Fixed::ONE);
+    debug_assert!(fcov >= Fixed::ZERO && fcov <= Fixed::ONE);
     // Round to nearest cov value
     let n: i32 = (fcov << 8).round().into();
     n as i16
