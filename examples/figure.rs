@@ -5,14 +5,14 @@ use footile::{Gray8,FillRule,PathBuilder,Plotter};
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative()
-                           .move_to(4f32, 4f32)
-                           .line_to(28f32, 12f32)
-                           .line_to(28f32, -12f32)
-                           .line_to(-12f32, 28f32)
-                           .line_to(12f32, 28f32)
-                           .line_to(-28f32, -4f32)
-                           .line_to(-28f32, 4f32)
-                           .line_to(12f32, -28f32)
+                           .move_to(4.0, 4.0)
+                           .line_to(28.0, 12.0)
+                           .line_to(28.0, -12.0)
+                           .line_to(-12.0, 28.0)
+                           .line_to(12.0, 28.0)
+                           .line_to(-28.0, -4.0)
+                           .line_to(-28.0, 4.0)
+                           .line_to(12.0, -28.0)
                            .close().build();
     let mut p = Plotter::<Gray8>::new(64, 64);
     p.fill(&path, FillRule::NonZero);

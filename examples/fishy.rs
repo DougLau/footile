@@ -4,18 +4,18 @@ extern crate footile;
 use footile::{FillRule,PathBuilder,Plotter,Rgba8};
 
 fn main() -> Result<(), std::io::Error> {
-    let fish = PathBuilder::new().relative().pen_width(3f32)
-                           .move_to(112f32, 24f32)
-                           .line_to(-32f32, 24f32)
-                           .cubic_to(-96f32, -48f32, -96f32, 80f32, 0f32, 32f32)
-                           .line_to(32f32, 24f32)
-                           .line_to(-16f32, -40f32)
+    let fish = PathBuilder::new().relative().pen_width(3.0)
+                           .move_to(112.0, 24.0)
+                           .line_to(-32.0, 24.0)
+                           .cubic_to(-96.0, -48.0, -96.0, 80.0, 0.0, 32.0)
+                           .line_to(32.0, 24.0)
+                           .line_to(-16.0, -40.0)
                            .close().build();
-    let eye = PathBuilder::new().relative().pen_width(2f32)
-                          .move_to(24f32, 48f32)
-                          .line_to(8f32, 8f32)
-                          .move_to(0f32, -8f32)
-                          .line_to(-8f32, 8f32)
+    let eye = PathBuilder::new().relative().pen_width(2.0)
+                          .move_to(24.0, 48.0)
+                          .line_to(8.0, 8.0)
+                          .move_to(0.0, -8.0)
+                          .line_to(-8.0, 8.0)
                           .build();
     let mut p = Plotter::new(128, 128);
     p.fill(&fish, FillRule::NonZero).over(Rgba8::rgb(127, 96, 96));

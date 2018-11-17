@@ -4,10 +4,10 @@ extern crate footile;
 use footile::{FillRule,Gray8,PathBuilder,Plotter};
 
 fn main() -> Result<(), std::io::Error> {
-    let path = PathBuilder::new().relative().pen_width(3f32)
-                           .move_to(50f32, 34f32)
-                           .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
-                           .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
+    let path = PathBuilder::new().relative().pen_width(3.0)
+                           .move_to(50.0, 34.0)
+                           .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
+                           .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
                            .close()
                            .build();
     let mut p = Plotter::new(100, 100);
