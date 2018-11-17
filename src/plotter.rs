@@ -4,12 +4,12 @@
 //
 use std::io;
 use fig::Fig;
-use geom::{Transform, Vec2, Vec2w, float_lerp};
-use path::{FillRule, JoinStyle, PathOp};
+use geom::{Transform,Vec2,Vec2w,float_lerp};
+use path::{FillRule,PathOp};
 use mask::Mask;
 use pixel::Format;
 use raster::Raster;
-use stroker::Stroke;
+use stroker::{JoinStyle,Stroke};
 
 /// Plotter for 2D vector paths.
 ///

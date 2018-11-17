@@ -12,17 +12,6 @@ pub enum FillRule {
     EvenOdd,
 }
 
-/// Style for joins.
-#[derive(Clone,Copy,Debug)]
-pub enum JoinStyle {
-    /// Mitered join with limit (miter length to stroke width ratio)
-    Miter(f32),
-    /// Beveled join
-    Bevel,
-    /// Rounded join
-    Round,
-}
-
 /// Path operation.
 pub enum PathOp {
     /// Close the path

@@ -3,11 +3,22 @@
 // Copyright (c) 2017-2018  Douglas P Lau
 //
 use std::fmt;
-use geom::{Vec2, Vec2w, intersection};
-use path::{JoinStyle, PathOp};
+use geom::{Vec2,Vec2w,intersection};
+use path::PathOp;
 
 /// Vertex ID
 type Vid = u16;
+
+/// Style for stroke joins.
+#[derive(Clone,Copy,Debug)]
+pub enum JoinStyle {
+    /// Mitered join with limit (miter length to stroke width ratio)
+    Miter(f32),
+    /// Beveled join
+    Bevel,
+    /// Rounded join
+    Round,
+}
 
 /// Stroke direction enum
 #[derive(Clone, Copy, PartialEq, Debug)]
