@@ -1,5 +1,13 @@
 # footile
-A 2D vector graphics library written in Rust
+A 2D vector graphics library written in Rust.
+
+## Goals
+* API simplicity and ergonomics
+* Features comparable to other 2D graphics (Cairo, Skia, SVG)
+* Anti-aliased rendering
+* Image rendering for web servers
+* (Someday) GPU acceleration (hopefully using SPIR-V as rust compile target!)
+* Have fun!
 
 ## Example
 ```rust
