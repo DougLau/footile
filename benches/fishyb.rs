@@ -23,7 +23,7 @@ fn compose_fishy_256(c: &mut Criterion) {
     c.bench_function("compose_fishy_256", move |b| {
         let mut r = Raster::new(p.width(), p.height());
         let m = p.mask();
-        b.iter(|| r.over(m, Rgba32::rgb(127, 96, 96)))
+        b.iter(|| r.over(m, Rgba8::rgb(127, 96, 96)))
     });
 }
 
@@ -33,7 +33,7 @@ fn compose_fishy_512(c: &mut Criterion) {
     c.bench_function("compose_fishy_512", move |b| {
         let mut r = Raster::new(p.width(), p.height());
         let m = p.mask();
-        b.iter(|| r.over(m, Rgba32::rgb(127, 96, 96)))
+        b.iter(|| r.over(m, Rgba8::rgb(127, 96, 96)))
     });
 }
 
@@ -45,7 +45,7 @@ fn stroke_fishy2() {
     make_plotter(256).stroke(&make_fishy());
 }
 
-fn make_plotter(i: u32) -> Plotter<Rgba32> {
+fn make_plotter(i: u32) -> Plotter<Rgba8> {
     let mut p = Plotter::new(i, i);
     p.set_transform(Transform::new_scale(2f32, 2f32));
     p

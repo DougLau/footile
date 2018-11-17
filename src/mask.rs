@@ -18,12 +18,12 @@ use imgbuf::{accumulate_non_zero, accumulate_odd};
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder,Plotter,Rgba32};
+/// use footile::{PathBuilder,Plotter,Rgba8};
 /// let path = PathBuilder::new()
 ///                        .move_to(10f32, 10f32)
 ///                        .line_to(90f32, 90f32)
 ///                        .build();
-/// let mut p = Plotter::<Rgba32>::new(100, 100);
+/// let mut p = Plotter::<Rgba8>::new(100, 100);
 /// p.stroke(&path);
 /// let m = p.mask();
 /// ```

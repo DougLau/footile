@@ -1,7 +1,7 @@
 // fishy.rs
 extern crate footile;
 
-use footile::{FillRule,PathBuilder,Plotter,Rgba32};
+use footile::{FillRule,PathBuilder,Plotter,Rgba8};
 
 fn main() -> Result<(), std::io::Error> {
     let fish = PathBuilder::new().relative().pen_width(3f32)
@@ -18,8 +18,8 @@ fn main() -> Result<(), std::io::Error> {
                           .line_to(-8f32, 8f32)
                           .build();
     let mut p = Plotter::new(128, 128);
-    p.fill(&fish, FillRule::NonZero).over(Rgba32::rgb(127, 96, 96));
-    p.stroke(&fish).over(Rgba32::rgb(255, 208, 208));
-    p.stroke(&eye).over(Rgba32::rgb(0, 0, 0));
+    p.fill(&fish, FillRule::NonZero).over(Rgba8::rgb(127, 96, 96));
+    p.stroke(&fish).over(Rgba8::rgb(255, 208, 208));
+    p.stroke(&eye).over(Rgba8::rgb(0, 0, 0));
     p.write_png("./fishy.png")
 }

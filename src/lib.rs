@@ -18,7 +18,7 @@ mod path;
 mod pixel;
 mod plotter;
 mod raster;
-mod rgba32;
+mod rgba8;
 mod stroker;
 
 pub use geom::Transform;
@@ -27,4 +27,4 @@ pub use mask::Mask;
 pub use path::{FillRule, JoinStyle, Path2D, PathBuilder, PathOp};
 pub use plotter::Plotter;
 pub use raster::Raster;
-pub use rgba32::Rgba32;
+pub use rgba8::Rgba8;

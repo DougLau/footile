@@ -13,16 +13,16 @@ use pixel::Format;
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder,Plotter,Raster,Rgba32};
+/// use footile::{PathBuilder,Plotter,Raster,Rgba8};
 /// let path = PathBuilder::new().pen_width(5f32)
 ///                        .move_to(16f32, 48f32)
 ///                        .line_to(32f32, 0f32)
 ///                        .line_to(-16f32, -32f32)
 ///                        .close().build();
-/// let mut p = Plotter::<Rgba32>::new(100, 100);
+/// let mut p = Plotter::<Rgba8>::new(100, 100);
 /// let mut r = Raster::new(p.width(), p.height());
 /// p.stroke(&path);
-/// r.over(p.mask(), Rgba32::rgb(208, 255, 208));
+/// r.over(p.mask(), Rgba8::rgb(208, 255, 208));
 /// ```
 pub struct Raster<F: Format> {
     width  : u32,
@@ -34,7 +34,7 @@ impl<F: Format> Raster<F> {
     /// Create a new raster image.
     ///
     /// * `F` pixel format: [Gray8](struct.Gray8.html)
-    ///                  or [Rgba32](struct.Rgba32.html).
+    ///                  or [Rgba8](struct.Rgba8.html).
     /// * `width` Width in pixels.
     /// * `height` Height in pixels.
     pub fn new(width: u32, height: u32) -> Raster<F> {

@@ -1,4 +1,4 @@
-// rgba32.rs    32-bit RGBA pixel format.
+// rgba8.rs     8-bit per channel RGBA pixel format.
 //
 // Copyright (c) 2018  Douglas P Lau
 //
@@ -13,21 +13,21 @@ use std::arch::x86_64::*;
 // Defining this allows easier testing of fallback configuration
 const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
 
-/// 32-bit RGBA pixel format.
+/// 8-bit per channel RGBA pixel format.
 ///
 /// This format has four 8-bit channels: red, green, blue and alpha.
 #[derive(Clone,Copy,Debug,Default)]
 #[repr(C)]
-pub struct Rgba32 {
+pub struct Rgba8 {
     red: u8,
     green: u8,
     blue: u8,
     alpha: u8,
 }
 
-impl From<Rgba32> for i32 {
-    /// Get an i32 from a Rgba32 (alpha in high byte)
-    fn from(c: Rgba32) -> i32 {
+impl From<Rgba8> for i32 {
+    /// Get an i32 from a Rgba8 (alpha in high byte)
+    fn from(c: Rgba8) -> i32 {
         let red   = (c.red()   as i32) << 0;
         let green = (c.green() as i32) << 8;
         let blue  = (c.blue()  as i32) << 16;
@@ -36,14 +36,14 @@ impl From<Rgba32> for i32 {
     }
 }
 
-impl Rgba32 {
+impl Rgba8 {
     /// Build a color by specifying red, green, blue and alpha values.
     pub fn new(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
-        Rgba32 { red, green, blue, alpha }
+        Rgba8 { red, green, blue, alpha }
     }
     /// Build an opaque color by specifying red, green and blue values.
     pub fn rgb(red: u8, green: u8, blue: u8) -> Self {
-        Rgba32::new(red, green, blue, 0xFF)
+        Rgba8::new(red, green, blue, 0xFF)
     }
     /// Divide alpha out of red, green and blue components.
     fn divide_alpha(self) -> Self {
@@ -51,7 +51,7 @@ impl Rgba32 {
         let red   = unscale_u8(self.red(), alpha);
         let green = unscale_u8(self.green(), alpha);
         let blue  = unscale_u8(self.blue(), alpha);
-        Rgba32::new(red, green, blue, alpha)
+        Rgba8::new(red, green, blue, alpha)
     }
     /// Get the red component value.
     pub fn red(self) -> u8 {
@@ -70,7 +70,7 @@ impl Rgba32 {
         self.alpha
     }
     /// Composite the color with another, using "over".
-    fn over_alpha(self, bot: Rgba32, alpha: u8) -> Self {
+    fn over_alpha(self, bot: Rgba8, alpha: u8) -> Self {
         // NOTE: `bot + alpha * (top - bot)` is equivalent to
         //       `alpha * top + (1 - alpha) * bot`, but faster.
         let r = self.red()   as i32 - bot.red()   as i32;
@@ -81,7 +81,7 @@ impl Rgba32 {
         let green = (bot.green() as i32 + scale_i32(g, alpha)) as u8;
         let blue  = (bot.blue()  as i32 + scale_i32(b, alpha)) as u8;
         let alpha = (bot.alpha() as i32 + scale_i32(a, alpha)) as u8;
-        Rgba32::new(red, green, blue, alpha)
+        Rgba8::new(red, green, blue, alpha)
     }
 }
 
@@ -103,7 +103,7 @@ fn unscale_u8(a: u8, b: u8) -> u8 {
     }
 }
 
-impl pixel::Format for Rgba32 {
+impl pixel::Format for Rgba8 {
     /// Divide alpha (remove premultiplied alpha)
     fn divide_alpha(pix: &mut [Self]) {
         for p in pix.iter_mut() {
@@ -126,7 +126,7 @@ impl pixel::Format for Rgba32 {
 
 /// Composite a color with a mask.
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
-unsafe fn over_x86(pix: &mut [Rgba32], mask: &Mask, clr: Rgba32) {
+unsafe fn over_x86(pix: &mut [Rgba8], mask: &Mask, clr: Rgba8) {
     let clr = _mm_set1_epi32(clr.into());
     let src = mask.pixels();
     let dst = pix;
@@ -200,7 +200,7 @@ unsafe fn scale_i16_to_u8_x86(v: __m128i) -> __m128i {
 }
 
 /// Composite a color with a mask (slow fallback).
-fn over_fallback(pix: &mut [Rgba32], mask: &Mask, clr: Rgba32) {
+fn over_fallback(pix: &mut [Rgba8], mask: &Mask, clr: Rgba8) {
     for (bot, m) in pix.iter_mut().zip(mask.pixels()) {
         let mut out = clr.over_alpha(*bot, *m);
         *bot = out;

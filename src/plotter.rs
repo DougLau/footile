@@ -22,13 +22,13 @@ use stroker::Stroke;
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder,Plotter,Rgba32};
+/// use footile::{PathBuilder,Plotter,Rgba8};
 /// let path = PathBuilder::new().pen_width(3f32)
 ///                        .move_to(50f32, 34f32)
 ///                        .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
 ///                        .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
 ///                        .close().build();
-/// let mut p = Plotter::<Rgba32>::new(100, 100);
+/// let mut p = Plotter::<Rgba8>::new(100, 100);
 /// p.stroke(&path);
 /// ```
 pub struct Plotter<F: Format> {
@@ -76,7 +76,7 @@ impl<F: Format> Plotter<F> {
     /// Create a new plotter.
     ///
     /// * `F` pixel format: [Gray8](struct.Gray8.html)
-    ///                  or [Rgba32](struct.Rgba32.html).
+    ///                  or [Rgba8](struct.Rgba8.html).
     /// * `width` Width in pixels.
     /// * `height` Height in pixels.
     pub fn new(width: u32, height: u32) -> Plotter<F> {
