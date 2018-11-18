@@ -29,10 +29,10 @@ pub struct Vec2w {
 /// ```
 /// use footile::Transform;
 /// const PI: f32 = std::f32::consts::PI;
-/// let t = Transform::new_translate(-50f32, -50f32)
+/// let t = Transform::new_translate(-50.0, -50.0)
 ///                   .rotate(PI)
-///                   .translate(50f32, 50f32)
-///                   .scale(2f32, 2f32);
+///                   .translate(50.0, 50.0)
+///                   .scale(2.0, 2.0);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
@@ -95,7 +95,7 @@ impl Vec2 {
     }
     /// Create a zero Vec2
     pub fn zero() -> Self {
-        Vec2::new(0f32, 0f32)
+        Vec2::new(0.0, 0.0)
     }
     /// Get the magnitude of a Vec2
     pub fn mag(self) -> f32 {
@@ -104,7 +104,7 @@ impl Vec2 {
     /// Create a copy normalized to unit length
     pub fn normalize(self) -> Self {
         let m = self.mag();
-        if m > 0f32 {
+        if m > 0.0 {
             self / m
         } else {
             Vec2::zero()
@@ -123,8 +123,8 @@ impl Vec2 {
     }
     /// Get the midpoint of two Vec2
     pub fn midpoint(self, other: Self) -> Self {
-        let x = (self.x + other.x) / 2f32;
-        let y = (self.y + other.y) / 2f32;
+        let x = (self.x + other.x) / 2.0;
+        let y = (self.y + other.y) / 2.0;
         Vec2::new(x, y)
     }
     /// Create a left-hand perpendicular Vec2
@@ -160,9 +160,9 @@ impl Vec2 {
         const PI: f32 = f32::consts::PI;
         let th = self.y.atan2(self.x) - other.y.atan2(other.x);
         if th < -PI {
-            th + 2f32 * PI
+            th + 2.0 * PI
         } else if th > PI {
-            th - 2f32 * PI
+            th - 2.0 * PI
         } else {
             th
         }
@@ -191,7 +191,7 @@ pub fn intersection(a0: Vec2,
     let av = a0 - a1;
     let bv = b0 - b1;
     let den = av * bv;
-    if den != 0f32 {
+    if den != 0.0 {
         let ca = a0 * a1;
         let cb = b0 * b1;
         let xn = bv.x * ca - av.x * cb;
@@ -214,7 +214,7 @@ impl Vec2w {
     pub fn midpoint(self, other: Self) -> Self {
         Vec2w {
             v: self.v.midpoint(other.v),
-            w: (self.w + other.w) / 2f32,
+            w: (self.w + other.w) / 2.0,
         }
     }
 }
@@ -222,7 +222,7 @@ impl Vec2w {
 impl ops::MulAssign for Transform {
     fn mul_assign(&mut self, other: Self) {
         for c in 0..3 {
-            let mut m = [0f32; 3];
+            let mut m = [0.0; 3];
             for r in 0..3 {
                 m[r] = self.get(0, c) * other.get(r, 0) +
                        self.get(1, c) * other.get(r, 1) +
@@ -266,9 +266,9 @@ impl Transform {
     /// Create a new identity transform.
     pub fn new() -> Self {
         Transform {
-            e: [1f32, 0f32, 0f32,
-                0f32, 1f32, 0f32,
-                0f32, 0f32, 1f32]
+            e: [1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0]
         }
     }
     /// Create a new translation transform.
@@ -277,9 +277,9 @@ impl Transform {
     /// * `ty` Amount to translate Y.
     pub fn new_translate(tx: f32, ty: f32) -> Self {
         Transform {
-            e: [1f32, 0f32,   tx,
-                0f32, 1f32,   ty,
-                0f32, 0f32, 1f32]
+            e: [1.0, 0.0,  tx,
+                0.0, 1.0,  ty,
+                0.0, 0.0, 1.0]
         }
     }
     /// Create a new scale transform.
@@ -288,9 +288,9 @@ impl Transform {
     /// * `sy` Scale factor for Y dimension.
     pub fn new_scale(sx: f32, sy: f32) -> Self {
         Transform {
-            e: [  sx, 0f32, 0f32,
-                0f32,   sy, 0f32,
-                0f32, 0f32, 1f32]
+            e: [ sx, 0.0, 0.0,
+                0.0,  sy, 0.0,
+                0.0, 0.0, 1.0]
         }
     }
     /// Create a new rotation transform.
@@ -300,9 +300,9 @@ impl Transform {
         let sn = th.sin();
         let cs = th.cos();
         Transform {
-            e: [  cs,  -sn, 0f32,
-                  sn,   cs, 0f32,
-                0f32, 0f32, 1f32]
+            e: [ cs, -sn, 0.0,
+                 sn,  cs, 0.0,
+                0.0, 0.0, 1.0]
         }
     }
     /// Create a new skew transform.
@@ -313,9 +313,9 @@ impl Transform {
         let tnx = ax.tan();
         let tny = ay.tan();
         Transform {
-            e: [1f32,  tnx, 0f32,
-                 tny, 1f32, 0f32,
-                0f32, 0f32, 1f32]
+            e: [1.0, tnx, 0.0,
+                tny, 1.0, 0.0,
+                0.0, 0.0, 1.0]
         }
     }
     /// Get a value.
@@ -362,29 +362,28 @@ impl Transform {
 #[cfg(test)]
 mod test {
     use super::Vec2;
-
     #[test]
     fn test_vec2() {
-        let a = Vec2::new(2f32, 1f32);
-        let b = Vec2::new(3f32, 4f32);
-        let c = Vec2::new(-1f32, 1f32);
-        assert!(a + b == Vec2::new(5f32, 5f32));
-        assert!(b - a == Vec2::new(1f32, 3f32));
-        assert!(a * 2f32 == Vec2::new(4f32, 2f32));
-        assert!(a / 2f32 == Vec2::new(1f32, 0.5f32));
-        assert!(-a == Vec2::new(-2f32, -1f32));
-        assert!(b.mag() == 5f32);
-        assert!(a.normalize() == Vec2::new(0.8944272f32, 0.4472136f32));
-        assert!(a.dist_sq(b) == 10f32);
-        assert!(b.dist(Vec2::new(0f32, 0f32)) == 5f32);
-        assert!(a.midpoint(b) == Vec2::new(2.5f32, 2.5f32));
-        assert!(a.left() == Vec2::new(-1f32, 2f32));
-        assert!(a.right() == Vec2::new(1f32, -2f32));
+        let a = Vec2::new(2.0, 1.0);
+        let b = Vec2::new(3.0, 4.0);
+        let c = Vec2::new(-1.0, 1.0);
+        assert!(a + b == Vec2::new(5.0, 5.0));
+        assert!(b - a == Vec2::new(1.0, 3.0));
+        assert!(a * 2.0 == Vec2::new(4.0, 2.0));
+        assert!(a / 2.0 == Vec2::new(1.0, 0.5));
+        assert!(-a == Vec2::new(-2.0, -1.0));
+        assert!(b.mag() == 5.0);
+        assert!(a.normalize() == Vec2::new(0.8944272, 0.4472136));
+        assert!(a.dist_sq(b) == 10.0);
+        assert!(b.dist(Vec2::new(0.0, 0.0)) == 5.0);
+        assert!(a.midpoint(b) == Vec2::new(2.5, 2.5));
+        assert!(a.left() == Vec2::new(-1.0, 2.0));
+        assert!(a.right() == Vec2::new(1.0, -2.0));
         assert!(a.widdershins(b));
         assert!(!b.widdershins(a));
         assert!(b.widdershins(c));
-        assert!(a.angle_rel(b) == -0.4636476f32);
-        assert!(c.angle_rel(Vec2::new(1f32, 1f32)) == 1.5707963f32);
-        assert!(Vec2::new(-1f32, -1f32).angle_rel(c) == 1.5707965f32);
+        assert!(a.angle_rel(b) == -0.4636476);
+        assert!(c.angle_rel(Vec2::new(1.0, 1.0)) == 1.5707963);
+        assert!(Vec2::new(-1.0, -1.0).angle_rel(c) == 1.5707965);
     }
 }

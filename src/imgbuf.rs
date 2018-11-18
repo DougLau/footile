@@ -163,9 +163,9 @@ mod test {
     }
     #[test]
     fn odd() {
-        let mut a = [0u8; 3000];
-        let mut b = [0i16; 3000];
-        b[0] = 300i16;
+        let mut a = [0; 3000];
+        let mut b = [0; 3000];
+        b[0] = 300;
         accumulate_odd(&mut a, &mut b);
         for ai in a.iter() {
             assert!(*ai == 212);

@@ -20,8 +20,8 @@ use imgbuf::{accumulate_non_zero, accumulate_odd};
 /// ```
 /// use footile::{PathBuilder,Plotter,Rgba8};
 /// let path = PathBuilder::new()
-///                        .move_to(10f32, 10f32)
-///                        .line_to(90f32, 90f32)
+///                        .move_to(10.0, 10.0)
+///                        .line_to(90.0, 90.0)
 ///                        .build();
 /// let mut p = Plotter::<Rgba8>::new(100, 100);
 /// p.stroke(&path);
@@ -127,12 +127,12 @@ mod test {
         assert!(m.width == 10);
         assert!(m.height == 10);
         assert!(m.pixels.len() == 100);
-        m.fill(40, 20, 255u8);
-        assert!(m.pixels[0] == 0u8);
-        assert!(m.pixels[39] == 0u8);
-        assert!(m.pixels[40] == 255u8);
-        assert!(m.pixels[59] == 255u8);
-        assert!(m.pixels[60] == 0u8);
-        assert!(m.pixels[99] == 0u8);
+        m.fill(40, 20, 255);
+        assert!(m.pixels[0] == 0);
+        assert!(m.pixels[39] == 0);
+        assert!(m.pixels[40] == 255);
+        assert!(m.pixels[59] == 255);
+        assert!(m.pixels[60] == 0);
+        assert!(m.pixels[99] == 0);
     }
 }

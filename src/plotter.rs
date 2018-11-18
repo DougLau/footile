@@ -23,10 +23,10 @@ use stroker::{JoinStyle,Stroke};
 /// # Example
 /// ```
 /// use footile::{PathBuilder,Plotter,Rgba8};
-/// let path = PathBuilder::new().pen_width(3f32)
-///                        .move_to(50f32, 34f32)
-///                        .cubic_to(4f32, 16f32, 16f32, 28f32, 0f32, 32f32)
-///                        .cubic_to(-16f32, -4f32, -4f32, -16f32, 0f32, -32f32)
+/// let path = PathBuilder::new().pen_width(3.0)
+///                        .move_to(50.0, 34.0)
+///                        .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
+///                        .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
 ///                        .close().build();
 /// let mut p = Plotter::<Rgba8>::new(100, 100);
 /// p.stroke(&path);
@@ -80,7 +80,7 @@ impl<F: Format> Plotter<F> {
     /// * `width` Width in pixels.
     /// * `height` Height in pixels.
     pub fn new(width: u32, height: u32) -> Plotter<F> {
-        let tol = 0.3f32;
+        let tol = 0.3;
         let w = if width > 0 { width } else { 100 };
         let h = if height > 0 { height } else { 100 };
         let len = w as usize;
@@ -93,11 +93,11 @@ impl<F: Format> Plotter<F> {
             mask       : Mask::new(w, h),
             raster     : None,
             sgn_area   : sgn_area,
-            pen        : Vec2w::new(0f32, 0f32, 1f32),
+            pen        : Vec2w::new(0.0, 0.0, 1.0),
             transform  : Transform::new(),
             tol_sq     : tol * tol,
-            s_width    : 1f32,
-            join_style : JoinStyle::Miter(4f32),
+            s_width    : 1.0,
+            join_style : JoinStyle::Miter(4.0),
         }
     }
     /// Get width in pixels.
@@ -110,7 +110,7 @@ impl<F: Format> Plotter<F> {
     }
     /// Reset pen.
     fn reset(&mut self) {
-        self.pen = Vec2w::new(0f32, 0f32, self.s_width);
+        self.pen = Vec2w::new(0.0, 0.0, self.s_width);
     }
     /// Clear the mask.
     pub fn clear_mask(&mut self) -> &mut Self {
@@ -119,7 +119,7 @@ impl<F: Format> Plotter<F> {
     }
     /// Set tolerance threshold for curve decomposition.
     pub fn set_tolerance(&mut self, t: f32) -> &mut Self {
-        let tol = t.max(0.01f32);
+        let tol = t.max(0.01);
         self.tol_sq = tol * tol;
         self
     }
@@ -213,7 +213,7 @@ impl<F: Format> Plotter<F> {
         cy: f32)
     {
         let pen = self.pen;
-        let bb = Vec2w::new(bx, by, (pen.w + self.s_width) / 2f32);
+        let bb = Vec2w::new(bx, by, (pen.w + self.s_width) / 2.0);
         let cc = Vec2w::new(cx, cy, self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
@@ -245,7 +245,7 @@ impl<F: Format> Plotter<F> {
     }
     /// Check if two points are within tolerance threshold.
     fn is_within_tolerance2(&self, a: Vec2, b: Vec2) -> bool {
-        assert!(self.tol_sq > 0f32);
+        assert!(self.tol_sq > 0.0);
         a.dist_sq(b) <= self.tol_sq
     }
     /// Add a cubic bézier spline.
@@ -263,8 +263,8 @@ impl<F: Format> Plotter<F> {
         cx: f32, cy: f32, dx: f32, dy:f32)
     {
         let pen = self.pen;
-        let bw = float_lerp(pen.w, self.s_width, 1f32 / 3f32);
-        let cw = float_lerp(pen.w, self.s_width, 2f32 / 3f32);
+        let bw = float_lerp(pen.w, self.s_width, 1.0 / 3.0);
+        let cw = float_lerp(pen.w, self.s_width, 2.0 / 3.0);
         let bb = Vec2w::new(bx, by, bw);
         let cc = Vec2w::new(cx, cy, cw);
         let dd = Vec2w::new(dx, dy, self.s_width);

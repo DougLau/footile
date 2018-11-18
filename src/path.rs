@@ -47,8 +47,8 @@ pub struct IterPath2D<'a> {
 /// ```
 /// use footile::PathBuilder;
 /// let path = PathBuilder::new()
-///                        .move_to(10f32, 10f32)
-///                        .line_to(90f32, 90f32)
+///                        .move_to(10.0, 10.0)
+///                        .line_to(90.0, 90.0)
 ///                        .build();
 /// ```
 pub struct PathBuilder {

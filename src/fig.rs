@@ -620,35 +620,33 @@ mod test {
     use super::*;
     #[test]
     fn compare_fixed() {
-        assert!(cmp_fixed(0f32, 0f32) == Ordering::Equal);
-        assert!(cmp_fixed(0f32, 0.00001f32) == Ordering::Equal);
-        assert!(cmp_fixed(0f32, 0.0001f32) == Ordering::Less);
-        assert!(cmp_fixed(0f32, -0.0001f32) == Ordering::Greater);
+        assert!(cmp_fixed(0.0, 0.0) == Ordering::Equal);
+        assert!(cmp_fixed(0.0, 0.00001) == Ordering::Equal);
+        assert!(cmp_fixed(0.0, 0.0001) == Ordering::Less);
+        assert!(cmp_fixed(0.0, -0.0001) == Ordering::Greater);
     }
     #[test]
     fn fig_3x3() {
         let mut m = Mask::new(3, 3);
         let mut s = vec!(0; 3);
         let mut f = Fig::new();
-        f.add_point(Vec2::new(0f32, 0f32));
-        f.add_point(Vec2::new(3f32, 3f32));
-        f.add_point(Vec2::new(0f32, 3f32));
+        f.add_point(Vec2::new(0.0, 0.0));
+        f.add_point(Vec2::new(3.0, 3.0));
+        f.add_point(Vec2::new(0.0, 3.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        let p: Vec<_> = m.pixels().iter().cloned().collect();
-        assert!(p == [128, 0, 0, 255, 128, 0, 255, 255, 128]);
+        assert!([128, 0, 0, 255, 128, 0, 255, 255, 128] == m.pixels());
     }
     #[test]
     fn fig_9x1() {
         let mut m = Mask::new(9, 1);
         let mut s = vec!(0; 16);
         let mut f = Fig::new();
-        f.add_point(Vec2::new(0f32, 0f32));
-        f.add_point(Vec2::new(9f32, 1f32));
-        f.add_point(Vec2::new(0f32, 1f32));
+        f.add_point(Vec2::new(0.0, 0.0));
+        f.add_point(Vec2::new(9.0, 1.0));
+        f.add_point(Vec2::new(0.0, 1.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        let p: Vec<_> = m.pixels().iter().cloned().collect();
-        assert!(p == [242, 214, 186, 158, 130, 102, 74, 46, 18]);
+        assert!([242, 214, 186, 158, 130, 102, 74, 46, 18] == m.pixels());
     }
 }

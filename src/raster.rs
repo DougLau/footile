@@ -14,10 +14,10 @@ use pixel::Format;
 /// # Example
 /// ```
 /// use footile::{PathBuilder,Plotter,Raster,Rgba8};
-/// let path = PathBuilder::new().pen_width(5f32)
-///                        .move_to(16f32, 48f32)
-///                        .line_to(32f32, 0f32)
-///                        .line_to(-16f32, -32f32)
+/// let path = PathBuilder::new().pen_width(5.0)
+///                        .move_to(16.0, 48.0)
+///                        .line_to(32.0, 0.0)
+///                        .line_to(-16.0, -32.0)
 ///                        .close().build();
 /// let mut p = Plotter::<Rgba8>::new(100, 100);
 /// let mut r = Raster::new(p.width(), p.height());
