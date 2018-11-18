@@ -46,7 +46,7 @@ pub struct Plotter<F: Format> {
 trait PlotDest {
     /// Add a point.
     ///
-    /// * `pt` Point to add (z indicates stroke width).
+    /// * `pt` Point to add (w indicates stroke width).
     fn add_point(&mut self, pt: Vec2w);
     /// Close the current sub-figure.
     ///

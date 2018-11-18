@@ -98,6 +98,7 @@ impl fmt::Debug for Stroke {
 }
 
 impl Stroke {
+    /// Create a new stroke.
     pub fn new(join_style: JoinStyle, tol_sq: f32) -> Stroke {
         let points = Vec::with_capacity(1024);
         let mut subs = Vec::with_capacity(16);
@@ -132,8 +133,7 @@ impl Stroke {
     }
     /// Get the current sub-stroke
     fn sub_current(&mut self) -> &mut SubStroke {
-        let len = self.subs.len();
-        &mut self.subs[len - 1]
+        self.subs.last_mut().unwrap()
     }
     /// Add a new sub-stroke
     fn sub_add(&mut self) {
@@ -186,10 +186,8 @@ impl Stroke {
     }
     /// Check if a point is coincident with previous point.
     fn coincident(&self, pt: Vec2w) -> bool {
-        let n = self.points.len();
-        if n > 0 {
-            let p = self.points[n - 1];
-            p.v == pt.v
+        if let Some(p) = self.points.last() {
+            pt.v == p.v
         } else {
             false
         }
