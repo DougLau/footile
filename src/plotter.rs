@@ -8,7 +8,7 @@ use geom::{Transform,Vec2,Vec2w,float_lerp};
 use path::{FillRule,PathOp};
 use mask::Mask;
 use pixel::Format;
-use raster::Raster;
+use raster::{Raster,LinkRaster};
 use stroker::{JoinStyle,Stroke};
 
 /// Plotter for 2D vector paths.
@@ -334,13 +334,21 @@ impl<F: Format> Plotter<F> {
         }
         self.clear_mask()
     }
+    /// Composite mask with a color onto link raster, using "over".
+    ///
+    /// * `clr` Color to composite.
+    /// * `r` The link raster.
+    pub fn over_link(&mut self, clr: F, r: &mut LinkRaster<F>) -> &mut Self {
+        r.over(self.mask(), clr);
+        self.clear_mask()
+    }
     /// Get the mask.
     pub fn mask(&self) -> &Mask {
         &self.mask
     }
     /// Get the raster.
-    pub fn raster(&self) -> Option<&Raster<F>> {
-        self.raster.as_ref()
+    pub fn raster(&mut self) -> Option<&mut Raster<F>> {
+        self.raster.as_mut()
     }
     /// Write the plot to a PNG (portable network graphics) file.
     ///

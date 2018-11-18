@@ -30,6 +30,60 @@ pub struct Raster<F: Format> {
     pixels : Vec<F>,
 }
 
+/// A Raster that doesn't own pixel data.
+pub struct LinkRaster<'a, F: Format + 'a> {
+    width  : u32,
+    height : u32,
+    pixels : &'a mut [F],
+}
+
+impl<'a, F: Format + 'a> LinkRaster<'a, F> {
+    /// Create a new linked raster image.
+    ///
+    /// * `F` pixel format: [Gray8](struct.Gray8.html)
+    ///                  or [Rgba8](struct.Rgba8.html).
+    /// * `width` Width in pixels.
+    /// * `height` Height in pixels.
+    /// * `pixels` The pixel data.
+    pub fn new(width: u32, height: u32, pixels: &'a mut [F]) -> LinkRaster<F> {
+        let n = width as usize * height as usize;
+        assert_eq!(n, pixels.len());
+        LinkRaster { width, height, pixels }
+    }
+    /// Create a linked raster from a raster.
+    pub fn from(r: &mut Raster<F>) -> LinkRaster<F> {
+        let width = r.width;
+        let height = r.height;
+        let pixels = &mut r.pixels;
+        LinkRaster { width, height, pixels }
+    }
+    /// Get raster width.
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+    /// Get raster height.
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+    /// Get a slice of all pixels.
+    pub fn pixels(&self) -> &[F] {
+        self.pixels
+    }
+    /// Clear all pixels.
+    pub fn clear(&mut self) {
+        for p in self.pixels.iter_mut() {
+            *p = F::default();
+        }
+    }
+    /// Composite a color with a mask, using "over".
+    ///
+    /// * `mask` Mask for compositing.
+    /// * `clr` Color to composite.
+    pub fn over(&mut self, mask: &Mask, clr: F) {
+        F::over(self.pixels, mask, clr);
+    }
+}
+
 impl<F: Format> Raster<F> {
     /// Create a new raster image.
     ///
@@ -56,16 +110,14 @@ impl<F: Format> Raster<F> {
     }
     /// Clear all pixels.
     pub fn clear(&mut self) {
-        for p in self.pixels.iter_mut() {
-            *p = F::default();
-        }
+        LinkRaster::from(self).clear();
     }
     /// Composite a color with a mask, using "over".
     ///
     /// * `mask` Mask for compositing.
     /// * `clr` Color to composite.
     pub fn over(&mut self, mask: &Mask, clr: F) {
-        F::over(&mut self.pixels, mask, clr);
+        LinkRaster::from(self).over(mask, clr);
     }
     /// Write the raster to a PNG (portable network graphics) file.
     ///
