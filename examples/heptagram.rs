@@ -1,11 +1,11 @@
 // heptagram.rs
 extern crate footile;
 
-use footile::{FillRule,Gray8,PathBuilder,Plotter,Transform};
+use footile::{FillRule,PathBuilder,Plotter,Transform};
 
 fn main() -> Result<(), std::io::Error> {
     const PI: f32 = std::f32::consts::PI;
-    let mut p = Plotter::<Gray8>::new(100, 100);
+    let mut p = Plotter::new(100, 100);
     let h = (p.width() / 2u32) as f32;
     let q = h / 2.0;
     p.set_transform(Transform::new_scale(h, h).translate(q, q));
@@ -16,6 +16,5 @@ fn main() -> Result<(), std::io::Error> {
         pb = pb.line_to(th.cos(), th.sin());
     }
     let path = pb.close().build();
-    p.fill(&path, FillRule::EvenOdd);
-    p.write_png("./heptagram.png")
+    p.fill(&path, FillRule::EvenOdd).write_png("./heptagram.png")
 }

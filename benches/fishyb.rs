@@ -6,15 +6,15 @@ use footile::*;
 use criterion::Criterion;
 
 fn fill_256(c: &mut Criterion) {
-    c.bench_function("fill_256", |b| b.iter(|| gray_fill(256)));
+    c.bench_function("fill_256", |b| b.iter(|| fill(256)));
 }
 
 fn fill_512(c: &mut Criterion) {
-    c.bench_function("fill_512", |b| b.iter(|| gray_fill(512)));
+    c.bench_function("fill_512", |b| b.iter(|| fill(512)));
 }
 
-fn gray_fill(i: u32) {
-    make_plotter_gray(i).fill(&make_fishy(), FillRule::NonZero);
+fn fill(i: u32) {
+    make_plotter(i).fill(&make_fishy(), FillRule::NonZero);
 }
 
 fn stroke_256(c: &mut Criterion) {
@@ -26,56 +26,46 @@ fn stroke_512(c: &mut Criterion) {
 }
 
 fn gray_stroke(i: u32) {
-    make_plotter_gray(i).stroke(&make_fishy());
+    make_plotter(i).stroke(&make_fishy());
 }
 
 fn gray_over_256(c: &mut Criterion) {
-    let mut p = make_plotter_gray(256);
+    let mut p = make_plotter(256);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("gray_over_256", move |b| {
         let mut r = Raster::new(p.width(), p.height());
-        let m = p.mask();
-        b.iter(|| r.over(m, Gray8::new(100)))
+        b.iter(|| r.over(p.mask(), Gray8::new(100)))
     });
 }
 
 fn gray_over_512(c: &mut Criterion) {
-    let mut p = make_plotter_gray(512);
+    let mut p = make_plotter(512);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("gray_over_512", move |b| {
         let mut r = Raster::new(p.width(), p.height());
-        let m = p.mask();
-        b.iter(|| r.over(m, Gray8::new(100)))
+        b.iter(|| r.over(p.mask(), Gray8::new(100)))
     });
 }
 
 fn rgba_over_256(c: &mut Criterion) {
-    let mut p = make_plotter_rgba(256);
+    let mut p = make_plotter(256);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("rgba_over_256", move |b| {
         let mut r = Raster::new(p.width(), p.height());
-        let m = p.mask();
-        b.iter(|| r.over(m, Rgba8::rgb(127, 96, 96)))
+        b.iter(|| r.over(p.mask(), Rgba8::rgb(127, 96, 96)))
     });
 }
 
 fn rgba_over_512(c: &mut Criterion) {
-    let mut p = make_plotter_rgba(512);
+    let mut p = make_plotter(512);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("rgba_over_512", move |b| {
         let mut r = Raster::new(p.width(), p.height());
-        let m = p.mask();
-        b.iter(|| r.over(m, Rgba8::rgb(127, 96, 96)))
+        b.iter(|| r.over(p.mask(), Rgba8::rgb(127, 96, 96)))
     });
 }
 
-fn make_plotter_gray(i: u32) -> Plotter<Gray8> {
-    let mut p = Plotter::new(i, i);
-    p.set_transform(Transform::new_scale(2f32, 2f32));
-    p
-}
-
-fn make_plotter_rgba(i: u32) -> Plotter<Rgba8> {
+fn make_plotter(i: u32) -> Plotter {
     let mut p = Plotter::new(i, i);
     p.set_transform(Transform::new_scale(2f32, 2f32));
     p

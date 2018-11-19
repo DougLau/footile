@@ -1,7 +1,7 @@
 // drop.rs
 extern crate footile;
 
-use footile::{FillRule,Gray8,PathBuilder,Plotter};
+use footile::{FillRule,Gray8,PathBuilder,Plotter,Raster};
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative().pen_width(3.0)
@@ -11,6 +11,8 @@ fn main() -> Result<(), std::io::Error> {
                            .close()
                            .build();
     let mut p = Plotter::new(100, 100);
-    p.fill(&path, FillRule::NonZero).over(Gray8::new(128));
-    p.stroke(&path).over(Gray8::new(255)).write_png("./drop.png")
+    let mut r = Raster::new(p.width(), p.height());
+    r.over(p.fill(&path, FillRule::NonZero), Gray8::new(128));
+    r.over(p.stroke(&path), Gray8::new(255));
+    r.write_png("./drop.png")
 }

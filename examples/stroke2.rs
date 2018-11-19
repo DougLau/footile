@@ -1,7 +1,7 @@
 // stroke2.rs
 extern crate footile;
 
-use footile::{Gray8,PathBuilder,Plotter};
+use footile::{PathBuilder,Plotter};
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative().pen_width(6.0)
@@ -13,6 +13,6 @@ fn main() -> Result<(), std::io::Error> {
                            .line_to(32.0, 1.0)
                            .line_to(-32.0, 1.0)
                            .build();
-    let mut p = Plotter::<Gray8>::new(64, 64);
+    let mut p = Plotter::new(64, 64);
     p.stroke(&path).write_png("./stroke2.png")
 }

@@ -1,7 +1,7 @@
 // letter.rs     Example plotting the letter C
 extern crate footile;
 
-use footile::{Gray8,FillRule,PathBuilder,Plotter};
+use footile::{FillRule,PathBuilder,Plotter};
 
 fn main() -> Result<(), std::io::Error> {
     let pb = PathBuilder::new().absolute();
@@ -25,6 +25,6 @@ fn main() -> Result<(), std::io::Error> {
                  .quad_to(129.56644, 79.44055, 117.37063, 72.16783)
                  .quad_to(105.28671, 64.895096, 88.61539, 64.895096)
                  .build();
-    let mut p = Plotter::<Gray8>::new(165, 256);
+    let mut p = Plotter::new(165, 256);
     p.fill(&path, FillRule::NonZero).write_png("./letter.png")
 }

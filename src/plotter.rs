@@ -2,13 +2,10 @@
 //
 // Copyright (c) 2017-2018  Douglas P Lau
 //
-use std::io;
 use fig::Fig;
 use geom::{Transform,Vec2,Vec2w,float_lerp};
 use path::{FillRule,PathOp};
 use mask::Mask;
-use pixel::Format;
-use raster::Raster;
 use stroker::{JoinStyle,Stroke};
 
 /// Plotter for 2D vector paths.
@@ -16,24 +13,21 @@ use stroker::{JoinStyle,Stroke};
 /// This is a software vector rasterizer featuring anti-aliasing.
 /// Paths can be created using [PathBuilder](struct.PathBuilder.html).
 /// The plotter contains a [Mask](struct.Mask.html) of the current plot, which
-/// is affected by fill and stroke calls.  Using the over method will cause a
-/// [Raster](struct.Raster.html) to be created with the same height and width
-/// as the mask.
+/// is affected by fill and stroke calls.
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder,Plotter,Rgba8};
+/// use footile::{PathBuilder,Plotter};
 /// let path = PathBuilder::new().pen_width(3.0)
 ///                        .move_to(50.0, 34.0)
 ///                        .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
 ///                        .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
 ///                        .close().build();
-/// let mut p = Plotter::<Rgba8>::new(100, 100);
+/// let mut p = Plotter::new(100, 100);
 /// p.stroke(&path);
 /// ```
-pub struct Plotter<F: Format> {
+pub struct Plotter {
     mask       : Mask,              // image mask
-    raster     : Option<Raster<F>>, // image raster
     sgn_area   : Vec<i16>,          // signed area buffer
     pen        : Vec2w,             // current pen position and width
     transform  : Transform,         // user to pixel affine transform
@@ -72,14 +66,12 @@ impl PlotDest for Stroke {
     }
 }
 
-impl<F: Format> Plotter<F> {
+impl Plotter {
     /// Create a new plotter.
     ///
-    /// * `F` pixel format: [Gray8](struct.Gray8.html)
-    ///                  or [Rgba8](struct.Rgba8.html).
     /// * `width` Width in pixels.
     /// * `height` Height in pixels.
-    pub fn new(width: u32, height: u32) -> Plotter<F> {
+    pub fn new(width: u32, height: u32) -> Plotter {
         let tol = 0.3;
         let w = if width > 0 { width } else { 100 };
         let h = if height > 0 { height } else { 100 };
@@ -91,7 +83,6 @@ impl<F: Format> Plotter<F> {
         for _ in 0..cap-len { sgn_area.pop(); };
         Plotter {
             mask       : Mask::new(w, h),
-            raster     : None,
             sgn_area   : sgn_area,
             pen        : Vec2w::new(0.0, 0.0, 1.0),
             transform  : Transform::new(),
@@ -300,7 +291,7 @@ impl<F: Format> Plotter<F> {
     ///
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Self
+    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Mask
         where T: IntoIterator<Item=&'a PathOp>
     {
         let mut fig = Fig::new();
@@ -308,12 +299,12 @@ impl<F: Format> Plotter<F> {
         // Closing figure required to handle coincident start/end points
         fig.close();
         fig.fill(&mut self.mask, &mut self.sgn_area[..], rule);
-        self
+        &mut self.mask
     }
     /// Stroke path onto the mask.
     ///
     /// * `ops` PathOp iterator.
-    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Self
+    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Mask
         where T: IntoIterator<Item=&'a PathOp>
     {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
@@ -321,40 +312,8 @@ impl<F: Format> Plotter<F> {
         let ops = stroke.path_ops();
         self.fill(ops.iter(), FillRule::NonZero)
     }
-    /// Composite mask with a color onto raster, using "over".
-    ///
-    /// * `clr` Color to composite.
-    pub fn over(&mut self, clr: F) -> &mut Self {
-        if self.raster.is_none() {
-            self.raster = Some(Raster::<F>::new(self.width(), self.height()));
-        }
-        if let Some(mut r) = self.raster.take() {
-            r.over(self.mask(), clr);
-            self.raster = Some(r);
-        }
-        self.clear_mask()
-    }
     /// Get the mask.
-    pub fn mask(&self) -> &Mask {
-        &self.mask
-    }
-    /// Get the raster.
-    pub fn raster(&self) -> Option<&Raster<F>> {
-        self.raster.as_ref()
-    }
-    /// Write the plot to a PNG (portable network graphics) file.
-    ///
-    /// This is convenience function to write the contained image.
-    /// If a raster exists (once the mask has been composited with `over`),
-    /// it will be written.  Otherwise, the mask will be written.
-    /// After writing a raster, it will be dropped.
-    ///
-    /// * `filename` Name of file to write.
-    pub fn write_png(&mut self, filename: &str) -> io::Result<()> {
-        if let Some(r) = self.raster.take() {
-            r.write_png(filename)
-        } else {
-            self.mask.write_png(filename)
-        }
+    pub fn mask(&mut self) -> &mut Mask {
+        &mut self.mask
     }
 }

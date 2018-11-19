@@ -19,7 +19,7 @@ use pixel::Format;
 ///                        .line_to(32.0, 0.0)
 ///                        .line_to(-16.0, -32.0)
 ///                        .close().build();
-/// let mut p = Plotter::<Rgba8>::new(100, 100);
+/// let mut p = Plotter::new(100, 100);
 /// let mut r = Raster::new(p.width(), p.height());
 /// p.stroke(&path);
 /// r.over(p.mask(), Rgba8::rgb(208, 255, 208));
@@ -62,10 +62,11 @@ impl<F: Format> Raster<F> {
     }
     /// Composite a color with a mask, using "over".
     ///
-    /// * `mask` Mask for compositing.
+    /// * `mask` Mask for compositing.  The mask is cleared before returning.
     /// * `clr` Color to composite.
-    pub fn over(&mut self, mask: &Mask, clr: F) {
+    pub fn over(&mut self, mask: &mut Mask, clr: F) {
         F::over(&mut self.pixels, mask, clr);
+        mask.clear();
     }
     /// Write the raster to a PNG (portable network graphics) file.
     ///

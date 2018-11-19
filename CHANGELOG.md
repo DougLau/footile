@@ -1,10 +1,14 @@
 ## [Unreleased]
 ### Added
 * Rgba8, Gray8 pixel formats.
+* Raster now has a pixel format type parameter.
 * Raster::width(), height() and pixels()
+### Removed
+* Plotter::over, raster and write_png methods.
+* Plotter no longer has an associated Raster
 ### Changed
-* Raster and Plotter now have pixel format type parameters.
-* Plotter::color_over renamed to over.
+* Plotter::fill and stroke now return Mask reference.
+* Raster::over clears the mask before returning.
 
 ## [0.1.1] - 2018-11-15
 ### Fixed
