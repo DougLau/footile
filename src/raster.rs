@@ -10,7 +10,7 @@ use png::HasParameters;
 use mask::Mask;
 use pixel::Format;
 
-enum Pixels<'a, F: Format> {
+enum Pixels<'a, F: Format + 'a> {
     Owned(Vec<F>),
     Borrowed(RefCell<&'a mut [F]>),
 }
@@ -45,7 +45,7 @@ impl<'a, F: Format> Pixels<'a, F> {
 /// let mut r = Raster::new(p.width(), p.height());
 /// r.over(p.stroke(&path), Rgba8::rgb(208, 255, 208));
 /// ```
-pub struct Raster<'a, F: Format> {
+pub struct Raster<'a, F: Format + 'a> {
     width  : u32,
     height : u32,
     pixels : Pixels<'a, F>,
