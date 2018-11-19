@@ -11,7 +11,7 @@ A 2D vector graphics library written in Rust.
 
 ## Example
 ```rust
-use footile::{FillRule,PathBuilder,Plotter,Rgba8};
+use footile::{FillRule,PathBuilder,Plotter,Raster,Rgba8};
 
 let fish = PathBuilder::new().relative().pen_width(3.0)
                        .move_to(112.0, 24.0)
@@ -21,7 +21,8 @@ let fish = PathBuilder::new().relative().pen_width(3.0)
                        .line_to(-16.0, -40.0)
                        .close().build();
 let mut p = Plotter::new(128, 128);
-p.fill(&fish, FillRule::NonZero).over(Rgba8::rgb(127, 96, 96));
-p.stroke(&fish).over(Rgba8::rgb(255, 208, 208));
-p.write_png("./fishy.png")?;
+let mut r = Raster::new(p.width(), p.height());
+r.over(p.fill(&fish, FillRule::NonZero), Rgba8::rgb(127, 96, 96));
+r.over(p.stroke(&fish), Rgba8::rgb(255, 208, 208));
+r.write_png("./fishy.png")?;
 ```
