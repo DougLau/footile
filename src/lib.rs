@@ -27,6 +27,6 @@ pub use mask::Mask;
 pub use path::{FillRule,Path2D,PathBuilder,PathOp};
 pub use pixel::PixFmt;
 pub use plotter::Plotter;
-pub use raster::Raster;
+pub use raster::{Raster,RasterB};
 pub use rgba8::Rgba8;
 pub use stroker::JoinStyle;

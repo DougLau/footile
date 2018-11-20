@@ -2,8 +2,8 @@
 ### Added
 * PixFmt, Rgba8, Gray8 pixel formats.
 * Raster now has a pixel format type parameter.
-* Raster::width(), height() and pixels()
-* Raster::with_pixels() (for borrowed pixels).
+* Raster::width(), height() and as_*_slice methods.
+* RasterB (for borrowed pixels).
 ### Removed
 * Plotter::over, raster and write_png methods.
 * Plotter no longer has an associated Raster
