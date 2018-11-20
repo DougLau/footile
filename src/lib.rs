@@ -25,6 +25,7 @@ pub use geom::Transform;
 pub use gray8::Gray8;
 pub use mask::Mask;
 pub use path::{FillRule,Path2D,PathBuilder,PathOp};
+pub use pixel::PixFmt;
 pub use plotter::Plotter;
 pub use raster::Raster;
 pub use rgba8::Rgba8;

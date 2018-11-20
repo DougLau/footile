@@ -41,21 +41,21 @@ fn scale_i32(a: i32, b: u8) -> i32 {
     (((c + 1) + (c >> 8)) >> 8) as i32
 }
 
-impl pixel::Format for Gray8 {
-    /// Divide alpha (remove premultiplied alpha)
-    fn divide_alpha(_pix: &mut [Self]) { }
-
+impl pixel::PixFmt for Gray8 {
+    /// Get the PNG color type.
     fn color_type() -> ColorType {
         ColorType::Grayscale
     }
-    /// Composite mask over a pixel buffer.
+    /// Blend pixels with an alpha mask.
     ///
-    /// * `pix` Pixel buffer.
-    /// * `mask` Mask for compositing.
-    /// * `clr` Color to composite.
+    /// * `pix` Slice of pixels.
+    /// * `mask` Alpha mask for compositing.
+    /// * `src` Source color.
     fn over(pix: &mut [Self], mask: &Mask, clr: Self) {
         over_fallback(pix, mask, clr);
     }
+    /// Divide alpha (remove premultiplied alpha)
+    fn divide_alpha(_pix: &mut [Self]) { }
 }
 
 /// Composite a color with a mask (slow fallback).

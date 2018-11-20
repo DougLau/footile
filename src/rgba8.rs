@@ -2,6 +2,7 @@
 //
 // Copyright (c) 2018  Douglas P Lau
 //
+use png::ColorType;
 use mask::Mask;
 use pixel;
 
@@ -103,23 +104,27 @@ fn unscale_u8(a: u8, b: u8) -> u8 {
     }
 }
 
-impl pixel::Format for Rgba8 {
-    /// Divide alpha (remove premultiplied alpha)
-    fn divide_alpha(pix: &mut [Self]) {
-        for p in pix.iter_mut() {
-            *p = p.divide_alpha();
-        }
+impl pixel::PixFmt for Rgba8 {
+    /// Get the PNG color type.
+    fn color_type() -> ColorType {
+        ColorType::RGBA
     }
-    /// Composite mask over a pixel buffer.
+    /// Blend pixels with an alpha mask.
     ///
-    /// * `pix` Pixel buffer.
-    /// * `mask` Mask for compositing.
-    /// * `clr` Color to composite.
+    /// * `pix` Slice of pixels.
+    /// * `mask` Alpha mask for compositing.
+    /// * `src` Source color.
     fn over(pix: &mut [Self], mask: &Mask, clr: Self) {
         if X86 && is_x86_feature_detected!("ssse3") {
             unsafe { over_x86(pix, mask, clr) }
         } else {
             over_fallback(pix, mask, clr);
+        }
+    }
+    /// Divide alpha (remove premultiplied alpha)
+    fn divide_alpha(pix: &mut [Self]) {
+        for p in pix.iter_mut() {
+            *p = p.divide_alpha();
         }
     }
 }

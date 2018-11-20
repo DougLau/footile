@@ -8,14 +8,14 @@ use std::io;
 use png;
 use png::HasParameters;
 use mask::Mask;
-use pixel::Format;
+use pixel::PixFmt;
 
-enum Pixels<'a, F: Format + 'a> {
+enum Pixels<'a, F: PixFmt + 'a> {
     Owned(Vec<F>),
     Borrowed(RefCell<&'a mut [F]>),
 }
 
-impl<'a, F: Format> Pixels<'a, F> {
+impl<'a, F: PixFmt> Pixels<'a, F> {
     // NOTE: using a where clause here is the only known
     //       way to describe the needed lifetime
     fn get_slice<'b>(&'b mut self) -> &'b mut [F] where 'a: 'b {
@@ -45,13 +45,13 @@ impl<'a, F: Format> Pixels<'a, F> {
 /// let mut r = Raster::new(p.width(), p.height());
 /// r.over(p.stroke(&path), Rgba8::rgb(208, 255, 208));
 /// ```
-pub struct Raster<'a, F: Format + 'a> {
+pub struct Raster<'a, F: PixFmt + 'a> {
     width  : u32,
     height : u32,
     pixels : Pixels<'a, F>,
 }
 
-impl<'a, F: Format> Raster<'a, F> {
+impl<'a, F: PixFmt> Raster<'a, F> {
     /// Create a new raster image.
     ///
     /// * `F` pixel format: [Gray8](struct.Gray8.html)

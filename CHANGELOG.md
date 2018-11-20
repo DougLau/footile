@@ -1,6 +1,6 @@
 ## [Unreleased]
 ### Added
-* Rgba8, Gray8 pixel formats.
+* PixFmt, Rgba8, Gray8 pixel formats.
 * Raster now has a pixel format type parameter.
 * Raster::width(), height() and pixels()
 * Raster::with_pixels() (for borrowed pixels).
