@@ -6,7 +6,7 @@ use png::ColorType;
 use mask::Mask;
 use pixel;
 
-/// 8-bit grayscale pixel format.
+/// 8-bit grayscale [pixel format](trait.PixFmt.html).
 ///
 /// This pixel format is for 8-bit grayscale with no alpha channel.
 #[derive(Clone,Copy,Debug,Default)]

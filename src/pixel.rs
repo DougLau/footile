@@ -9,6 +9,9 @@ use mask::Mask;
 ///
 /// This determines color components and bit depth,
 /// as well as the layout of pixels in memory.
+///
+/// * [Gray8](struct.Gray8.html)
+/// * [Rgba8](struct.Rgba8.html)
 pub trait PixFmt: Clone + Default {
 
     /// Get the PNG color type.
