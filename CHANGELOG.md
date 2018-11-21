@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [0.2.0] - 2018-11-20
 ### Added
 * PixFmt, Rgba8, Gray8 pixel formats.
 * Raster now has a pixel format type parameter.
