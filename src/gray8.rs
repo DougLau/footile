@@ -3,7 +3,6 @@
 // Copyright (c) 2018  Douglas P Lau
 //
 use png::ColorType;
-use mask::Mask;
 use pixel::{PixFmt,lerp_u8};
 
 /// 8-bit grayscale [pixel format](trait.PixFmt.html).
@@ -41,7 +40,8 @@ impl PixFmt for Gray8 {
     /// * `pix` Slice of pixels.
     /// * `mask` Alpha mask for compositing.
     /// * `src` Source color.
-    fn over(pix: &mut [Self], mask: &Mask, clr: Self) {
+    fn over(pix: &mut [Self], mask: &[u8], clr: Self) {
+        debug_assert_eq!(pix.len(), mask.len());
         over_fallback(pix, mask, clr);
     }
     /// Divide alpha (remove premultiplied alpha)
@@ -49,8 +49,8 @@ impl PixFmt for Gray8 {
 }
 
 /// Composite a color with a mask (slow fallback).
-fn over_fallback(pix: &mut [Gray8], mask: &Mask, clr: Gray8) {
-    for (bot, m) in pix.iter_mut().zip(mask.pixels()) {
+fn over_fallback(pix: &mut [Gray8], mask: &[u8], clr: Gray8) {
+    for (bot, m) in pix.iter_mut().zip(mask) {
         *bot = clr.over_alpha(*bot, *m);
     }
 }

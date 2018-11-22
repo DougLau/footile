@@ -81,14 +81,14 @@ impl<F: PixFmt> Raster<F> {
             *p = F::default();
         }
     }
-    /// Composite onto owned pixels, using "over".
+    /// Blend pixels with an alpha mask.
     ///
     /// * `mask` Alpha mask for compositing.  It is cleared before returning.
     /// * `clr` Color to composite.
     /// * `pixels` Borrowed pixel data.
     pub fn over(&mut self, mask: &mut Mask, clr: F) {
         debug_assert_eq!(self.len(), self.pixels.len());
-        F::over(&mut self.pixels, mask, clr);
+        F::over(&mut self.pixels, mask.pixels(), clr);
         mask.clear();
     }
     /// Write the raster to a PNG (portable network graphics) file.
@@ -164,21 +164,19 @@ impl<F: PixFmt> RasterB<F> {
     }
     /// Clear all pixels.
     pub fn clear(&self, pixels: &mut [F]) {
-        let len = self.len();
-        assert_eq!(len, pixels.len());
+        assert_eq!(self.len(), pixels.len());
         for p in pixels.iter_mut() {
             *p = F::default();
         }
     }
-    /// Composite onto borrowed pixels, using "over".
+    /// Blend pixels with an alpha mask.
     ///
     /// * `mask` Alpha mask for compositing.  It is cleared before returning.
     /// * `clr` Color to composite.
     /// * `pixels` Borrowed pixel data.
     pub fn over(&self, mask: &mut Mask, clr: F, mut pixels: &mut [F]) {
-        let len = self.len();
-        assert_eq!(len, pixels.len());
-        F::over(&mut pixels, mask, clr);
+        assert_eq!(self.len(), pixels.len());
+        F::over(&mut pixels, mask.pixels(), clr);
         mask.clear();
     }
 }

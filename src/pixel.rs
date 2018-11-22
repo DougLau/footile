@@ -3,7 +3,6 @@
 // Copyright (c) 2018  Douglas P Lau
 //
 use png::ColorType;
-use mask::Mask;
 
 /// Pixel format.
 ///
@@ -22,7 +21,7 @@ pub trait PixFmt: Clone + Default {
     /// * `pix` Slice of pixels.
     /// * `mask` Alpha mask for compositing.
     /// * `src` Source color.
-    fn over(pix: &mut [Self], mask: &Mask, src: Self);
+    fn over(pix: &mut [Self], mask: &[u8], src: Self);
 
     /// Divide alpha (remove premultiplied alpha)
     ///

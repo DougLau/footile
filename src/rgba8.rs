@@ -3,7 +3,6 @@
 // Copyright (c) 2018  Douglas P Lau
 //
 use png::ColorType;
-use mask::Mask;
 use pixel::{PixFmt,lerp_u8};
 
 #[cfg(target_arch = "x86")]
@@ -101,7 +100,8 @@ impl PixFmt for Rgba8 {
     /// * `pix` Slice of pixels.
     /// * `mask` Alpha mask for compositing.
     /// * `src` Source color.
-    fn over(pix: &mut [Self], mask: &Mask, clr: Self) {
+    fn over(pix: &mut [Self], mask: &[u8], clr: Self) {
+        debug_assert_eq!(pix.len(), mask.len());
         if X86 && is_x86_feature_detected!("ssse3") {
             unsafe { over_x86(pix, mask, clr) }
         } else {
@@ -118,13 +118,12 @@ impl PixFmt for Rgba8 {
 
 /// Composite a color with a mask.
 #[cfg(any(target_arch="x86", target_arch="x86_64"))]
-unsafe fn over_x86(pix: &mut [Rgba8], mask: &Mask, clr: Rgba8) {
+unsafe fn over_x86(pix: &mut [Rgba8], mask: &[u8], clr: Rgba8) {
+    debug_assert_eq!(pix.len(), mask.len());
+    let len = pix.len();
     let clr = _mm_set1_epi32(clr.into());
-    let src = mask.pixels();
-    let dst = pix;
-    let len = src.len().min(dst.len());
-    let dst = dst.as_mut_ptr();
-    let src = src.as_ptr();
+    let src = mask.as_ptr();
+    let dst = pix.as_mut_ptr();
     // 4 pixels at a time
     for i in (0..len).step_by(4) {
         let off = i as isize;
@@ -192,8 +191,8 @@ unsafe fn scale_i16_to_u8_x86(v: __m128i) -> __m128i {
 }
 
 /// Composite a color with a mask (slow fallback).
-fn over_fallback(pix: &mut [Rgba8], mask: &Mask, clr: Rgba8) {
-    for (bot, m) in pix.iter_mut().zip(mask.pixels()) {
+fn over_fallback(pix: &mut [Rgba8], mask: &[u8], clr: Rgba8) {
+    for (bot, m) in pix.iter_mut().zip(mask) {
         let mut out = clr.over_alpha(*bot, *m);
         *bot = out;
     }
