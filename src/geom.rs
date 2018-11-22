@@ -36,7 +36,7 @@ pub struct Vec2w {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
-    e: [f32; 9],
+    e: [f32; 6],
 }
 
 impl ops::Add for Vec2 {
@@ -221,17 +221,7 @@ impl Vec2w {
 
 impl ops::MulAssign for Transform {
     fn mul_assign(&mut self, other: Self) {
-        for c in 0..3 {
-            let mut m = [0.0; 3];
-            for r in 0..3 {
-                m[r] = self.get(0, c) * other.get(r, 0) +
-                       self.get(1, c) * other.get(r, 1) +
-                       self.get(2, c) * other.get(r, 2);
-            }
-            for r in 0..3 {
-                self.set(r, c, m[r]);
-            }
-        }
+        self.e = self.mul_e(&other);
     }
 }
 
@@ -239,16 +229,8 @@ impl ops::Mul for Transform {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
-        let mut m = Transform::new();
-        for c in 0..3 {
-            for r in 0..3 {
-                let e = self.get(0, c) * other.get(r, 0) +
-                        self.get(1, c) * other.get(r, 1) +
-                        self.get(2, c) * other.get(r, 2);
-                m.set(r, c, e);
-            }
-        }
-        m
+        let e = self.mul_e(&other);
+        Transform { e }
     }
 }
 
@@ -256,8 +238,8 @@ impl ops::Mul<Vec2> for Transform {
     type Output = Vec2;
 
     fn mul(self, s: Vec2) -> Vec2 {
-        let x = self.get(0, 0) * s.x + self.get(0, 1) * s.y + self.get(0, 2);
-        let y = self.get(1, 0) * s.x + self.get(1, 1) * s.y + self.get(1, 2);
+        let x = self.e[0] * s.x + self.e[1] * s.y + self.e[2];
+        let y = self.e[3] * s.x + self.e[4] * s.y + self.e[5];
         Vec2::new(x, y)
     }
 }
@@ -267,9 +249,19 @@ impl Transform {
     pub fn new() -> Self {
         Transform {
             e: [1.0, 0.0, 0.0,
-                0.0, 1.0, 0.0,
-                0.0, 0.0, 1.0]
+                0.0, 1.0, 0.0]
         }
+    }
+    /// Multiple two affine transforms.
+    fn mul_e(&self, other: &Self) -> [f32; 6] {
+        let mut e = [0.0; 6];
+        e[0] = self.e[0] * other.e[0] + self.e[3] * other.e[1];
+        e[1] = self.e[1] * other.e[0] + self.e[4] * other.e[1];
+        e[2] = self.e[2] * other.e[0] + self.e[5] * other.e[1] + other.e[2];
+        e[3] = self.e[0] * other.e[3] + self.e[3] * other.e[4];
+        e[4] = self.e[1] * other.e[3] + self.e[4] * other.e[4];
+        e[5] = self.e[2] * other.e[3] + self.e[5] * other.e[4] + other.e[5];
+        e
     }
     /// Create a new translation transform.
     ///
@@ -278,8 +270,7 @@ impl Transform {
     pub fn new_translate(tx: f32, ty: f32) -> Self {
         Transform {
             e: [1.0, 0.0,  tx,
-                0.0, 1.0,  ty,
-                0.0, 0.0, 1.0]
+                0.0, 1.0,  ty]
         }
     }
     /// Create a new scale transform.
@@ -289,8 +280,7 @@ impl Transform {
     pub fn new_scale(sx: f32, sy: f32) -> Self {
         Transform {
             e: [ sx, 0.0, 0.0,
-                0.0,  sy, 0.0,
-                0.0, 0.0, 1.0]
+                0.0,  sy, 0.0]
         }
     }
     /// Create a new rotation transform.
@@ -301,8 +291,7 @@ impl Transform {
         let cs = th.cos();
         Transform {
             e: [ cs, -sn, 0.0,
-                 sn,  cs, 0.0,
-                0.0, 0.0, 1.0]
+                 sn,  cs, 0.0]
         }
     }
     /// Create a new skew transform.
@@ -314,17 +303,8 @@ impl Transform {
         let tny = ay.tan();
         Transform {
             e: [1.0, tnx, 0.0,
-                tny, 1.0, 0.0,
-                0.0, 0.0, 1.0]
+                tny, 1.0, 0.0]
         }
-    }
-    /// Get a value.
-    fn get(&self, row: usize, col: usize) -> f32 {
-        self.e[row * 3 + col]
-    }
-    /// Set a value.
-    fn set(&mut self, row: usize, col: usize, e: f32) {
-        self.e[row * 3 + col] = e;
     }
     /// Apply translation to a transform.
     ///
@@ -385,5 +365,74 @@ mod test {
         assert_eq!(a.angle_rel(b), -0.4636476);
         assert_eq!(c.angle_rel(Vec2::new(1.0, 1.0)), 1.5707963);
         assert_eq!(Vec2::new(-1.0, -1.0).angle_rel(c), 1.5707965);
+    }
+    #[test]
+    fn test_identity() {
+        assert_eq!(Transform::new().e,
+                   [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
+        assert_eq!((Transform::new() * Transform::new()).e,
+                   [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
+        assert_eq!(Transform::new() * Vec2::new(1.0, 2.0),
+                   Vec2::new(1.0, 2.0));
+    }
+    #[test]
+    fn test_translate() {
+        assert_eq!(Transform::new_translate(1.5, -1.5).e,
+                   [1.0, 0.0, 1.5, 0.0, 1.0, -1.5]);
+        assert_eq!(Transform::new().translate(2.5, -3.5).e,
+                   [1.0, 0.0, 2.5, 0.0, 1.0, -3.5]);
+        assert_eq!(Transform::new().translate(5.0, 7.0) * Vec2::new(1.0, -2.0),
+                   Vec2::new(6.0, 5.0));
+    }
+    #[test]
+    fn test_scale() {
+        assert_eq!(Transform::new_scale(2.0, 4.0).e,
+                   [2.0, 0.0, 0.0, 0.0, 4.0, 0.0]);
+        assert_eq!(Transform::new().scale(3.0, 5.0).e,
+                   [3.0, 0.0, 0.0, 0.0, 5.0, 0.0]);
+        assert_eq!(Transform::new().scale(2.0, 3.0) * Vec2::new(1.5, -2.0),
+                   Vec2::new(3.0, -6.0));
+    }
+    #[test]
+    fn test_rotate() {
+        const PI: f32 = f32::consts::PI;
+        const V: f32 = 0.00000008742278;
+        assert_eq!(Transform::new_rotate(PI).e,
+                   [-1.0, V, 0.0, -V, -1.0, 0.0]);
+        assert_eq!(Transform::new().rotate(PI).e,
+                   [-1.0, V, 0.0, -V, -1.0, 0.0]);
+        assert_eq!(Transform::new().rotate(PI / 2.0) * Vec2::new(15.0, 7.0),
+                   Vec2::new(-7.0000005, 15.0));
+    }
+    #[test]
+    fn test_skew() {
+        const PI: f32 = f32::consts::PI;
+        assert_eq!(Transform::new_skew(PI / 2.0, 0.0).e,
+                   [1.0, -22877334.0, 0.0, 0.0, 1.0, 0.0]);
+        assert_eq!(Transform::new().skew(PI / 2.0, 0.0).e,
+                   [1.0, -22877334.0, 0.0, 0.0, 1.0, 0.0]);
+        assert_eq!(Transform::new_skew(0.0, PI / 4.0).e,
+                   [1.0, 0.0, 0.0, 1.0, 1.0, 0.0]);
+        assert_eq!(Transform::new().skew(0.0, PI / 4.0).e,
+                   [1.0, 0.0, 0.0, 1.0, 1.0, 0.0]);
+        assert_eq!(Transform::new().skew(0.0, PI / 4.0) * Vec2::new(5.0, 3.0),
+                   Vec2::new(5.0, 8.0));
+        assert_eq!(Transform::new().skew(0.0, PI / 4.0) * Vec2::new(15.0, 7.0),
+                   Vec2::new(15.0, 22.0));
+    }
+    #[test]
+    fn test_transform() {
+        assert_eq!((Transform::new_translate(1.0, 2.0) *
+                    Transform::new_scale(2.0, 2.0)).e,
+                   [2.0, 0.0, 2.0, 0.0, 2.0, 4.0]);
+        assert_eq!(Transform::new_translate(3.0, 5.0) *
+                   Transform::new_scale(7.0, 11.0) *
+                   Transform::new_rotate(f32::consts::PI / 2.0) *
+                   Transform::new_skew(1.0, -2.0),
+                   Transform::new()
+                             .translate(3.0, 5.0)
+                             .scale(7.0, 11.0)
+                             .rotate(f32::consts::PI / 2.0)
+                             .skew(1.0, -2.0));
     }
 }
