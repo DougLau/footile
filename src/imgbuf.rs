@@ -151,14 +151,14 @@ mod test {
         b[0] = 200i16;
         accumulate_non_zero(&mut a, &mut b);
         for ai in a.iter() {
-            assert!(*ai == 200);
+            assert_eq!(*ai, 200);
         }
         let mut c = [0u8; 5000];
         let mut d = [0i16; 5000];
         d[0] = 300i16;
         accumulate_non_zero(&mut c, &mut d);
         for ci in c.iter() {
-            assert!(*ci == 255);
+            assert_eq!(*ci, 255);
         }
     }
     #[test]
@@ -168,7 +168,7 @@ mod test {
         b[0] = 300;
         accumulate_odd(&mut a, &mut b);
         for ai in a.iter() {
-            assert!(*ai == 212);
+            assert_eq!(*ai, 212);
         }
     }
 }
