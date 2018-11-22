@@ -57,3 +57,19 @@ pub trait PixFmt: Clone + Default {
         unsafe { pix.align_to_mut::<Self>().1 }
     }
 }
+
+/// Linear interpolation of u8 values (for alpha blending)
+pub fn lerp_u8(src: u8, dst: u8, alpha: u8) -> u8 {
+    // NOTE: Alpha blending euqation is: `alpha * top + (1 - alpha) * bot`
+    //       This is equivalent to lerp: `bot + alpha * (top - bot)`
+    let src = src as i32;
+    let dst = dst as i32;
+    (dst + scale_i32(alpha, src - dst)) as u8
+}
+
+/// Scale an i32 value by a u8 (for alpha blending)
+fn scale_i32(a: u8, v: i32) -> i32 {
+    let c = v * a as i32;
+    // cheap alternative to divide by 255
+    (((c + 1) + (c >> 8)) >> 8) as i32
+}

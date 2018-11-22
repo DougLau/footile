@@ -4,7 +4,7 @@
 //
 use png::ColorType;
 use mask::Mask;
-use pixel;
+use pixel::{PixFmt,lerp_u8};
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -72,25 +72,12 @@ impl Rgba8 {
     }
     /// Composite the color with another, using "over".
     fn over_alpha(self, bot: Rgba8, alpha: u8) -> Self {
-        // NOTE: `bot + alpha * (top - bot)` is equivalent to
-        //       `alpha * top + (1 - alpha) * bot`, but faster.
-        let r = self.red()   as i32 - bot.red()   as i32;
-        let g = self.green() as i32 - bot.green() as i32;
-        let b = self.blue()  as i32 - bot.blue()  as i32;
-        let a = self.alpha() as i32 - bot.alpha() as i32;
-        let red   = (bot.red()   as i32 + scale_i32(r, alpha)) as u8;
-        let green = (bot.green() as i32 + scale_i32(g, alpha)) as u8;
-        let blue  = (bot.blue()  as i32 + scale_i32(b, alpha)) as u8;
-        let alpha = (bot.alpha() as i32 + scale_i32(a, alpha)) as u8;
+        let red   = lerp_u8(self.red(),   bot.red(),   alpha);
+        let green = lerp_u8(self.green(), bot.green(), alpha);
+        let blue  = lerp_u8(self.blue(),  bot.blue(),  alpha);
+        let alpha = lerp_u8(self.alpha(), bot.alpha(), alpha);
         Rgba8::new(red, green, blue, alpha)
     }
-}
-
-/// Scale an i32 value by a u8 (for alpha blending)
-fn scale_i32(a: i32, b: u8) -> i32 {
-    let c = a * b as i32;
-    // cheap alternative to divide by 255
-    (((c + 1) + (c >> 8)) >> 8) as i32
 }
 
 /// Unscale a u8
@@ -104,7 +91,7 @@ fn unscale_u8(a: u8, b: u8) -> u8 {
     }
 }
 
-impl pixel::PixFmt for Rgba8 {
+impl PixFmt for Rgba8 {
     /// Get the PNG color type.
     fn color_type() -> ColorType {
         ColorType::RGBA
