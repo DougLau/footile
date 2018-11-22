@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Added
+* Rgb8 pixel format.
 
 ## [0.2.0] - 2018-11-20
 ### Added

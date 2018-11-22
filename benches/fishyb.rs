@@ -47,6 +47,24 @@ fn gray_over_512(c: &mut Criterion) {
     });
 }
 
+fn rgb_over_256(c: &mut Criterion) {
+    let mut p = make_plotter(256);
+    p.fill(&make_fishy(), FillRule::NonZero);
+    c.bench_function("rgb_over_256", move |b| {
+        let mut r = Raster::new(p.width(), p.height());
+        b.iter(|| r.over(p.mask(), Rgb8::new(127, 96, 96)))
+    });
+}
+
+fn rgb_over_512(c: &mut Criterion) {
+    let mut p = make_plotter(512);
+    p.fill(&make_fishy(), FillRule::NonZero);
+    c.bench_function("rgb_over_512", move |b| {
+        let mut r = Raster::new(p.width(), p.height());
+        b.iter(|| r.over(p.mask(), Rgb8::new(127, 96, 96)))
+    });
+}
+
 fn rgba_over_256(c: &mut Criterion) {
     let mut p = make_plotter(256);
     p.fill(&make_fishy(), FillRule::NonZero);
@@ -83,5 +101,6 @@ fn make_fishy() -> Path2D {
 }
 
 criterion_group!(benches, fill_256, fill_512, stroke_256, stroke_512,
-    gray_over_256, gray_over_512, rgba_over_256, rgba_over_512);
+    gray_over_256, gray_over_512, rgb_over_256, rgb_over_512, rgba_over_256,
+    rgba_over_512);
 criterion_main!(benches);
