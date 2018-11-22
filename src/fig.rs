@@ -6,10 +6,10 @@ use std::cmp;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
+use fixed::Fixed;
 use geom::Vec2;
 use mask::Mask;
 use path::FillRule;
-use fixed::Fixed;
 
 /// Vertex ID
 type Vid = u16;
@@ -115,7 +115,7 @@ impl SubFig {
 impl Edge {
     /// Create a new edge
     fn new(v0: Vid, v1: Vid, p0: Vec2, p1: Vec2, dir: FigDir) -> Edge {
-        debug_assert!(v0 != v1);
+        debug_assert_ne!(v0, v1);
         let dx = Fixed::from(p1.x - p0.x);  // delta X
         let dy = Fixed::from(p1.y - p0.y);  // delta Y
         debug_assert!(dy > Fixed::ZERO);
@@ -620,10 +620,10 @@ mod test {
     use super::*;
     #[test]
     fn compare_fixed() {
-        assert!(cmp_fixed(0.0, 0.0) == Ordering::Equal);
-        assert!(cmp_fixed(0.0, 0.00001) == Ordering::Equal);
-        assert!(cmp_fixed(0.0, 0.0001) == Ordering::Less);
-        assert!(cmp_fixed(0.0, -0.0001) == Ordering::Greater);
+        assert_eq!(cmp_fixed(0.0, 0.0), Ordering::Equal);
+        assert_eq!(cmp_fixed(0.0, 0.00001), Ordering::Equal);
+        assert_eq!(cmp_fixed(0.0, 0.0001), Ordering::Less);
+        assert_eq!(cmp_fixed(0.0, -0.0001), Ordering::Greater);
     }
     #[test]
     fn fig_3x3() {
@@ -635,7 +635,7 @@ mod test {
         f.add_point(Vec2::new(0.0, 3.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert!([128, 0, 0, 255, 128, 0, 255, 255, 128] == m.pixels());
+        assert_eq!([128, 0, 0, 255, 128, 0, 255, 255, 128], m.pixels());
     }
     #[test]
     fn fig_9x1() {
@@ -647,6 +647,6 @@ mod test {
         f.add_point(Vec2::new(0.0, 1.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert!([242, 214, 186, 158, 130, 102, 74, 46, 18] == m.pixels());
+        assert_eq!([242, 214, 186, 158, 130, 102, 74, 46, 18], m.pixels());
     }
 }

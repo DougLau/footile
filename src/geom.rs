@@ -361,29 +361,29 @@ impl Transform {
 
 #[cfg(test)]
 mod test {
-    use super::Vec2;
+    use super::*;
     #[test]
     fn test_vec2() {
         let a = Vec2::new(2.0, 1.0);
         let b = Vec2::new(3.0, 4.0);
         let c = Vec2::new(-1.0, 1.0);
-        assert!(a + b == Vec2::new(5.0, 5.0));
-        assert!(b - a == Vec2::new(1.0, 3.0));
-        assert!(a * 2.0 == Vec2::new(4.0, 2.0));
-        assert!(a / 2.0 == Vec2::new(1.0, 0.5));
-        assert!(-a == Vec2::new(-2.0, -1.0));
-        assert!(b.mag() == 5.0);
-        assert!(a.normalize() == Vec2::new(0.8944272, 0.4472136));
-        assert!(a.dist_sq(b) == 10.0);
-        assert!(b.dist(Vec2::new(0.0, 0.0)) == 5.0);
-        assert!(a.midpoint(b) == Vec2::new(2.5, 2.5));
-        assert!(a.left() == Vec2::new(-1.0, 2.0));
-        assert!(a.right() == Vec2::new(1.0, -2.0));
+        assert_eq!(a + b, Vec2::new(5.0, 5.0));
+        assert_eq!(b - a, Vec2::new(1.0, 3.0));
+        assert_eq!(a * 2.0, Vec2::new(4.0, 2.0));
+        assert_eq!(a / 2.0, Vec2::new(1.0, 0.5));
+        assert_eq!(-a, Vec2::new(-2.0, -1.0));
+        assert_eq!(b.mag(), 5.0);
+        assert_eq!(a.normalize(), Vec2::new(0.8944272, 0.4472136));
+        assert_eq!(a.dist_sq(b), 10.0);
+        assert_eq!(b.dist(Vec2::new(0.0, 0.0)), 5.0);
+        assert_eq!(a.midpoint(b), Vec2::new(2.5, 2.5));
+        assert_eq!(a.left(), Vec2::new(-1.0, 2.0));
+        assert_eq!(a.right(), Vec2::new(1.0, -2.0));
         assert!(a.widdershins(b));
         assert!(!b.widdershins(a));
         assert!(b.widdershins(c));
-        assert!(a.angle_rel(b) == -0.4636476);
-        assert!(c.angle_rel(Vec2::new(1.0, 1.0)) == 1.5707963);
-        assert!(Vec2::new(-1.0, -1.0).angle_rel(c) == 1.5707965);
+        assert_eq!(a.angle_rel(b), -0.4636476);
+        assert_eq!(c.angle_rel(Vec2::new(1.0, 1.0)), 1.5707963);
+        assert_eq!(Vec2::new(-1.0, -1.0).angle_rel(c), 1.5707965);
     }
 }
