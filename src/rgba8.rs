@@ -11,7 +11,11 @@ use std::arch::x86::*;
 use std::arch::x86_64::*;
 
 // Defining this allows easier testing of fallback configuration
-const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
+macro_rules! x86 {
+    ($code:block) => {
+        #[cfg(any(target_arch="x86", target_arch="x86_64"))] $code
+    }
+}
 
 /// 8-bit per channel RGBA [pixel format](trait.PixFmt.html).
 ///
@@ -102,11 +106,13 @@ impl PixFmt for Rgba8 {
     /// * `src` Source color.
     fn over(pix: &mut [Self], mask: &[u8], clr: Self) {
         debug_assert_eq!(pix.len(), mask.len());
-        if X86 && is_x86_feature_detected!("ssse3") {
-            unsafe { over_x86(pix, mask, clr) }
-        } else {
-            over_fallback(pix, mask, clr);
-        }
+        x86!({
+            if is_x86_feature_detected!("ssse3") {
+                unsafe { over_x86(pix, mask, clr) }
+                return;
+            }
+        });
+        over_fallback(pix, mask, clr);
     }
     /// Divide alpha (remove premultiplied alpha)
     fn divide_alpha(pix: &mut [Self]) {

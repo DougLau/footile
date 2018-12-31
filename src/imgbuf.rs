@@ -9,7 +9,11 @@ use std::arch::x86::*;
 use std::arch::x86_64::*;
 
 // Defining this allows easier testing of fallback configuration
-const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
+macro_rules! x86 {
+    ($code:block) => {
+        #[cfg(any(target_arch="x86", target_arch="x86_64"))] $code
+    }
+}
 
 /// Accumulate signed area with non-zero fill rule.
 /// Source buffer is zeroed upon return.
@@ -18,11 +22,13 @@ const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
 /// * `src` Source buffer.
 pub fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
-    if X86 && is_x86_feature_detected!("ssse3") {
-        unsafe { accumulate_non_zero_x86(dst, src) }
-    } else {
-        accumulate_non_zero_fallback(dst, src)
-    }
+    x86!({
+        if is_x86_feature_detected!("ssse3") {
+            unsafe { accumulate_non_zero_x86(dst, src) }
+            return;
+        }
+    });
+    accumulate_non_zero_fallback(dst, src)
 }
 
 /// Accumulate signed area with non-zero fill rule.
@@ -92,11 +98,14 @@ unsafe fn accumulate_i16x8_x86(mut a: __m128i) -> __m128i {
 /// * `src` Source buffer.
 pub fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
-    if X86 && is_x86_feature_detected!("ssse3") {
-        unsafe { accumulate_odd_x86(dst, src) }
-    } else {
-        accumulate_odd_fallback(dst, src)
-    }
+
+    x86!({
+        if is_x86_feature_detected!("ssse3") {
+            unsafe { accumulate_odd_x86(dst, src) }
+            return;
+        }
+    });
+    accumulate_odd_fallback(dst, src)
 }
 
 /// Accumulate signed area with even-odd fill rule.
