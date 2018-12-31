@@ -443,6 +443,9 @@ impl<'a> Scanner<'a> {
         if self.edges.len() > 0 {
             self.scan_to_y(y_vtx);
         } else {
+            if self.y_now > Fixed::ZERO {
+                self.scan_accumulate();
+            }
             self.y_now = y_vtx;
             self.y_prev = y_vtx;
         }
@@ -526,6 +529,7 @@ impl<'a> Scanner<'a> {
         }
     }
     /// Accumulate signed area to mask.
+    /// Signed area is zeroed upon return.
     fn scan_accumulate(&mut self) {
         if self.y_now > Fixed::ZERO && self.y_now <= self.y_bot {
             let y = line_of(self.y_now) as u32;
