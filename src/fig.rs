@@ -1,8 +1,7 @@
 // fig.rs    A 2D rasterizer.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2019  Douglas P Lau
 //
-use std::cmp;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
@@ -142,7 +141,7 @@ impl Edge {
     /// Calculate the step for each pixel on an edge
     fn calculate_step(dx: Fixed, dy: Fixed) -> Fixed {
         if dx != Fixed::ZERO {
-            cmp::min(Fixed::ONE, (dy / dx).abs())
+            (dy / dx).abs().min(Fixed::ONE)
         } else {
             Fixed::ZERO
         }
@@ -166,8 +165,8 @@ impl Edge {
     }
     /// Set X limits
     fn set_x_limits(&mut self, xt: Fixed, xb: Fixed) {
-        self.min_x = cmp::min(xt, xb);
-        self.max_x = cmp::max(xt, xb);
+        self.min_x = xt.min(xb);
+        self.max_x = xt.max(xb);
     }
     /// Get the minimum X pixel
     fn min_pix(&self) -> i32 {
@@ -462,7 +461,7 @@ impl<'a> Scanner<'a> {
                 self.scan_accumulate();
             }
             self.y_prev = self.y_now;
-            self.y_now = cmp::min(y_vtx, self.y_now.floor() + Fixed::ONE);
+            self.y_now = y_vtx.min(self.y_now.floor() + Fixed::ONE);
             if self.is_next_line() {
                 self.advance_edges();
             }
