@@ -177,9 +177,9 @@ impl Edge {
         self.max_x.into()
     }
     /// Get coverage of first pixel on edge.
-    fn first_cov(&self) -> Fixed {
+    fn first_cov(&self, full_cov: Fixed) -> Fixed {
         let r = if self.min_pix() == self.max_pix() {
-            (Fixed::ONE - self.x_mid().fract())
+            (Fixed::ONE - self.x_mid().fract()) * full_cov
         } else {
             (Fixed::ONE - self.min_x.fract()) * Fixed::HALF
         };
@@ -204,7 +204,8 @@ impl Edge {
     /// * `area` Signed area buffer.
     fn scan_area(&self, dir: FigDir, full_pix: i16, area: &mut [i16]) {
         let ed = if self.dir == dir { 1i16 } else { -1i16 };
-        let mut x_cov = self.first_cov();  // total coverage at X
+        let full_cov = Fixed::from(full_pix as f32 / 256.0);
+        let mut x_cov = self.first_cov(full_cov);  // total coverage at X
         let step_cov = self.step_cov(Fixed::ONE);  // coverage change per step
         debug_assert!(step_cov > Fixed::ZERO);
         let mut sum_pix = 0i16;  // cumulative sum of pixel coverage
@@ -654,5 +655,44 @@ mod test {
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         assert_eq!([242, 213, 185, 156, 128, 100, 71, 43, 14], m.pixels());
+    }
+    #[test]
+    fn fig_partial() {
+        let mut m = Mask::new(1, 3);
+        let mut s = vec!(0; 4);
+        let mut f = Fig::new();
+        f.add_point(Vec2::new(0.5, 0.0));
+        f.add_point(Vec2::new(0.5, 1.5));
+        f.add_point(Vec2::new(1.0, 3.0));
+        f.add_point(Vec2::new(1.0, 0.0));
+        f.close();
+        f.fill(&mut m, &mut s, FillRule::NonZero);
+        assert_eq!([128, 117, 43], m.pixels());
+    }
+    #[test]
+    fn fig_partial2() {
+        let mut m = Mask::new(3, 3);
+        let mut s = vec!(0; 3);
+        let mut f = Fig::new();
+        f.add_point(Vec2::new(1.5, 0.0));
+        f.add_point(Vec2::new(1.5, 1.5));
+        f.add_point(Vec2::new(2.0, 3.0));
+        f.add_point(Vec2::new(3.0, 3.0));
+        f.add_point(Vec2::new(3.0, 0.0));
+        f.close();
+        f.fill(&mut m, &mut s, FillRule::NonZero);
+        assert_eq!([0, 128, 255, 0, 117, 255, 0, 43, 255], m.pixels());
+    }
+    #[test]
+    fn fig_partial3() {
+        let mut m = Mask::new(9, 1);
+        let mut s = vec!(0; 16);
+        let mut f = Fig::new();
+        f.add_point(Vec2::new(0.0, 0.3));
+        f.add_point(Vec2::new(9.0, 0.0));
+        f.add_point(Vec2::new(0.0, 0.0));
+        f.close();
+        f.fill(&mut m, &mut s, FillRule::NonZero);
+        assert_eq!([73, 64, 56, 47, 39, 30, 22, 13, 4], m.pixels());
     }
 }
