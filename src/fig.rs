@@ -503,20 +503,19 @@ impl<'a> Scanner<'a> {
     }
     /// Scan partial edges
     fn scan_partial(&mut self) {
-        let cov_full = self.scan_coverage();
-        debug_assert!(cov_full <= 256);
-        if cov_full <= 0 {
-            return;
-        }
-        let y = line_of(self.y_now);
-        let y_bot = self.y_now.ceil();
-        let ypb = y_bot - self.y_prev;
-        let ynb = y_bot - self.y_now;
-        let mut area = &mut self.sgn_area;
-        for e in self.edges.iter_mut() {
-            if e.is_partial(y) {
-                e.calculate_x_limits_partial(ypb, ynb);
-                e.scan_area(self.dir, cov_full, &mut area);
+        let full_pix = self.scan_cov_partial();
+        debug_assert!(full_pix <= 256);
+        if full_pix > 0 {
+            let y = line_of(self.y_now);
+            let y_bot = self.y_now.ceil();
+            let ypb = y_bot - self.y_prev;
+            let ynb = y_bot - self.y_now;
+            let mut area = &mut self.sgn_area;
+            for e in self.edges.iter_mut() {
+                if e.is_partial(y) {
+                    e.calculate_x_limits_partial(ypb, ynb);
+                    e.scan_area(self.dir, full_pix, &mut area);
+                }
             }
         }
     }
@@ -527,7 +526,7 @@ impl<'a> Scanner<'a> {
         for e in self.edges.iter_mut() {
             if !e.is_partial(y) {
                 e.calculate_x_limits_full();
-                e.scan_area(self.dir, 256i16, &mut area);
+                e.scan_area(self.dir, 256, &mut area);
             }
         }
     }
@@ -539,8 +538,8 @@ impl<'a> Scanner<'a> {
             self.mask.scan_accumulate(self.sgn_area, y, self.rule);
         }
     }
-    /// Get full scan coverage
-    fn scan_coverage(&self) -> i16 {
+    /// Get scan coverage for partial scan line
+    fn scan_cov_partial(&self) -> i16 {
         debug_assert!(self.y_now > self.y_prev);
         debug_assert!(self.y_now <= self.y_prev + Fixed::ONE);
         let scan_now = pixel_cov(self.y_now.fract());
