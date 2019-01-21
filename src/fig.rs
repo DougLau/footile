@@ -197,22 +197,26 @@ impl Edge {
     fn x_mid(&self) -> Fixed {
         self.max_x.avg(self.min_x)
     }
-    /// Scan signed area of edge
-    fn scan_area(&self, dir: FigDir, cov_full: i16, area: &mut [i16]) {
-        let w = area.len() as i32;
+    /// Scan signed area of scan line.
+    ///
+    /// * `dir` Direction of edge.
+    /// * `full_pix` Pixel coverage of scan line (1 - 256).
+    /// * `area` Signed area buffer.
+    fn scan_area(&self, dir: FigDir, full_pix: i16, area: &mut [i16]) {
         let ed = if self.dir == dir { 1i16 } else { -1i16 };
-        let s_0 = pixel_cov(self.first_cov());
-        let s_n = pixel_cov(self.step_cov(Fixed::ONE));
-        debug_assert!(s_n > 0);
-        let mut cc = s_0;
-        let mut cov = 0i16;
-        let mut x = self.min_pix();
-        while x < w && cov < cov_full {
-            let c = cmp::min(cc, cov_full - cov);
-            cov += c;
-            area[cmp::max(0, x) as usize] += c * ed;
-            cc = s_n;
-            x += 1;
+        let mut x_cov = self.first_cov();  // total coverage at X
+        let step_cov = self.step_cov(Fixed::ONE);  // coverage change per step
+        debug_assert!(step_cov > Fixed::ZERO);
+        let mut sum_pix = 0i16;  // cumulative sum of pixel coverage
+        for x in self.min_pix() as usize..area.len() {
+            let x_pix = pixel_cov(x_cov).min(full_pix);
+            let p = x_pix - sum_pix;  // pixel coverage at X
+            area[x.max(0) as usize] += p * ed;
+            sum_pix += p;
+            if sum_pix >= full_pix {
+                break;
+            }
+            x_cov = (x_cov + step_cov).min(Fixed::ONE);
         }
     }
 }
@@ -613,7 +617,7 @@ impl<'a> Scanner<'a> {
 /// return Total pixel coverage (0 to 256).
 fn pixel_cov(fcov: Fixed) -> i16 {
     debug_assert!(fcov >= Fixed::ZERO && fcov <= Fixed::ONE);
-    // Round to nearest cov value
+    // Round to nearest pixel cov value
     let n: i32 = (fcov << 8).round().into();
     n as i16
 }
@@ -650,6 +654,6 @@ mod test {
         f.add_point(Vec2::new(0.0, 1.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert_eq!([242, 214, 186, 158, 130, 102, 74, 46, 18], m.pixels());
+        assert_eq!([242, 213, 185, 156, 128, 100, 71, 43, 14], m.pixels());
     }
 }
