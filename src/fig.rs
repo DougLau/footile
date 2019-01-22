@@ -657,6 +657,18 @@ mod test {
         assert_eq!([242, 213, 185, 156, 128, 100, 71, 43, 14], m.pixels());
     }
     #[test]
+    fn fig_x_bounds() {
+        let mut m = Mask::new(3, 3);
+        let mut s = vec!(0; 4);
+        let mut f = Fig::new();
+        f.add_point(Vec2::new(-1.0, 0.0));
+        f.add_point(Vec2::new(-1.0, 3.0));
+        f.add_point(Vec2::new(3.0, 1.5));
+        f.close();
+        f.fill(&mut m, &mut s, FillRule::NonZero);
+        assert_eq!([112, 16, 0, 255, 224, 32, 112, 16, 0], m.pixels());
+    }
+    #[test]
     fn fig_partial() {
         let mut m = Mask::new(1, 3);
         let mut s = vec!(0; 4);
