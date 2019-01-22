@@ -1,6 +1,13 @@
 ## [Unreleased]
+
+## [0.3.0] - 2019-01-21
 ### Added
 * Rgb8 pixel format.
+### Changed
+* PixFmt::over mask parameter changed from &Mask to &[u8].
+### Fixed
+* Rendering bug (issue #15)
+* Rendering bug (issue #17)
 
 ## [0.2.0] - 2018-11-20
 ### Added
