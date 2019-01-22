@@ -209,7 +209,7 @@ impl Edge {
         let step_cov = self.step_cov(Fixed::ONE);  // coverage change per step
         debug_assert!(step_cov > Fixed::ZERO);
         let mut sum_pix = 0i16;  // cumulative sum of pixel coverage
-        for x in self.min_pix() as usize..area.len() {
+        for x in self.min_pix()..area.len() as i32 {
             let x_pix = pixel_cov(x_cov).min(full_pix);
             let p = x_pix - sum_pix;  // pixel coverage at X
             area[x.max(0) as usize] += p * ed;
