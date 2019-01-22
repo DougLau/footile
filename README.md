@@ -1,13 +1,8 @@
 # footile
 A 2D vector graphics library written in Rust.
 
-## Goals
-* API simplicity and ergonomics
-* Features comparable to other 2D graphics (Cairo, Skia, SVG)
-* Anti-aliased rendering
-* Image rendering for web servers
-* (Someday) GPU acceleration (hopefully using SPIR-V as rust compile target!)
-* Have fun!
+## Documentation
+[https://docs.rs/footile](https://docs.rs/footile)
 
 ## Example
 ```rust
@@ -26,3 +21,11 @@ r.over(p.fill(&fish, FillRule::NonZero), Rgba8::rgb(127, 96, 96));
 r.over(p.stroke(&fish), Rgba8::rgb(255, 208, 208));
 r.write_png("./fishy.png")?;
 ```
+
+## Goals
+* API simplicity and ergonomics
+* Features comparable to other 2D graphics (Cairo, Skia, SVG)
+* Anti-aliased rendering
+* Image rendering for web servers
+* (Someday) GPU acceleration (hopefully using SPIR-V as rust compile target!)
+* Have fun!
