@@ -1,6 +1,6 @@
 [package]
 name = "footile"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Douglas Lau <doug.p.lau@gmail.com>"]
 description = "A 2D vector graphics library"
 license = "MIT/Apache-2.0"
