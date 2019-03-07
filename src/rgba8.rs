@@ -5,13 +5,10 @@
 use png::ColorType;
 use pixel::{PixFmt,lerp_u8};
 
-#[cfg(target_arch = "x86")]
+#[cfg(all(target_arch = "x86", feature = "use-simd"))]
 use std::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", feature = "use-simd"))]
 use std::arch::x86_64::*;
-
-// Defining this allows easier testing of fallback configuration
-const X86: bool = cfg!(any(target_arch="x86", target_arch="x86_64"));
 
 /// 8-bit per channel RGBA [pixel format](trait.PixFmt.html).
 ///
@@ -102,11 +99,13 @@ impl PixFmt for Rgba8 {
     /// * `src` Source color.
     fn over(pix: &mut [Self], mask: &[u8], clr: Self) {
         debug_assert_eq!(pix.len(), mask.len());
-        if X86 && is_x86_feature_detected!("ssse3") {
-            unsafe { over_x86(pix, mask, clr) }
-        } else {
-            over_fallback(pix, mask, clr);
+        #[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))] {
+            if is_x86_feature_detected!("ssse3") {
+                unsafe { over_x86(pix, mask, clr) }
+                return;
+            }
         }
+        over_fallback(pix, mask, clr);
     }
     /// Divide alpha (remove premultiplied alpha)
     fn divide_alpha(pix: &mut [Self]) {
@@ -117,7 +116,7 @@ impl PixFmt for Rgba8 {
 }
 
 /// Composite a color with a mask.
-#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
 unsafe fn over_x86(pix: &mut [Rgba8], mask: &[u8], clr: Rgba8) {
     debug_assert_eq!(pix.len(), mask.len());
     let len = pix.len();
@@ -142,7 +141,7 @@ unsafe fn over_x86(pix: &mut [Rgba8], mask: &[u8], clr: Rgba8) {
 }
 
 /// Swizzle alpha mask (xxxxxxxxxxxx3210 => 3333222211110000)
-#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
 unsafe fn swizzle_mask_x86(v: __m128i) -> __m128i {
     _mm_shuffle_epi8(v, _mm_set_epi8(3, 3, 3, 3,
                                      2, 2, 2, 2,
@@ -151,7 +150,7 @@ unsafe fn swizzle_mask_x86(v: __m128i) -> __m128i {
 }
 
 /// Composite packed u8 values using `over`.
-#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
 unsafe fn over_alpha_u8x16_x86(t: __m128i, b: __m128i, a: __m128i) -> __m128i {
     // Since alpha can range from 0 to 255 and (t - b) can range from -255 to
     // +255, we would need 17 bits to store the result of a multiplication.
@@ -177,7 +176,7 @@ unsafe fn over_alpha_u8x16_x86(t: __m128i, b: __m128i, a: __m128i) -> __m128i {
 }
 
 /// Scale i16 values (result of "u7" * "i9") into u8.
-#[cfg(any(target_arch="x86", target_arch="x86_64"))]
+#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
 unsafe fn scale_i16_to_u8_x86(v: __m128i) -> __m128i {
     // To scale into a u8, we would normally divide by 255.  This is equivalent
     // to: ((v + 1) + (v >> 8)) >> 8
