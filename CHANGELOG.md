@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [0.3.1] - 2019-03-07
+### Added
+* Support target_arch = "wasm32"
+* New use-simd feature
+
 ## [0.3.0] - 2019-01-21
 ### Added
 * Rgb8 pixel format.
