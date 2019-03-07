@@ -20,5 +20,5 @@ name = "fishyb"
 harness = false
 
 [features]
-default = []
-no-simd = []
+default = ["use-simd"]
+use-simd = []

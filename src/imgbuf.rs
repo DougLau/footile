@@ -3,9 +3,9 @@
 // Copyright (c) 2017-2018  Douglas P Lau
 //
 
-#[cfg(all(target_arch = "x86", not(feature = "no-simd")))]
+#[cfg(all(target_arch = "x86", feature = "use-simd"))]
 use std::arch::x86::*;
-#[cfg(all(target_arch = "x86_64", not(feature = "no-simd")))]
+#[cfg(all(target_arch = "x86_64", feature = "use-simd"))]
 use std::arch::x86_64::*;
 
 /// Accumulate signed area with non-zero fill rule.
@@ -15,7 +15,7 @@ use std::arch::x86_64::*;
 /// * `src` Source buffer.
 pub fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
-    #[cfg(all(any(target_arch="x86", target_arch="x86_64"), not(feature = "no-simd")))] {
+    #[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))] {
         if is_x86_feature_detected!("ssse3") {
             unsafe { accumulate_non_zero_x86(dst, src) }
             return;
@@ -40,7 +40,7 @@ fn saturating_cast_i16_u8(v: i16) -> u8 {
 }
 
 /// Accumulate signed area with non-zero fill rule.
-#[cfg(all(any(target_arch="x86", target_arch="x86_64"), not(feature = "no-simd")))]
+#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
 unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
     let zero = _mm_setzero_si128();
     let mut sum = zero;
@@ -69,7 +69,7 @@ unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
 }
 
 /// Accumulate signed area sum thru 8 pixels.
-#[cfg(all(any(target_arch="x86", target_arch="x86_64"), not(feature = "no-simd")))]
+#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
 unsafe fn accumulate_i16x8_x86(mut a: __m128i) -> __m128i {
     //   a7 a6 a5 a4 a3 a2 a1 a0
     // + a3 a2 a1 a0 __ __ __ __
@@ -91,7 +91,7 @@ unsafe fn accumulate_i16x8_x86(mut a: __m128i) -> __m128i {
 /// * `src` Source buffer.
 pub fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
-    #[cfg(all(any(target_arch="x86", target_arch="x86_64"), not(feature = "no-simd")))] {
+    #[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))] {
         if is_x86_feature_detected!("ssse3") {
             unsafe { accumulate_odd_x86(dst, src) }
             return;
@@ -114,7 +114,7 @@ fn accumulate_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
 }
 
 /// Accumulate signed area with even-odd fill rule.
-#[cfg(all(any(target_arch="x86", target_arch="x86_64"), not(feature = "no-simd")))]
+#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
 unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
     let zero = _mm_setzero_si128();
     let mut sum = zero;
