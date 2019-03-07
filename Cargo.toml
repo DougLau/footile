@@ -18,3 +18,7 @@ criterion = "0.2"
 [[bench]]
 name = "fishyb"
 harness = false
+
+[features]
+default = ["use-simd"]
+use-simd = []
