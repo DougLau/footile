@@ -29,7 +29,7 @@ use pixel::PixFmt;
 pub struct Raster<F: PixFmt> {
     width  : u32,
     height : u32,
-    pixels : Vec<F>,
+    pixels : Box<[F]>,
 }
 
 impl<F: PixFmt> Raster<F> {
@@ -44,6 +44,13 @@ impl<F: PixFmt> Raster<F> {
         for _ in 0..len {
             pixels.push(F::default());
         }
+        let pixels = pixels.into_boxed_slice();
+        Raster { width, height, pixels }
+    }
+    /// Create a new raster image with owned pixel data.
+    pub fn owned(width: u32, height: u32, pixels: Box<[F]>) -> Raster<F> {
+        let len = width * height;
+        debug_assert_eq!(len, capacity(pixels.len() as u32) as u32);
         Raster { width, height, pixels }
     }
     /// Get raster width.
@@ -178,5 +185,20 @@ impl<F: PixFmt> RasterB<F> {
         assert_eq!(self.len(), pixels.len());
         F::over(&mut pixels, mask.pixels(), clr);
         mask.clear();
+    }
+    /// Write the raster to a PNG (portable network graphics) file.
+    ///
+    /// * `filename` Name of file to write.
+    pub fn write_png(self, filename: &str, mut pixels: &mut [F]) -> io::Result<()> {
+        debug_assert_eq!(self.len(), pixels.len());
+        F::divide_alpha(&mut pixels);
+        let fl = File::create(filename)?;
+        let ref mut bw = io::BufWriter::new(fl);
+        let mut enc = png::Encoder::new(bw, self.width, self.height);
+        enc.set(F::color_type()).set(png::BitDepth::Eight);
+        let mut writer = enc.write_header()?;
+        let pix = F::as_u8_slice(&mut pixels);
+        writer.write_image_data(pix)?;
+        Ok(())
     }
 }
