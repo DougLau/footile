@@ -8,9 +8,10 @@ fn main() -> Result<(), std::io::Error> {
     let mut array: [Rgba8; 128*128] = [Rgba8::new(0,0,0,0); 128*128];
     let buffer: *mut Rgba8 = array.as_mut_ptr();
 
-    // Convert our Vulkan Pointer into A Box<[T]>.  This is safe because slice & box are fat ptrs.
+    // Safely convert our Vulkan Pointer into a Box<[T]>, then into a Vec<T>.
+    // This is safe because slice & box are fat ptrs.
     let slice: &mut [Rgba8] = unsafe { std::slice::from_raw_parts_mut(buffer, 128*128) };
-    let b: Box<[Rgba8]> = unsafe { std::mem::transmute(slice) };
+    let v: Box<[Rgba8]> = unsafe { std::mem::transmute::<_, Box<[Rgba8]>>(slice) };
 
     // Draw on the buffer.
     let fish = PathBuilder::new().relative().pen_width(3.0)
@@ -27,7 +28,7 @@ fn main() -> Result<(), std::io::Error> {
                           .line_to(-8.0, 8.0)
                           .build();
     let mut p = Plotter::new(128, 128);
-    let mut r = Raster::owned(p.width(), p.height(), b);
+    let mut r = Raster::with_pixels(p.width(), p.height(), v);
     r.over(p.fill(&fish, FillRule::NonZero), Rgba8::rgb(127, 96, 96));
     r.over(p.stroke(&fish), Rgba8::rgb(255, 208, 208));
     r.over(p.stroke(&eye), Rgba8::rgb(0, 0, 0));

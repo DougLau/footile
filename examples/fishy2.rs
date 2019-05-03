@@ -17,9 +17,9 @@ fn main() -> Result<(), std::io::Error> {
                           .move_to(0.0, -8.0)
                           .line_to(-8.0, 8.0)
                           .build();
-    let b = Box::new([Rgba8::new(0,0,0,0); 128*128]);
+    let v = vec![Rgba8::new(0,0,0,0); 128*128];
     let mut p = Plotter::new(128, 128);
-    let mut r = Raster::owned(p.width(), p.height(), b);
+    let mut r = Raster::with_pixels(p.width(), p.height(), v);
     r.over(p.fill(&fish, FillRule::NonZero), Rgba8::rgb(127, 96, 96));
     r.over(p.stroke(&fish), Rgba8::rgb(255, 208, 208));
     r.over(p.stroke(&eye), Rgba8::rgb(0, 0, 0));

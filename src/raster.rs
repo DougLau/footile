@@ -4,15 +4,13 @@
 //
 use std::fs::File;
 use std::io;
-use std::marker::PhantomData;
 use png;
 use png::HasParameters;
 use mask::Mask;
 use pixel::PixFmt;
 
 /// A raster image with owned pixel data.
-/// If the pixel data must be owned elsewhere, consider using
-/// [RasterB](struct.RasterB.html).
+/// If the pixel data must be owned elsewhere, check out the fishyp example.
 ///
 /// # Example
 /// ```
@@ -47,9 +45,17 @@ impl<F: PixFmt> Raster<F> {
         let pixels = pixels.into_boxed_slice();
         Raster { width, height, pixels }
     }
-    /// Create a new raster image with owned pixel data.
-    pub fn owned(width: u32, height: u32, pixels: Box<[F]>) -> Raster<F> {
+    /// Create a new raster image with owned pixel data.  You can get ownership
+    /// of the pixel data back from the `Raster` as either a `Vec<F>` or a
+    /// `Box<[F]>` by calling `into()`.
+    /// 
+    /// * `F` [Pixel format](trait.PixFmt.html).
+    /// * `width` Width in pixels.
+    /// * `height` Height in pixels.
+    /// * `pixels` The pixels.  Length must be width * height.
+    pub fn with_pixels<T: Into<Box<[F]>>>(width: u32, height: u32, pixels: T) -> Raster<F> {
         let len = width * height;
+        let pixels = pixels.into();
         debug_assert_eq!(len, capacity(pixels.len() as u32) as u32);
         Raster { width, height, pixels }
     }
@@ -116,8 +122,16 @@ impl<F: PixFmt> Raster<F> {
 }
 
 impl<F: PixFmt> Into<Box<[F]>> for Raster<F> {
+    /// Get internal pixel data as boxed slice.
     fn into(self) -> Box<[F]> {
         self.pixels
+    }
+}
+
+impl<F: PixFmt> Into<Vec<F>> for Raster<F> {
+    /// Get internal pixel data as `Vec` of pixels.
+    fn into(self) -> Vec<F> {
+        self.pixels.into()
     }
 }
 
