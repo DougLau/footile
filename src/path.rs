@@ -13,6 +13,7 @@ pub enum FillRule {
 }
 
 /// Path operation.
+#[derive(Debug)]
 pub enum PathOp {
     /// Close the path
     Close(),

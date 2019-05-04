@@ -150,6 +150,7 @@ impl Plotter {
     {
         self.reset();
         for op in ops {
+            println!("{:?}", op);
             self.add_op(dst, op);
         }
     }
