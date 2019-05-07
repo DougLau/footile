@@ -1,6 +1,6 @@
 // rgba8.rs     8-bit per channel RGBA pixel format.
 //
-// Copyright (c) 2018  Douglas P Lau
+// Copyright (c) 2018-2019  Douglas P Lau
 //
 use png::ColorType;
 use pixel::{PixFmt,lerp_u8};
@@ -99,7 +99,9 @@ impl PixFmt for Rgba8 {
     /// * `src` Source color.
     fn over(pix: &mut [Self], mask: &[u8], clr: Self) {
         debug_assert_eq!(pix.len(), mask.len());
-        #[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))] {
+        #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+                  feature = "use-simd"))]
+        {
             if is_x86_feature_detected!("ssse3") {
                 unsafe { over_x86(pix, mask, clr) }
                 return;
@@ -116,7 +118,8 @@ impl PixFmt for Rgba8 {
 }
 
 /// Composite a color with a mask.
-#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+          feature = "use-simd"))]
 #[target_feature(enable = "ssse3")]
 unsafe fn over_x86(pix: &mut [Rgba8], mask: &[u8], clr: Rgba8) {
     debug_assert_eq!(pix.len(), mask.len());
@@ -142,7 +145,8 @@ unsafe fn over_x86(pix: &mut [Rgba8], mask: &[u8], clr: Rgba8) {
 }
 
 /// Swizzle alpha mask (xxxxxxxxxxxx3210 => 3333222211110000)
-#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+          feature = "use-simd"))]
 #[target_feature(enable = "ssse3")]
 unsafe fn swizzle_mask_x86(v: __m128i) -> __m128i {
     _mm_shuffle_epi8(v, _mm_set_epi8(3, 3, 3, 3,
@@ -152,7 +156,8 @@ unsafe fn swizzle_mask_x86(v: __m128i) -> __m128i {
 }
 
 /// Composite packed u8 values using `over`.
-#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+          feature = "use-simd"))]
 #[target_feature(enable = "ssse3")]
 unsafe fn over_alpha_u8x16_x86(t: __m128i, b: __m128i, a: __m128i) -> __m128i {
     // Since alpha can range from 0 to 255 and (t - b) can range from -255 to
@@ -179,7 +184,8 @@ unsafe fn over_alpha_u8x16_x86(t: __m128i, b: __m128i, a: __m128i) -> __m128i {
 }
 
 /// Scale i16 values (result of "u7" * "i9") into u8.
-#[cfg(all(any(target_arch="x86", target_arch="x86_64"), feature = "use-simd"))]
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+          feature = "use-simd"))]
 #[target_feature(enable = "ssse3")]
 unsafe fn scale_i16_to_u8_x86(v: __m128i) -> __m128i {
     // To scale into a u8, we would normally divide by 255.  This is equivalent

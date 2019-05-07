@@ -1,5 +1,0 @@
-# SSSE3 is required for the _mm_shuffle_epi8 intrinsic.  If
-# target-feature="+ssse3" is not defined during compilation, a
-# fallback function will be called, which is much slower.
-[target.'cfg(any(target_arch="x86",target_arch="x86_64"))']
-rustflags = ["-C", "target-feature=+ssse3"]
