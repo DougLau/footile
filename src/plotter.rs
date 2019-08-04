@@ -145,12 +145,13 @@ impl Plotter {
         Vec2w::new(pt.x, pt.y, p.w)
     }
     /// Add a series of ops.
-    fn add_ops<'a, T, D>(&mut self, ops: T, dst: &mut D)
-        where T: IntoIterator<Item=&'a PathOp>, D: PlotDest
+    fn add_ops<'a, T, U, D>(&mut self, ops: T, dst: &mut D)
+        where T: IntoIterator<Item=U>, U: std::ops::Deref<Target=PathOp>,
+              D: PlotDest
     {
         self.reset();
         for op in ops {
-            self.add_op(dst, op);
+            self.add_op(dst, &op);
         }
     }
     /// Add a path operation.
@@ -291,8 +292,8 @@ impl Plotter {
     ///
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Mask
-        where T: IntoIterator<Item=&'a PathOp>
+    pub fn fill<'a, T, U>(&mut self, ops: T, rule: FillRule) -> &mut Mask
+        where T: IntoIterator<Item=U>, U: std::ops::Deref<Target=PathOp>
     {
         let mut fig = Fig::new();
         self.add_ops(ops, &mut fig);
@@ -304,8 +305,8 @@ impl Plotter {
     /// Stroke path onto the mask.
     ///
     /// * `ops` PathOp iterator.
-    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Mask
-        where T: IntoIterator<Item=&'a PathOp>
+    pub fn stroke<'a, T, U>(&mut self, ops: T) -> &mut Mask
+        where T: IntoIterator<Item=U>, U: std::ops::Deref<Target=PathOp>
     {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
         self.add_ops(ops, &mut stroke);

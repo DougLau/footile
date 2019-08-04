@@ -28,6 +28,14 @@ pub enum PathOp {
     PenWidth(f32),
 }
 
+impl std::ops::Deref for PathOp {
+    type Target = Self;
+
+    fn deref(&self) -> &Self {
+        self
+    }
+}
+
 /// Path2D is a container for arbitrary path operations.
 ///
 /// Use [PathBuilder](struct.PathBuilder.html) to construct paths.
