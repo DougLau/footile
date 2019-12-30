@@ -2,6 +2,7 @@
 //
 // Copyright (c) 2017-2018  Douglas P Lau
 //
+use std::borrow::Borrow;
 use fig::Fig;
 use geom::{Transform,Vec2,Vec2w,float_lerp};
 use path::{FillRule,PathOp};
@@ -146,11 +147,11 @@ impl Plotter {
     }
     /// Add a series of ops.
     fn add_ops<'a, T, D>(&mut self, ops: T, dst: &mut D)
-        where T: IntoIterator<Item=&'a PathOp>, D: PlotDest
+        where T: IntoIterator, T::Item: Borrow<PathOp>, D: PlotDest
     {
         self.reset();
         for op in ops {
-            self.add_op(dst, op);
+            self.add_op(dst, op.borrow());
         }
     }
     /// Add a path operation.
@@ -292,7 +293,7 @@ impl Plotter {
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
     pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Mask
-        where T: IntoIterator<Item=&'a PathOp>
+        where T: IntoIterator, T::Item: Borrow<PathOp>
     {
         let mut fig = Fig::new();
         self.add_ops(ops, &mut fig);
@@ -305,7 +306,7 @@ impl Plotter {
     ///
     /// * `ops` PathOp iterator.
     pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Mask
-        where T: IntoIterator<Item=&'a PathOp>
+        where T: IntoIterator, T::Item: Borrow<PathOp>
     {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
         self.add_ops(ops, &mut stroke);
