@@ -6,7 +6,7 @@ use std::fmt;
 use std::ops;
 
 /// Fixed-point type
-#[derive(Clone,Copy,Default,PartialEq,Eq,PartialOrd,Ord)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Fixed {
     v: i32,
 }
@@ -20,7 +20,9 @@ const FRACT_MASK: i32 = ((1 << FRACT_BITS) - 1);
 /// Fixed-point constants
 const FX_ZERO: Fixed = Fixed { v: 0 };
 const FX_EPSILON: Fixed = Fixed { v: 1 };
-const FX_HALF: Fixed = Fixed { v: 1 << (FRACT_BITS - 1) };
+const FX_HALF: Fixed = Fixed {
+    v: 1 << (FRACT_BITS - 1),
+};
 const FX_ONE: Fixed = Fixed { v: 1 << FRACT_BITS };
 
 impl fmt::Debug for Fixed {
@@ -128,11 +130,15 @@ impl Fixed {
 
     /// Get the smallest value that can be represented by this type.
     pub fn min_value() -> Self {
-        Fixed { v: i32::min_value() }
+        Fixed {
+            v: i32::min_value(),
+        }
     }
     /// Get the largest value that can be represented by this type.
     pub fn max_value() -> Self {
-        Fixed { v: i32::max_value() }
+        Fixed {
+            v: i32::max_value(),
+        }
     }
     /// Get the absolute value of a number.
     pub fn abs(self) -> Self {

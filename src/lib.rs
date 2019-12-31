@@ -6,10 +6,10 @@
 //! paths.  These are created using typical vector drawing primitives such as
 //! lines and bézier splines.
 //!
-mod imgbuf;
-mod geom;
 mod fig;
 mod fixed;
+mod geom;
+mod imgbuf;
 mod path;
 mod plotter;
 mod stroker;

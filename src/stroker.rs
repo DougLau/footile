@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2017-2019  Douglas P Lau
 //
-use crate::geom::{Vec2, Vec2w, intersection};
+use crate::geom::{intersection, Vec2, Vec2w};
 use crate::path::PathOp;
 use std::fmt;
 
@@ -10,7 +10,7 @@ use std::fmt;
 type Vid = u16;
 
 /// Style for stroke joins.
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum JoinStyle {
     /// Mitered join with limit (miter length to stroke width ratio)
     Miter(f32),
@@ -29,28 +29,28 @@ enum Dir {
 
 /// Sub-stroke struct
 struct SubStroke {
-    start    : Vid,     // starting point
-    n_points : Vid,     // number of points
-    joined   : bool,    // joined ends flag
-    done     : bool,    // done flag
+    start: Vid,    // starting point
+    n_points: Vid, // number of points
+    joined: bool,  // joined ends flag
+    done: bool,    // done flag
 }
 
 /// Stroke struct
 pub struct Stroke {
-    join_style : JoinStyle,      // join style
-    tol_sq     : f32,            // tolerance squared
-    points     : Vec<Vec2w>,     // all points
-    subs       : Vec<SubStroke>, // all sub-strokes
+    join_style: JoinStyle, // join style
+    tol_sq: f32,           // tolerance squared
+    points: Vec<Vec2w>,    // all points
+    subs: Vec<SubStroke>,  // all sub-strokes
 }
 
 impl SubStroke {
     /// Create a new sub-stroke
     fn new(start: Vid) -> SubStroke {
         SubStroke {
-            start    : start,
-            n_points : 0 as Vid,
-            joined   : false,
-            done     : false,
+            start,
+            n_points: 0 as Vid,
+            joined: false,
+            done: false,
         }
     }
     /// Get next vertex within a sub-stroke
@@ -63,14 +63,14 @@ impl SubStroke {
                 } else {
                     self.start
                 }
-            },
+            }
             Dir::Reverse => {
                 if vid > self.start {
                     vid - 1 as Vid
                 } else {
                     self.start + self.n_points - 1 as Vid
                 }
-            },
+            }
         }
     }
     /// Get count of points
@@ -103,7 +103,12 @@ impl Stroke {
         let points = Vec::with_capacity(1024);
         let mut subs = Vec::with_capacity(16);
         subs.push(SubStroke::new(0 as Vid));
-        Stroke { join_style, tol_sq, points, subs }
+        Stroke {
+            join_style,
+            tol_sq,
+            points,
+            subs,
+        }
     }
     /// Check if two points are within tolerance threshold.
     fn is_within_tolerance2(&self, a: Vec2, b: Vec2) -> bool {
@@ -205,7 +210,7 @@ impl Stroke {
     /// Create path ops of the stroke
     pub fn path_ops(&self) -> Vec<PathOp> {
         // FIXME: this should make a lazy iterator
-        let mut ops = vec!();
+        let mut ops = vec![];
         let n_subs = self.sub_count();
         for i in 0..n_subs {
             self.stroke_sub(&mut ops, i);
@@ -227,9 +232,13 @@ impl Stroke {
         }
     }
     /// Stroke one side of a sub-figure to another figure.
-    fn stroke_side(&self, ops: &mut Vec<PathOp>, i: usize, start: Vid,
-        dir: Dir)
-    {
+    fn stroke_side(
+        &self,
+        ops: &mut Vec<PathOp>,
+        i: usize,
+        start: Vid,
+        dir: Dir,
+    ) {
         let mut xr: Option<(Vec2, Vec2)> = None;
         let mut v0 = start;
         let mut v1 = self.next(v0, dir);
@@ -278,19 +287,31 @@ impl Stroke {
     /// * `a1` Second point of A segment.
     /// * `b0` First point of B segment.
     /// * `b1` Second point of B segment.
-    fn stroke_join(&self, ops: &mut Vec<PathOp>, p: Vec2w, a0: Vec2, a1: Vec2,
-        b0: Vec2, b1: Vec2)
-    {
+    fn stroke_join(
+        &self,
+        ops: &mut Vec<PathOp>,
+        p: Vec2w,
+        a0: Vec2,
+        a1: Vec2,
+        b0: Vec2,
+        b1: Vec2,
+    ) {
         match self.join_style {
             JoinStyle::Miter(ml) => self.stroke_miter(ops, a0, a1, b0, b1, ml),
-            JoinStyle::Bevel     => self.stroke_bevel(ops, a1, b0),
-            JoinStyle::Round     => self.stroke_round(ops, p, a0, a1, b0, b1),
+            JoinStyle::Bevel => self.stroke_bevel(ops, a1, b0),
+            JoinStyle::Round => self.stroke_round(ops, p, a0, a1, b0, b1),
         }
     }
     /// Add a miter join.
-    fn stroke_miter(&self, ops: &mut Vec<PathOp>, a0: Vec2, a1: Vec2, b0: Vec2,
-        b1: Vec2, ml: f32)
-    {
+    fn stroke_miter(
+        &self,
+        ops: &mut Vec<PathOp>,
+        a0: Vec2,
+        a1: Vec2,
+        b0: Vec2,
+        b1: Vec2,
+        ml: f32,
+    ) {
         // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
         //      so: stroke_width / miter_length = sin ( theta / 2 )
         if ml > 0f32 {
@@ -318,9 +339,15 @@ impl Stroke {
     /// * `p` Join point (with stroke width).
     /// * `a1` Second point of A segment.
     /// * `b0` First point of B segment.
-    fn stroke_round(&self, ops: &mut Vec<PathOp>, p: Vec2w, a0: Vec2, a1: Vec2,
-        b0: Vec2, b1: Vec2)
-    {
+    fn stroke_round(
+        &self,
+        ops: &mut Vec<PathOp>,
+        p: Vec2w,
+        a0: Vec2,
+        a1: Vec2,
+        b0: Vec2,
+        b1: Vec2,
+    ) {
         let th = (a1 - a0).angle_rel(b0 - b1);
         if th <= 0f32 {
             self.stroke_bevel(ops, a1, b0);
