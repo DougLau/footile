@@ -1,7 +1,7 @@
 // quad.rs     Example plotting a quadratic bézier spline.
 use footile::{PathBuilder, Plotter};
 
-pub mod png;
+mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new()

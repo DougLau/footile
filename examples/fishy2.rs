@@ -3,7 +3,7 @@ use footile::{FillRule, PathBuilder, Plotter};
 use pix::{Ch8, Format, RasterBuilder, Rgba8};
 use pixops::raster_over;
 
-pub mod png;
+mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let fish = PathBuilder::new()
@@ -44,5 +44,5 @@ fn main() -> Result<(), std::io::Error> {
     );
     raster_over(&mut r, p.stroke(&fish), Rgba8::new(255, 208, 208), 0, 0);
     raster_over(&mut r, p.stroke(&eye), Rgba8::new(0, 0, 0), 0, 0);
-    png::write_rgba(&r, "./fishy2.png")
+    png::write(&r, "./fishy2.png")
 }

@@ -1,7 +1,7 @@
 // figure.rs
 use footile::{FillRule, PathBuilder, Plotter};
 
-pub mod png;
+mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new()

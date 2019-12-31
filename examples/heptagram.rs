@@ -1,7 +1,7 @@
 // heptagram.rs
 use footile::{FillRule, PathBuilder, Plotter, Transform};
 
-pub mod png;
+mod png;
 
 fn main() -> Result<(), std::io::Error> {
     const PI: f32 = std::f32::consts::PI;

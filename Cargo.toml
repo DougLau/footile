@@ -11,12 +11,12 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-pix = { path = "../../pix" }
+pix = "0.6.1"
 
 [dev-dependencies]
 criterion = "0.2"
-png = "0.10"
-pixops = { path = "../../pixops" }
+png_pong = "0.0"
+pixops = "0.0"
 
 [[bench]]
 name = "fishyb"
@@ -25,3 +25,8 @@ harness = false
 [features]
 default = ["use-simd"]
 use-simd = []
+
+[replace]
+"pix:0.6.1" = { path = "../pix" } # "../../pix"
+"pixops:0.0.1" = { path = "../pixops" } # "../../pixops"
+"png_pong:0.0.2" = { path = "../png_pong" }
