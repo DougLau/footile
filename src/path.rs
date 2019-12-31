@@ -1,6 +1,6 @@
 // path.rs      2D vector paths.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2019  Douglas P Lau
 //
 
 /// Fill-rule for filling paths.
@@ -47,9 +47,9 @@ pub struct IterPath2D<'a> {
 /// ```
 /// use footile::PathBuilder;
 /// let path = PathBuilder::new()
-///                        .move_to(10.0, 10.0)
-///                        .line_to(90.0, 90.0)
-///                        .build();
+///     .move_to(10.0, 10.0)
+///     .line_to(90.0, 90.0)
+///     .build();
 /// ```
 pub struct PathBuilder {
     ops: Vec<PathOp>,

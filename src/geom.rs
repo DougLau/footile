@@ -30,9 +30,9 @@ pub struct Vec2w {
 /// use footile::Transform;
 /// const PI: f32 = std::f32::consts::PI;
 /// let t = Transform::new_translate(-50.0, -50.0)
-///                   .rotate(PI)
-///                   .translate(50.0, 50.0)
-///                   .scale(2.0, 2.0);
+///     .rotate(PI)
+///     .translate(50.0, 50.0)
+///     .scale(2.0, 2.0);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
