@@ -146,7 +146,7 @@ impl Plotter {
         Vec2w::new(pt.x, pt.y, p.w)
     }
     /// Add a series of ops.
-    fn add_ops<'a, T, D>(&mut self, ops: T, dst: &mut D)
+    fn add_ops<T, D>(&mut self, ops: T, dst: &mut D)
         where T: IntoIterator, T::Item: Borrow<PathOp>, D: PlotDest
     {
         self.reset();
@@ -292,7 +292,7 @@ impl Plotter {
     ///
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Raster<Mask8>
+    pub fn fill<T>(&mut self, ops: T, rule: FillRule) -> &mut Raster<Mask8>
         where T: IntoIterator, T::Item: Borrow<PathOp>
     {
         let mut fig = Fig::new();
@@ -305,7 +305,7 @@ impl Plotter {
     /// Stroke path onto the mask.
     ///
     /// * `ops` PathOp iterator.
-    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Raster<Mask8>
+    pub fn stroke<T>(&mut self, ops: T) -> &mut Raster<Mask8>
         where T: IntoIterator, T::Item: Borrow<PathOp>
     {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
