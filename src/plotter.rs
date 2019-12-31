@@ -161,15 +161,15 @@ impl Plotter {
     }
     /// Add a path operation.
     fn add_op<D: PlotDest>(&mut self, dst: &mut D, op: &PathOp) {
-        match op {
-            &PathOp::Close() => self.close(dst),
-            &PathOp::Move(bx, by) => self.move_to(dst, bx, by),
-            &PathOp::Line(bx, by) => self.line_to(dst, bx, by),
-            &PathOp::Quad(bx, by, cx, cy) => self.quad_to(dst, bx, by, cx, cy),
-            &PathOp::Cubic(bx, by, cx, cy, dx, dy) => {
+        match *op {
+            PathOp::Close() => self.close(dst),
+            PathOp::Move(bx, by) => self.move_to(dst, bx, by),
+            PathOp::Line(bx, by) => self.line_to(dst, bx, by),
+            PathOp::Quad(bx, by, cx, cy) => self.quad_to(dst, bx, by, cx, cy),
+            PathOp::Cubic(bx, by, cx, cy, dx, dy) => {
                 self.cubic_to(dst, bx, by, cx, cy, dx, dy)
             }
-            &PathOp::PenWidth(w) => self.pen_width(w),
+            PathOp::PenWidth(w) => self.pen_width(w),
         };
     }
     /// Close current sub-path and move pen to origin.
