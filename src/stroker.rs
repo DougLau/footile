@@ -1,10 +1,10 @@
 // stroker.rs   A path stroker.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2019  Douglas P Lau
 //
+use crate::geom::{Vec2, Vec2w, intersection};
+use crate::path::PathOp;
 use std::fmt;
-use geom::{Vec2,Vec2w,intersection};
-use path::PathOp;
 
 /// Vertex ID
 type Vid = u16;

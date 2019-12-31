@@ -1,24 +1,24 @@
 // plotter.rs      Vector path plotter.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2019  Douglas P Lau
 //
+use crate::fig::Fig;
+use crate::geom::{Transform, Vec2, Vec2w, float_lerp};
+use crate::path::{FillRule, PathOp};
+use crate::stroker::{JoinStyle, Stroke};
+use pix::{Mask8, Raster, RasterBuilder};
 use std::borrow::Borrow;
-use fig::Fig;
-use geom::{Transform,Vec2,Vec2w,float_lerp};
-use path::{FillRule,PathOp};
-use mask::Mask;
-use stroker::{JoinStyle,Stroke};
 
 /// Plotter for 2D vector paths.
 ///
 /// This is a software vector rasterizer featuring anti-aliasing.
 /// Paths can be created using [PathBuilder](struct.PathBuilder.html).
-/// The plotter contains a [Mask](struct.Mask.html) of the current plot, which
-/// is affected by fill and stroke calls.
+/// The plotter contains a mask of the current plot, which is affected by fill
+/// and stroke calls.
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder,Plotter};
+/// use footile::{PathBuilder, Plotter};
 /// let path = PathBuilder::new().pen_width(3.0)
 ///                        .move_to(50.0, 34.0)
 ///                        .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
@@ -28,7 +28,7 @@ use stroker::{JoinStyle,Stroke};
 /// p.stroke(&path);
 /// ```
 pub struct Plotter {
-    mask       : Mask,              // image mask
+    mask       : Raster<Mask8>,     // image mask
     sgn_area   : Vec<i16>,          // signed area buffer
     pen        : Vec2w,             // current pen position and width
     transform  : Transform,         // user to pixel affine transform
@@ -83,7 +83,7 @@ impl Plotter {
         // Remove excess elements
         for _ in 0..cap-len { sgn_area.pop(); };
         Plotter {
-            mask       : Mask::new(w, h),
+            mask       : RasterBuilder::new().with_clear(w, h),
             sgn_area   : sgn_area,
             pen        : Vec2w::new(0.0, 0.0, 1.0),
             transform  : Transform::new(),
@@ -292,7 +292,7 @@ impl Plotter {
     ///
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Mask
+    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Raster<Mask8>
         where T: IntoIterator, T::Item: Borrow<PathOp>
     {
         let mut fig = Fig::new();
@@ -305,7 +305,7 @@ impl Plotter {
     /// Stroke path onto the mask.
     ///
     /// * `ops` PathOp iterator.
-    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Mask
+    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Raster<Mask8>
         where T: IntoIterator, T::Item: Borrow<PathOp>
     {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
@@ -314,7 +314,7 @@ impl Plotter {
         self.fill(ops.iter(), FillRule::NonZero)
     }
     /// Get the mask.
-    pub fn mask(&mut self) -> &mut Mask {
+    pub fn mask(&mut self) -> &mut Raster<Mask8> {
         &mut self.mask
     }
 }

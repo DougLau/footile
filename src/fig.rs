@@ -2,13 +2,14 @@
 //
 // Copyright (c) 2017-2019  Douglas P Lau
 //
+use crate::fixed::Fixed;
+use crate::geom::Vec2;
+use crate::imgbuf::{accumulate_non_zero, accumulate_odd};
+use crate::path::FillRule;
+use pix::{Mask8, Raster};
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
-use fixed::Fixed;
-use geom::Vec2;
-use mask::Mask;
-use path::FillRule;
 
 /// Vertex ID
 type Vid = u16;
@@ -50,7 +51,7 @@ struct Edge {
 }
 
 /// A Fig is a series of 2D points which can be rendered to
-/// an image [Mask](struct.Mask.html).
+/// an image mask.
 ///
 pub struct Fig {
     points : Vec<Vec2>,         // all points
@@ -60,7 +61,7 @@ pub struct Fig {
 /// Figure scanner structure
 struct Scanner<'a> {
     fig      : &'a Fig,         // the figure
-    mask     : &'a mut Mask,    // alpha mask
+    mask     : &'a mut Raster<Mask8>, // alpha mask
     sgn_area : &'a mut [i16],   // signed area buffer
     edges    : Vec<Edge>,       // active edges
     dir      : FigDir,          // figure direction
@@ -401,7 +402,9 @@ impl Fig {
     /// * `mask` Output mask.
     /// * `sgn_area` Signed area buffer.
     /// * `rule` Fill rule.
-    pub fn fill(&self, mask: &mut Mask, sgn_area: &mut [i16], rule: FillRule) {
+    pub fn fill(&self, mask: &mut Raster<Mask8>, sgn_area: &mut [i16],
+        rule: FillRule)
+    {
         let n_points = self.points.len() as Vid;
         if n_points > 0 {
             debug_assert!(self.sub_is_done());
@@ -422,7 +425,7 @@ impl Fig {
 
 impl<'a> Scanner<'a> {
     /// Create a new figure scanner struct
-    fn new(fig: &'a Fig, mask: &'a mut Mask, sgn_area: &'a mut [i16],
+    fn new(fig: &'a Fig, mask: &'a mut Raster<Mask8>, sgn_area: &'a mut [i16],
            dir: FigDir, rule: FillRule) -> Scanner<'a>
     {
         assert!(mask.width() <= sgn_area.len() as u32);
@@ -536,7 +539,7 @@ impl<'a> Scanner<'a> {
     fn scan_accumulate(&mut self) {
         if self.y_now > Fixed::ZERO && self.y_now <= self.y_bot {
             let y = line_of(self.y_now) as u32;
-            self.mask.scan_accumulate(self.sgn_area, y, self.rule);
+            scan_accumulate(self.mask, self.sgn_area, y, self.rule);
         }
     }
     /// Get scan coverage for partial scan line
@@ -611,6 +614,27 @@ impl<'a> Scanner<'a> {
     }
 }
 
+/// Accumulate signed area to mask.
+fn scan_accumulate(mask: &mut Raster<Mask8>, sgn_area: &mut [i16], row: u32,
+    rule: FillRule)
+{
+    assert!(mask.width() <= sgn_area.len() as u32);
+    assert!(row < mask.height());
+    let dst = scan_line(mask, row);
+    match rule {
+        FillRule::NonZero => accumulate_non_zero(dst, sgn_area),
+        FillRule::EvenOdd => accumulate_odd(dst, sgn_area),
+    }
+}
+
+/// Get one scan line (row)
+fn scan_line(mask: &mut Raster<Mask8>, row: u32) -> &mut [u8] {
+    let s = (row * mask.width()) as usize;
+    let t = s + mask.width() as usize;
+    let pix = mask.as_u8_slice_mut();
+    &mut pix[s..t]
+}
+
 /// Calculate pixel coverage
 ///
 /// fcov Total coverage (0 to 1 fixed-point).
@@ -625,6 +649,7 @@ fn pixel_cov(fcov: Fixed) -> i16 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pix::RasterBuilder;
     #[test]
     fn compare_fixed() {
         assert_eq!(cmp_fixed(0.0, 0.0), Ordering::Equal);
@@ -634,7 +659,7 @@ mod test {
     }
     #[test]
     fn fig_3x3() {
-        let mut m = Mask::new(3, 3);
+        let mut m = RasterBuilder::<Mask8>::new().with_clear(3, 3);
         let mut s = vec!(0; 3);
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.0, 0.0));
@@ -642,11 +667,11 @@ mod test {
         f.add_point(Vec2::new(0.0, 3.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert_eq!([128, 0, 0, 255, 128, 0, 255, 255, 128], m.pixels());
+        assert_eq!([128, 0, 0, 255, 128, 0, 255, 255, 128], m.as_u8_slice());
     }
     #[test]
     fn fig_9x1() {
-        let mut m = Mask::new(9, 1);
+        let mut m = RasterBuilder::<Mask8>::new().with_clear(9, 1);
         let mut s = vec!(0; 16);
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.0, 0.0));
@@ -654,11 +679,11 @@ mod test {
         f.add_point(Vec2::new(0.0, 1.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert_eq!([242, 213, 185, 156, 128, 100, 71, 43, 14], m.pixels());
+        assert_eq!([242, 213, 185, 156, 128, 100, 71, 43, 14], m.as_u8_slice());
     }
     #[test]
     fn fig_x_bounds() {
-        let mut m = Mask::new(3, 3);
+        let mut m = RasterBuilder::<Mask8>::new().with_clear(3, 3);
         let mut s = vec!(0; 4);
         let mut f = Fig::new();
         f.add_point(Vec2::new(-1.0, 0.0));
@@ -666,11 +691,11 @@ mod test {
         f.add_point(Vec2::new(3.0, 1.5));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert_eq!([112, 16, 0, 255, 224, 32, 112, 16, 0], m.pixels());
+        assert_eq!([112, 16, 0, 255, 224, 32, 112, 16, 0], m.as_u8_slice());
     }
     #[test]
     fn fig_partial() {
-        let mut m = Mask::new(1, 3);
+        let mut m = RasterBuilder::<Mask8>::new().with_clear(1, 3);
         let mut s = vec!(0; 4);
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.5, 0.0));
@@ -679,11 +704,11 @@ mod test {
         f.add_point(Vec2::new(1.0, 0.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert_eq!([128, 117, 43], m.pixels());
+        assert_eq!([128, 117, 43], m.as_u8_slice());
     }
     #[test]
     fn fig_partial2() {
-        let mut m = Mask::new(3, 3);
+        let mut m = RasterBuilder::<Mask8>::new().with_clear(3, 3);
         let mut s = vec!(0; 3);
         let mut f = Fig::new();
         f.add_point(Vec2::new(1.5, 0.0));
@@ -693,11 +718,11 @@ mod test {
         f.add_point(Vec2::new(3.0, 0.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert_eq!([0, 128, 255, 0, 117, 255, 0, 43, 255], m.pixels());
+        assert_eq!([0, 128, 255, 0, 117, 255, 0, 43, 255], m.as_u8_slice());
     }
     #[test]
     fn fig_partial3() {
-        let mut m = Mask::new(9, 1);
+        let mut m = RasterBuilder::<Mask8>::new().with_clear(9, 1);
         let mut s = vec!(0; 16);
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.0, 0.3));
@@ -705,6 +730,6 @@ mod test {
         f.add_point(Vec2::new(0.0, 0.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
-        assert_eq!([73, 64, 56, 47, 39, 30, 22, 13, 4], m.pixels());
+        assert_eq!([73, 64, 56, 47, 39, 30, 22, 13, 4], m.as_u8_slice());
     }
 }

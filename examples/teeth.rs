@@ -1,6 +1,6 @@
-extern crate footile;
+use footile::{PathBuilder, Plotter};
 
-use footile::{PathBuilder,Plotter};
+pub mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative()
@@ -24,5 +24,5 @@ fn main() -> Result<(), std::io::Error> {
                            .line_to(8.0, -8.0)
                            .build();
     let mut p = Plotter::new(64, 64);
-    p.stroke(&path).write_png("./teeth.png")
+    png::write_mask(p.stroke(&path), "./teeth.png")
 }

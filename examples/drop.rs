@@ -1,7 +1,8 @@
-// drop.rs
-extern crate footile;
+use footile::{FillRule, PathBuilder, Plotter};
+use pix::{Gray8, RasterBuilder};
+use pixops::raster_over;
 
-use footile::{FillRule,Gray8,PathBuilder,Plotter,Raster};
+pub mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative().pen_width(3.0)
@@ -11,8 +12,8 @@ fn main() -> Result<(), std::io::Error> {
                            .close()
                            .build();
     let mut p = Plotter::new(100, 100);
-    let mut r = Raster::new(p.width(), p.height());
-    r.over(p.fill(&path, FillRule::NonZero), Gray8::new(128));
-    r.over(p.stroke(&path), Gray8::new(255));
-    r.write_png("./drop.png")
+    let mut r = RasterBuilder::new().with_clear(p.width(), p.height());
+    raster_over(&mut r, p.fill(&path, FillRule::NonZero), Gray8::new(128), 0, 0);
+    raster_over(&mut r, p.stroke(&path), Gray8::new(255), 0, 0);
+    png::write_gray(&r, "./drop.png")
 }

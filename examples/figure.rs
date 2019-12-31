@@ -1,7 +1,7 @@
 // figure.rs
-extern crate footile;
-
 use footile::{FillRule,PathBuilder,Plotter};
+
+pub mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative()
@@ -15,5 +15,5 @@ fn main() -> Result<(), std::io::Error> {
                            .line_to(12.0, -28.0)
                            .close().build();
     let mut p = Plotter::new(64, 64);
-    p.fill(&path, FillRule::NonZero).write_png("./figure.png")
+    png::write_mask(p.fill(&path, FillRule::NonZero), "./figure.png")
 }

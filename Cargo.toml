@@ -8,12 +8,15 @@ documentation = "https://docs.rs/footile"
 homepage = "https://github.com/DougLau/footile"
 repository = "https://github.com/DougLau/footile"
 readme = "README.md"
+edition = "2018"
 
 [dependencies]
-png = "0.10"
+pix = { path = "../../pix" }
 
 [dev-dependencies]
 criterion = "0.2"
+png = "0.10"
+pixops = { path = "../../pixops" }
 
 [[bench]]
 name = "fishyb"

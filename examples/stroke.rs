@@ -1,7 +1,7 @@
 // stroke.rs
-extern crate footile;
+use footile::{PathBuilder, Plotter};
 
-use footile::{PathBuilder,Plotter};
+pub mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new().relative().pen_width(5.0)
@@ -10,5 +10,5 @@ fn main() -> Result<(), std::io::Error> {
                            .line_to(-16.0, -32.0)
                            .close().build();
     let mut p = Plotter::new(64, 64);
-    p.stroke(&path).write_png("./stroke.png")
+    png::write_mask(p.stroke(&path), "./stroke.png")
 }

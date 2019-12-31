@@ -1,7 +1,9 @@
 // fishy2.rs
-extern crate footile;
+use footile::{FillRule, PathBuilder, Plotter};
+use pix::{Ch8, Format, RasterBuilder, Rgba8};
+use pixops::raster_over;
 
-use footile::{FillRule,PathBuilder,Plotter,Raster,Rgba8};
+pub mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let fish = PathBuilder::new().relative().pen_width(3.0)
@@ -17,11 +19,14 @@ fn main() -> Result<(), std::io::Error> {
                           .move_to(0.0, -8.0)
                           .line_to(-8.0, 8.0)
                           .build();
-    let v = vec![Rgba8::new(0,0,0,0); 128*128];
+    let v = vec![
+        Rgba8::with_rgba([Ch8::new(0), Ch8::new(0), Ch8::new(0), Ch8::new(0)]); 128 * 128
+    ];
     let mut p = Plotter::new(128, 128);
-    let mut r = Raster::with_pixels(p.width(), p.height(), v);
-    r.over(p.fill(&fish, FillRule::NonZero), Rgba8::rgb(127, 96, 96));
-    r.over(p.stroke(&fish), Rgba8::rgb(255, 208, 208));
-    r.over(p.stroke(&eye), Rgba8::rgb(0, 0, 0));
-    r.write_png("./fishy2.png")
+    let mut r = RasterBuilder::new().with_pixels(p.width(), p.height(), v);
+    raster_over(&mut r, p.fill(&fish, FillRule::NonZero),
+        Rgba8::new(127, 96, 96), 0, 0);
+    raster_over(&mut r, p.stroke(&fish), Rgba8::new(255, 208, 208), 0, 0);
+    raster_over(&mut r, p.stroke(&eye), Rgba8::new(0, 0, 0), 0, 0);
+    png::write_rgba(&r, "./fishy2.png")
 }

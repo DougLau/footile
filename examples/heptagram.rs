@@ -1,7 +1,7 @@
 // heptagram.rs
-extern crate footile;
+use footile::{FillRule, PathBuilder, Plotter, Transform};
 
-use footile::{FillRule,PathBuilder,Plotter,Transform};
+pub mod png;
 
 fn main() -> Result<(), std::io::Error> {
     const PI: f32 = std::f32::consts::PI;
@@ -16,5 +16,5 @@ fn main() -> Result<(), std::io::Error> {
         pb = pb.line_to(th.cos(), th.sin());
     }
     let path = pb.close().build();
-    p.fill(&path, FillRule::EvenOdd).write_png("./heptagram.png")
+    png::write_mask(p.fill(&path, FillRule::EvenOdd), "./heptagram.png")
 }
