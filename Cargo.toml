@@ -15,7 +15,7 @@ pix = "0.7"
 
 [dev-dependencies]
 criterion = "0.2"
-png_pong = "0.0"
+png_pong = "0.1"
 pixops = "0.0"
 
 [[bench]]
@@ -27,6 +27,3 @@ default = ["use-simd"]
 use-simd = []
 
 [replace]
-"pix:0.7.0" = { path = "../pix" } # "../../pix"
-"pixops:0.0.2" = { path = "../pixops" } # "../../pixops"
-"png_pong:0.0.2" = { path = "../png_pong" }
