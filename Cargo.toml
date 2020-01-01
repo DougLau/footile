@@ -11,7 +11,7 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-pix = "0.6.1"
+pix = "0.7"
 
 [dev-dependencies]
 criterion = "0.2"
@@ -27,6 +27,6 @@ default = ["use-simd"]
 use-simd = []
 
 [replace]
-"pix:0.6.1" = { path = "../pix" } # "../../pix"
-"pixops:0.0.1" = { path = "../pixops" } # "../../pixops"
+"pix:0.7.0" = { path = "../pix" } # "../../pix"
+"pixops:0.0.2" = { path = "../pixops" } # "../../pixops"
 "png_pong:0.0.2" = { path = "../png_pong" }

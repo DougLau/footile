@@ -6,12 +6,12 @@ use std::io;
 use png_pong::Format;
 
 /// Write a `Raster` to a file.
-pub fn write<F: Format>(raster: &Raster<F>, filename: &str) -> io::Result<()> {
+pub fn write<F: Format + pix::Format>(
+    raster: &Raster<F>, filename: &str
+) -> io::Result<()> {
     let mut out_data = vec![];
-    png_pong::EncoderBuilder::new()
-        .encode_rasters(&mut out_data)
-        .add_frame(raster, 0)
-        .expect("Failed to add frame");
+    png_pong::FrameEncoder::new(&mut out_data)
+        .still(raster)?;
     fs::write(filename, out_data)
 }
 
