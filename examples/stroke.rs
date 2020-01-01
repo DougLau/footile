@@ -1,7 +1,7 @@
 // stroke.rs
 use footile::{PathBuilder, Plotter};
 
-pub mod png;
+mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = PathBuilder::new()

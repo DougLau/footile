@@ -1,7 +1,7 @@
 // letter.rs     Example plotting the letter C
 use footile::{FillRule, PathBuilder, Plotter};
 
-pub mod png;
+mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let pb = PathBuilder::new().absolute();
