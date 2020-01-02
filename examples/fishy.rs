@@ -1,6 +1,6 @@
 // fishy.rs
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::{RasterBuilder, Rgba8};
+use pix::{RasterBuilder, Rgba8, AlphaMode};
 use pixops::raster_over;
 
 mod png;
@@ -25,7 +25,9 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(-8.0, 8.0)
         .build();
     let mut p = Plotter::new(128, 128);
-    let mut r = RasterBuilder::<Rgba8>::new().with_clear(p.width(), p.height());
+    let mut r = RasterBuilder::<Rgba8>::new()
+        .alpha_mode(AlphaMode::Associated)
+        .with_clear(p.width(), p.height());
     raster_over(
         &mut r,
         p.fill(&fish, FillRule::NonZero),
@@ -37,5 +39,9 @@ fn main() -> Result<(), std::io::Error> {
     raster_over(&mut r, p.stroke(&fish), Rgba8::new(255, 208, 208), 0, 0);
     p.clear_mask();
     raster_over(&mut r, p.stroke(&eye), Rgba8::new(0, 0, 0), 0, 0);
+
+    let r = RasterBuilder::<Rgba8>::new()
+        .with_raster(&r);    
+
     png::write(&r, "./fishy.png")
 }
