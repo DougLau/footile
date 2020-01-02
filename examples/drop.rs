@@ -23,6 +23,7 @@ fn main() -> Result<(), std::io::Error> {
         0,
         0,
     );
+    p.clear_mask();
     raster_over(&mut r, p.stroke(&path), Gray8::new(255), 0, 0);
 
     png::write(&r, "./drop.png")

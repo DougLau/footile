@@ -50,7 +50,9 @@ fn main() -> Result<(), std::io::Error> {
         0,
         0,
     );
+    p.clear_mask();
     raster_over(&mut r, p.stroke(&fish), Rgba8::new(255, 208, 208), 0, 0);
+    p.clear_mask();
     raster_over(&mut r, p.stroke(&eye), Rgba8::new(0, 0, 0), 0, 0);
     png::write(&r, "./fishyp.png")?;
 
