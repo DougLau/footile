@@ -6,7 +6,7 @@ use crate::fig::Fig;
 use crate::geom::{float_lerp, Transform, Vec2, Vec2w};
 use crate::path::{FillRule, PathOp};
 use crate::stroker::{JoinStyle, Stroke};
-use pix::{Mask8, Raster, RasterBuilder};
+use pix::{Mask8, Raster, RasterBuilder, AlphaMode};
 use std::borrow::Borrow;
 
 /// Plotter for 2D vector paths.
@@ -85,7 +85,7 @@ impl Plotter {
             sgn_area.pop();
         }
         Plotter {
-            mask: RasterBuilder::new().with_clear(w, h),
+            mask: RasterBuilder::new().alpha_mode(AlphaMode::Associated).with_clear(w, h),
             sgn_area,
             pen: Vec2w::new(0.0, 0.0, 1.0),
             transform: Transform::new(),

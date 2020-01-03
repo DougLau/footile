@@ -41,7 +41,7 @@ fn main() -> Result<(), std::io::Error> {
     raster_over(&mut r, p.stroke(&eye), Rgba8::new(0, 0, 0), 0, 0);
 
     let r = RasterBuilder::<Rgba8>::new()
-        .with_raster(&r);    
+        .with_raster(&r);
 
     png::write(&r, "./fishy.png")
 }
