@@ -27,3 +27,5 @@ default = ["simd"]
 simd = []
 
 [replace]
+"pix:0.7.0" = { path = "../pix" }
+"pixops:0.0.2" = { path = "../pixops" }
