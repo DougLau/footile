@@ -1,6 +1,3 @@
-// over.rs
-extern crate footile;
-
 use footile::{Plotter, PathOp::*};
 
 mod png;
