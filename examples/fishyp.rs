@@ -1,26 +1,26 @@
 // fishyp.rs
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::{Ch8, Format, PremulRgba8, RasterBuilder, Rgba8};
+use pix::{Ch8, Format, AssocSRgba8, RasterBuilder, SepSRgba8};
 use pixops::raster_over;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
     // Emulate Non-owned Pointer to Vulkan Buffer:
-    let mut array: [PremulRgba8; 128 * 128] = [PremulRgba8::with_rgba([
+    let mut array: [AssocSRgba8; 128 * 128] = [AssocSRgba8::with_rgba([
         Ch8::new(0),
         Ch8::new(0),
         Ch8::new(0),
         Ch8::new(0),
     ]); 128 * 128];
-    let buffer: *mut PremulRgba8 = array.as_mut_ptr();
+    let buffer: *mut AssocSRgba8 = array.as_mut_ptr();
 
     // Safely convert our Vulkan Pointer into a Box<[T]>, then into a Vec<T>.
     // This is safe because slice & box are fat ptrs.
-    let slice: &mut [PremulRgba8] =
+    let slice: &mut [AssocSRgba8] =
         unsafe { std::slice::from_raw_parts_mut(buffer, 128 * 128) };
-    let v: Box<[PremulRgba8]> =
-        unsafe { std::mem::transmute::<_, Box<[PremulRgba8]>>(slice) };
+    let v: Box<[AssocSRgba8]> =
+        unsafe { std::mem::transmute::<_, Box<[AssocSRgba8]>>(slice) };
 
     // Draw on the buffer.
     let fish = PathBuilder::new()
@@ -42,7 +42,7 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(-8.0, 8.0)
         .build();
     let mut p = Plotter::new(128, 128);
-    let mut r = RasterBuilder::<PremulRgba8>::new().with_pixels(
+    let mut r = RasterBuilder::<AssocSRgba8>::new().with_pixels(
         p.width(),
         p.height(),
         v,
@@ -50,7 +50,7 @@ fn main() -> Result<(), std::io::Error> {
     raster_over(
         &mut r,
         p.fill(&fish, FillRule::NonZero),
-        PremulRgba8::new(127, 96, 96),
+        AssocSRgba8::new(127, 96, 96),
         0,
         0,
     );
@@ -58,20 +58,20 @@ fn main() -> Result<(), std::io::Error> {
     raster_over(
         &mut r,
         p.stroke(&fish),
-        PremulRgba8::new(255, 208, 208),
+        AssocSRgba8::new(255, 208, 208),
         0,
         0,
     );
     p.clear_mask();
-    raster_over(&mut r, p.stroke(&eye), PremulRgba8::new(0, 0, 0), 0, 0);
+    raster_over(&mut r, p.stroke(&eye), AssocSRgba8::new(0, 0, 0), 0, 0);
 
-    let r = RasterBuilder::<Rgba8>::new().with_raster(&r);
+    let r = RasterBuilder::<SepSRgba8>::new().with_raster(&r);
 
     png::write(&r, "./fishyp.png")?;
 
     // Convert raster back to slice to avoid double free.
-    let b: Box<[Rgba8]> = r.into();
-    let _: &mut [Rgba8] = unsafe { std::mem::transmute(b) };
+    let b: Box<[SepSRgba8]> = r.into();
+    let _: &mut [SepSRgba8] = unsafe { std::mem::transmute(b) };
 
     Ok(())
 }

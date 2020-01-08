@@ -21,7 +21,7 @@ pub fn write_mask(
     filename: &str,
 ) -> io::Result<()> {
     let pix = raster.as_u8_slice();
-    let raster = RasterBuilder::<pix::Gray8>::new().with_u8_buffer(
+    let raster = RasterBuilder::<pix::SepSGray8>::new().with_u8_buffer(
         raster.width(),
         raster.height(),
         pix,

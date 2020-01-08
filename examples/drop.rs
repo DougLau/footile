@@ -1,5 +1,5 @@
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::{Gray8, RasterBuilder};
+use pix::{SepSGray8, RasterBuilder};
 use pixops::raster_over;
 
 mod png;
@@ -14,17 +14,17 @@ fn main() -> Result<(), std::io::Error> {
         .close()
         .build();
     let mut p = Plotter::new(100, 100);
-    let mut r = RasterBuilder::<pix::GrayAlpha8>::new()
+    let mut r = RasterBuilder::<pix::SepSGrayAlpha8>::new()
         .with_clear(p.width(), p.height());
     raster_over(
         &mut r,
         p.fill(&path, FillRule::NonZero),
-        Gray8::new(128),
+        SepSGray8::new(128),
         0,
         0,
     );
     p.clear_mask();
-    raster_over(&mut r, p.stroke(&path), Gray8::new(255), 0, 0);
+    raster_over(&mut r, p.stroke(&path), SepSGray8::new(255), 0, 0);
 
     png::write(&r, "./drop.png")
 }
