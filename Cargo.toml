@@ -8,17 +8,24 @@ documentation = "https://docs.rs/footile"
 homepage = "https://github.com/DougLau/footile"
 repository = "https://github.com/DougLau/footile"
 readme = "README.md"
+edition = "2018"
 
 [dependencies]
-png = "0.10"
+pix = "0.7"
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.3"
+png_pong = "0.1"
+pixops = "0.0"
 
 [[bench]]
 name = "fishyb"
 harness = false
 
 [features]
-default = ["use-simd"]
-use-simd = []
+default = ["simd"]
+simd = []
+
+[replace]
+"pix:0.7.0" = { path = "../pix" }
+"pixops:0.0.2" = { path = "../pixops" }

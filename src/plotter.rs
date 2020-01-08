@@ -1,39 +1,40 @@
 // plotter.rs      Vector path plotter.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2019  Douglas P Lau
 //
-use fig::Fig;
-use geom::{Transform,Vec2,Vec2w,float_lerp};
-use path::{FillRule,PathOp};
-use mask::Mask;
-use stroker::{JoinStyle,Stroke};
+use crate::fig::Fig;
+use crate::geom::{float_lerp, Transform, Vec2, Vec2w};
+use crate::path::{FillRule, PathOp};
+use crate::stroker::{JoinStyle, Stroke};
+use pix::{Mask8, Raster, RasterBuilder};
+use std::borrow::Borrow;
 
 /// Plotter for 2D vector paths.
 ///
 /// This is a software vector rasterizer featuring anti-aliasing.
 /// Paths can be created using [PathBuilder](struct.PathBuilder.html).
-/// The plotter contains a [Mask](struct.Mask.html) of the current plot, which
-/// is affected by fill and stroke calls.
+/// The plotter contains a mask of the current plot, which is affected by fill
+/// and stroke calls.
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder,Plotter};
+/// use footile::{PathBuilder, Plotter};
 /// let path = PathBuilder::new().pen_width(3.0)
-///                        .move_to(50.0, 34.0)
-///                        .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
-///                        .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
-///                        .close().build();
+///     .move_to(50.0, 34.0)
+///     .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
+///     .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
+///     .close().build();
 /// let mut p = Plotter::new(100, 100);
 /// p.stroke(&path);
 /// ```
 pub struct Plotter {
-    mask       : Mask,              // image mask
-    sgn_area   : Vec<i16>,          // signed area buffer
-    pen        : Vec2w,             // current pen position and width
-    transform  : Transform,         // user to pixel affine transform
-    tol_sq     : f32,               // curve decomposition tolerance squared
-    s_width    : f32,               // current stroke width
-    join_style : JoinStyle,         // current join style
+    mask: Raster<Mask8>,   // image mask
+    sgn_area: Vec<i16>,    // signed area buffer
+    pen: Vec2w,            // current pen position and width
+    transform: Transform,  // user to pixel affine transform
+    tol_sq: f32,           // curve decomposition tolerance squared
+    s_width: f32,          // current stroke width
+    join_style: JoinStyle, // current join style
 }
 
 /// Plot destination
@@ -80,15 +81,17 @@ impl Plotter {
         let cap = ((len + 7) >> 3) << 3;
         let mut sgn_area = vec![0i16; cap];
         // Remove excess elements
-        for _ in 0..cap-len { sgn_area.pop(); };
+        for _ in 0..cap - len {
+            sgn_area.pop();
+        }
         Plotter {
-            mask       : Mask::new(w, h),
-            sgn_area   : sgn_area,
-            pen        : Vec2w::new(0.0, 0.0, 1.0),
-            transform  : Transform::new(),
-            tol_sq     : tol * tol,
-            s_width    : 1.0,
-            join_style : JoinStyle::Miter(4.0),
+            mask: RasterBuilder::new().with_clear(w, h),
+            sgn_area,
+            pen: Vec2w::new(0.0, 0.0, 1.0),
+            transform: Transform::new(),
+            tol_sq: tol * tol,
+            s_width: 1.0,
+            join_style: JoinStyle::Miter(4.0),
         }
     }
     /// Get width in pixels.
@@ -145,25 +148,28 @@ impl Plotter {
         Vec2w::new(pt.x, pt.y, p.w)
     }
     /// Add a series of ops.
-    fn add_ops<'a, T, D>(&mut self, ops: T, dst: &mut D)
-        where T: IntoIterator<Item=&'a PathOp>, D: PlotDest
+    fn add_ops<T, D>(&mut self, ops: T, dst: &mut D)
+    where
+        T: IntoIterator,
+        T::Item: Borrow<PathOp>,
+        D: PlotDest,
     {
         self.reset();
         for op in ops {
-            println!("{:?}", op);
-            self.add_op(dst, op);
+            self.add_op(dst, op.borrow());
         }
     }
     /// Add a path operation.
     fn add_op<D: PlotDest>(&mut self, dst: &mut D, op: &PathOp) {
-        match op {
-            &PathOp::Close()                 => self.close(dst),
-            &PathOp::Move(bx, by)            => self.move_to(dst, bx, by),
-            &PathOp::Line(bx, by)            => self.line_to(dst, bx, by),
-            &PathOp::Quad(bx, by, cx, cy)    => self.quad_to(dst, bx,by,cx,cy),
-            &PathOp::Cubic(bx,by,cx,cy,dx,dy)=> self.cubic_to(dst, bx, by, cx,
-                                                              cy, dx, dy),
-            &PathOp::PenWidth(w)             => self.pen_width(w),
+        match *op {
+            PathOp::Close() => self.close(dst),
+            PathOp::Move(bx, by) => self.move_to(dst, bx, by),
+            PathOp::Line(bx, by) => self.line_to(dst, bx, by),
+            PathOp::Quad(bx, by, cx, cy) => self.quad_to(dst, bx, by, cx, cy),
+            PathOp::Cubic(bx, by, cx, cy, dx, dy) => {
+                self.cubic_to(dst, bx, by, cx, cy, dx, dy)
+            }
+            PathOp::PenWidth(w) => self.pen_width(w),
         };
     }
     /// Close current sub-path and move pen to origin.
@@ -201,9 +207,14 @@ impl Plotter {
     /// * `by` Y-position of control point.
     /// * `cx` X-position of end point.
     /// * `cy` Y-position of end point.
-    fn quad_to<D: PlotDest>(&mut self, dst: &mut D, bx: f32, by: f32, cx: f32,
-        cy: f32)
-    {
+    fn quad_to<D: PlotDest>(
+        &mut self,
+        dst: &mut D,
+        bx: f32,
+        by: f32,
+        cx: f32,
+        cy: f32,
+    ) {
         let pen = self.pen;
         let bb = Vec2w::new(bx, by, (pen.w + self.s_width) / 2.0);
         let cc = Vec2w::new(cx, cy, self.s_width);
@@ -217,13 +228,17 @@ impl Plotter {
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
-    fn quad_to_tran<D: PlotDest>(&mut self, dst: &mut D, a: Vec2w, b: Vec2w,
-        c: Vec2w)
-    {
-        let ab    = a.midpoint(b);
-        let bc    = b.midpoint(c);
+    fn quad_to_tran<D: PlotDest>(
+        &mut self,
+        dst: &mut D,
+        a: Vec2w,
+        b: Vec2w,
+        c: Vec2w,
+    ) {
+        let ab = a.midpoint(b);
+        let bc = b.midpoint(c);
         let ab_bc = ab.midpoint(bc);
-        let ac    = a.midpoint(c);
+        let ac = a.midpoint(c);
         if self.is_within_tolerance(ab_bc, ac) {
             dst.add_point(c);
         } else {
@@ -251,9 +266,16 @@ impl Plotter {
     /// * `cy` Y-position of second control point.
     /// * `dx` X-position of end point.
     /// * `dy` Y-position of end point.
-    fn cubic_to<D: PlotDest>(&mut self, dst: &mut D, bx: f32, by: f32,
-        cx: f32, cy: f32, dx: f32, dy:f32)
-    {
+    fn cubic_to<D: PlotDest>(
+        &mut self,
+        dst: &mut D,
+        bx: f32,
+        by: f32,
+        cx: f32,
+        cy: f32,
+        dx: f32,
+        dy: f32,
+    ) {
         let pen = self.pen;
         let bw = float_lerp(pen.w, self.s_width, 1.0 / 3.0);
         let cw = float_lerp(pen.w, self.s_width, 2.0 / 3.0);
@@ -271,16 +293,21 @@ impl Plotter {
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
-    fn cubic_to_tran<D: PlotDest>(&mut self, dst: &mut D, a: Vec2w, b: Vec2w,
-        c: Vec2w, d: Vec2w)
-    {
-        let ab    = a.midpoint(b);
-        let bc    = b.midpoint(c);
-        let cd    = c.midpoint(d);
+    fn cubic_to_tran<D: PlotDest>(
+        &mut self,
+        dst: &mut D,
+        a: Vec2w,
+        b: Vec2w,
+        c: Vec2w,
+        d: Vec2w,
+    ) {
+        let ab = a.midpoint(b);
+        let bc = b.midpoint(c);
+        let cd = c.midpoint(d);
         let ab_bc = ab.midpoint(bc);
         let bc_cd = bc.midpoint(cd);
-        let e     = ab_bc.midpoint(bc_cd);
-        let ad    = a.midpoint(d);
+        let e = ab_bc.midpoint(bc_cd);
+        let ad = a.midpoint(d);
         if self.is_within_tolerance(e, ad) {
             dst.add_point(d);
         } else {
@@ -292,8 +319,10 @@ impl Plotter {
     ///
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill<'a, T>(&mut self, ops: T, rule: FillRule) -> &mut Mask
-        where T: IntoIterator<Item=&'a PathOp>
+    pub fn fill<T>(&mut self, ops: T, rule: FillRule) -> &mut Raster<Mask8>
+    where
+        T: IntoIterator,
+        T::Item: Borrow<PathOp>,
     {
         let mut fig = Fig::new();
         self.add_ops(ops, &mut fig);
@@ -305,8 +334,10 @@ impl Plotter {
     /// Stroke path onto the mask.
     ///
     /// * `ops` PathOp iterator.
-    pub fn stroke<'a, T>(&mut self, ops: T) -> &mut Mask
-        where T: IntoIterator<Item=&'a PathOp>
+    pub fn stroke<T>(&mut self, ops: T) -> &mut Raster<Mask8>
+    where
+        T: IntoIterator,
+        T::Item: Borrow<PathOp>,
     {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
         self.add_ops(ops, &mut stroke);
@@ -314,7 +345,7 @@ impl Plotter {
         self.fill(ops.iter(), FillRule::NonZero)
     }
     /// Get the mask.
-    pub fn mask(&mut self) -> &mut Mask {
+    pub fn mask(&mut self) -> &mut Raster<Mask8> {
         &mut self.mask
     }
 }

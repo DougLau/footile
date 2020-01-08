@@ -2,8 +2,8 @@
 extern crate criterion;
 extern crate footile;
 
-use footile::*;
 use criterion::Criterion;
+use footile::*;
 
 fn fill_256(c: &mut Criterion) {
     c.bench_function("fill_256", |b| b.iter(|| fill(256)));
@@ -90,17 +90,28 @@ fn make_plotter(i: u32) -> Plotter {
 }
 
 fn make_fishy() -> Path2D {
-    PathBuilder::new().relative()
-                .move_to(112f32, 16f32)
-                .line_to(-48f32, 32f32)
-                .cubic_to(-64f32, -48f32, -64f32, 80f32, 0f32, 32f32)
-                .line_to(48f32, 32f32)
-                .line_to(-32f32, -48f32)
-                .close()
-                .build()
+    PathBuilder::new()
+        .relative()
+        .move_to(112f32, 16f32)
+        .line_to(-48f32, 32f32)
+        .cubic_to(-64f32, -48f32, -64f32, 80f32, 0f32, 32f32)
+        .line_to(48f32, 32f32)
+        .line_to(-32f32, -48f32)
+        .close()
+        .build()
 }
 
-criterion_group!(benches, fill_256, fill_512, stroke_256, stroke_512,
-    gray_over_256, gray_over_512, rgb_over_256, rgb_over_512, rgba_over_256,
-    rgba_over_512);
+criterion_group!(
+    benches,
+    fill_256,
+    fill_512,
+    stroke_256,
+    stroke_512,
+    gray_over_256,
+    gray_over_512,
+    rgb_over_256,
+    rgb_over_512,
+    rgba_over_256,
+    rgba_over_512
+);
 criterion_main!(benches);

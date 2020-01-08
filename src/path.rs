@@ -1,10 +1,10 @@
 // path.rs      2D vector paths.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2019  Douglas P Lau
 //
 
 /// Fill-rule for filling paths.
-#[derive(Clone,Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum FillRule {
     /// All points within bounds are filled
     NonZero,
@@ -33,13 +33,13 @@ pub enum PathOp {
 ///
 /// Use [PathBuilder](struct.PathBuilder.html) to construct paths.
 pub struct Path2D {
-    ops : Vec<PathOp>,
+    ops: Vec<PathOp>,
 }
 
 /// IterPath2D is an iterator for Path2D structs.
 pub struct IterPath2D<'a> {
-    path : &'a Path2D,
-    pos  : usize,
+    path: &'a Path2D,
+    pos: usize,
 }
 
 /// Builder for [Path2D](struct.Path2D.html).
@@ -48,24 +48,21 @@ pub struct IterPath2D<'a> {
 /// ```
 /// use footile::PathBuilder;
 /// let path = PathBuilder::new()
-///                        .move_to(10.0, 10.0)
-///                        .line_to(90.0, 90.0)
-///                        .build();
+///     .move_to(10.0, 10.0)
+///     .line_to(90.0, 90.0)
+///     .build();
 /// ```
 pub struct PathBuilder {
-    ops      : Vec<PathOp>,
-    absolute : bool,
-    pen_x    : f32,
-    pen_y    : f32,
+    ops: Vec<PathOp>,
+    absolute: bool,
+    pen_x: f32,
+    pen_y: f32,
 }
 
 impl Path2D {
     /// Get an iterator of path operations.
     pub fn iter(&self) -> IterPath2D {
-        IterPath2D {
-            path : self,
-            pos  : 0,
-        }
+        IterPath2D { path: self, pos: 0 }
     }
 }
 
@@ -94,9 +91,9 @@ impl PathBuilder {
         let ops = Vec::with_capacity(32);
         PathBuilder {
             ops,
-            absolute : false,
-            pen_x    : 0f32,
-            pen_y    : 0f32,
+            absolute: false,
+            pen_x: 0f32,
+            pen_y: 0f32,
         }
     }
     /// Use absolute coordinates for subsequent operations.
@@ -176,9 +173,15 @@ impl PathBuilder {
     /// * `cy` Y-position of second control point.
     /// * `dx` X-position of end point.
     /// * `dy` Y-position of end point.
-    pub fn cubic_to(mut self, bx: f32, by: f32, cx: f32, cy: f32, dx: f32,
-                    dy: f32) -> Self
-    {
+    pub fn cubic_to(
+        mut self,
+        bx: f32,
+        by: f32,
+        cx: f32,
+        cy: f32,
+        dx: f32,
+        dy: f32,
+    ) -> Self {
         let (abx, aby) = self.pt(bx, by);
         let (acx, acy) = self.pt(cx, cy);
         let (adx, ady) = self.pt(dx, dy);
@@ -199,8 +202,6 @@ impl PathBuilder {
     }
     /// Build path from specified operations.
     pub fn build(self) -> Path2D {
-        Path2D {
-            ops : self.ops,
-        }
+        Path2D { ops: self.ops }
     }
 }

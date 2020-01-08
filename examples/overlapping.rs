@@ -3,6 +3,8 @@ extern crate footile;
 
 use footile::{Plotter, PathOp::*};
 
+mod png;
+
 fn main() -> Result<(), std::io::Error> {
     let path = vec![
         Move(8.0, 4.0),
@@ -14,5 +16,6 @@ fn main() -> Result<(), std::io::Error> {
         Close(),
     ];
     let mut p = Plotter::new(64, 64);
-    p.fill(&path, footile::FillRule::NonZero).write_png("./overlapping.png")
+
+    png::write_mask(p.fill(&path, footile::FillRule::NonZero), "./overlapping.png")
 }

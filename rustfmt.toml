@@ -1,0 +1,8 @@
+disable_all_formatting = true
+max_width = 80
+fn_args_density = "Compressed"
+indent_style = "Visual"
+enum_discrim_align_threshold = 40
+match_block_trailing_comma = true
+use_field_init_shorthand = true
+overflow_delimited_expr = true
