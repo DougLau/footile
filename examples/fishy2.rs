@@ -1,6 +1,6 @@
 // fishy2.rs
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::{Ch8, Format, AssocSRgba8, RasterBuilder, SepSRgba8};
+use pix::{AssocSRgba8, Ch8, Format, RasterBuilder, SepSRgba8};
 use pixops::raster_over;
 
 mod png;

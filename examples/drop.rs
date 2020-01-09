@@ -1,5 +1,5 @@
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::{SepSGray8, RasterBuilder};
+use pix::{RasterBuilder, SepSGray8};
 use pixops::raster_over;
 
 mod png;
