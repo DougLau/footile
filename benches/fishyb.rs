@@ -4,6 +4,8 @@ extern crate footile;
 
 use criterion::Criterion;
 use footile::*;
+use pix::*;
+use pixops::*;
 
 fn fill_256(c: &mut Criterion) {
     c.bench_function("fill_256", |b| b.iter(|| fill(256)));
@@ -33,8 +35,8 @@ fn gray_over_256(c: &mut Criterion) {
     let mut p = make_plotter(256);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("gray_over_256", move |b| {
-        let mut r = Raster::new(p.width(), p.height());
-        b.iter(|| r.over(p.mask(), Gray8::new(100)))
+        let mut r = RasterBuilder::<SepSGray8>::new().with_clear(p.width(), p.height());
+        b.iter(|| raster_over(&mut r, p.mask(), SepSGray8::new(100), 0, 0))
     });
 }
 
@@ -42,8 +44,8 @@ fn gray_over_512(c: &mut Criterion) {
     let mut p = make_plotter(512);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("gray_over_512", move |b| {
-        let mut r = Raster::new(p.width(), p.height());
-        b.iter(|| r.over(p.mask(), Gray8::new(100)))
+        let mut r = RasterBuilder::<SepSGray8>::new().with_clear(p.width(), p.height());
+        b.iter(|| raster_over(&mut r, p.mask(), SepSGray8::new(100), 0, 0))
     });
 }
 
@@ -51,8 +53,8 @@ fn rgb_over_256(c: &mut Criterion) {
     let mut p = make_plotter(256);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("rgb_over_256", move |b| {
-        let mut r = Raster::new(p.width(), p.height());
-        b.iter(|| r.over(p.mask(), Rgb8::new(127, 96, 96)))
+        let mut r = RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
+        b.iter(|| raster_over(&mut r, p.mask(), SepSRgb8::new(127, 96, 96), 0, 0))
     });
 }
 
@@ -60,8 +62,8 @@ fn rgb_over_512(c: &mut Criterion) {
     let mut p = make_plotter(512);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("rgb_over_512", move |b| {
-        let mut r = Raster::new(p.width(), p.height());
-        b.iter(|| r.over(p.mask(), Rgb8::new(127, 96, 96)))
+        let mut r = RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
+        b.iter(|| raster_over(&mut r, p.mask(), SepSRgb8::new(127, 96, 96), 0, 0))
     });
 }
 
@@ -69,8 +71,8 @@ fn rgba_over_256(c: &mut Criterion) {
     let mut p = make_plotter(256);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("rgba_over_256", move |b| {
-        let mut r = Raster::new(p.width(), p.height());
-        b.iter(|| r.over(p.mask(), Rgba8::rgb(127, 96, 96)))
+        let mut r = RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
+        b.iter(|| raster_over(&mut r, p.mask(), SepSRgba8::new(127, 96, 96), 0, 0))
     });
 }
 
@@ -78,8 +80,8 @@ fn rgba_over_512(c: &mut Criterion) {
     let mut p = make_plotter(512);
     p.fill(&make_fishy(), FillRule::NonZero);
     c.bench_function("rgba_over_512", move |b| {
-        let mut r = Raster::new(p.width(), p.height());
-        b.iter(|| r.over(p.mask(), Rgba8::rgb(127, 96, 96)))
+        let mut r = RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
+        b.iter(|| raster_over(&mut r, p.mask(), SepSRgba8::new(127, 96, 96), 0, 0))
     });
 }
 
