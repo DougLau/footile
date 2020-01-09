@@ -65,13 +65,13 @@ fn main() -> Result<(), std::io::Error> {
     p.clear_mask();
     raster_over(&mut r, p.stroke(&eye), AssocSRgba8::new(0, 0, 0), 0, 0);
 
-    let r = RasterBuilder::<SepSRgba8>::new().with_raster(&r);
+    let out = RasterBuilder::<SepSRgba8>::new().with_raster(&r);
 
-    png::write(&r, "./fishyp.png")?;
+    png::write(&out, "./fishyp.png")?;
 
     // Convert raster back to slice to avoid double free.
-    let b: Box<[SepSRgba8]> = r.into();
-    let _: &mut [SepSRgba8] = unsafe { std::mem::transmute(b) };
+    let b: Box<[AssocSRgba8]> = r.into();
+    let _: &mut [AssocSRgba8] = unsafe { std::mem::transmute(b) };
 
     Ok(())
 }
