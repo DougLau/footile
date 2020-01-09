@@ -29,3 +29,4 @@ simd = []
 [replace]
 "pix:0.7.0" = { path = "../pix" }
 "pixops:0.0.2" = { path = "../pixops" }
+"png_pong:0.1.0" = { path = "../png_pong" }
