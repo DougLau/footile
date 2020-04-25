@@ -412,7 +412,7 @@ impl Fig {
     /// NOTE: This must be called before filling in order to handle coincident
     ///       start/end points.
     pub fn close(&mut self) {
-        if self.points.len() > 0 {
+        if !self.points.is_empty() {
             self.sub_set_done();
         }
     }
@@ -483,7 +483,7 @@ impl<'a> Scanner<'a> {
     fn scan_vertex(&mut self, vid: Vid) {
         let y = self.get_y(vid);
         let y_vtx = Fixed::from(y);
-        if self.edges.len() > 0 {
+        if !self.edges.is_empty() {
             self.scan_to_y(y_vtx);
         } else {
             if self.y_now > Fixed::ZERO {

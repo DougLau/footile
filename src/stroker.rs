@@ -1,6 +1,6 @@
 // stroker.rs   A path stroker.
 //
-// Copyright (c) 2017-2019  Douglas P Lau
+// Copyright (c) 2017-2020  Douglas P Lau
 //
 use crate::geom::{intersection, Vec2, Vec2w};
 use crate::path::PathOp;
@@ -201,7 +201,7 @@ impl Stroke {
     ///
     /// * `joined` If true, join ends of sub-stroke.
     pub fn close(&mut self, joined: bool) {
-        if self.points.len() > 0 {
+        if !self.points.is_empty() {
             let sub = self.sub_current();
             sub.joined = joined;
             sub.done = true;

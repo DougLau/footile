@@ -237,7 +237,7 @@ impl Plotter {
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
     fn quad_to_tran<D: PlotDest>(
-        &mut self,
+        &self,
         dst: &mut D,
         a: Vec2w,
         b: Vec2w,
@@ -302,7 +302,7 @@ impl Plotter {
     /// The spline is decomposed into a series of lines using the DeCastlejau
     /// method.
     fn cubic_to_tran<D: PlotDest>(
-        &mut self,
+        &self,
         dst: &mut D,
         a: Vec2w,
         b: Vec2w,

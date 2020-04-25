@@ -1,6 +1,6 @@
 // fixed.rs     Fixed-point type.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2020  Douglas P Lau
 //
 use std::fmt;
 use std::ops;
@@ -173,7 +173,7 @@ impl Fixed {
     }
     /// Get the average of two numbers.
     pub fn avg(self, other: Fixed) -> Self {
-        let v = self.v + other.v >> 1;
+        let v = (self.v + other.v) >> 1;
         Fixed { v }
     }
 }
