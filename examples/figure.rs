@@ -17,5 +17,5 @@ fn main() -> Result<(), std::io::Error> {
         .close()
         .build();
     let mut p = Plotter::new(64, 64);
-    png::write_mask(p.fill(&path, FillRule::NonZero), "./figure.png")
+    png::write_matte(p.fill(&path, FillRule::NonZero), "./figure.png")
 }

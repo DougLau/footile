@@ -27,5 +27,5 @@ fn main() -> Result<(), std::io::Error> {
         .quad_to(105.28671, 64.895096, 88.61539, 64.895096)
         .build();
     let mut p = Plotter::new(165, 256);
-    png::write_mask(p.fill(&path, FillRule::NonZero), "./letter.png")
+    png::write_matte(p.fill(&path, FillRule::NonZero), "./letter.png")
 }

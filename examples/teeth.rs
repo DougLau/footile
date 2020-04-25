@@ -25,5 +25,5 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(8.0, -8.0)
         .build();
     let mut p = Plotter::new(64, 64);
-    png::write_mask(p.stroke(&path), "./teeth.png")
+    png::write_matte(p.stroke(&path), "./teeth.png")
 }

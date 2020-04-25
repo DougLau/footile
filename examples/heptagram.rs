@@ -16,5 +16,5 @@ fn main() -> Result<(), std::io::Error> {
         pb = pb.line_to(th.cos(), th.sin());
     }
     let path = pb.close().build();
-    png::write_mask(p.fill(&path, FillRule::EvenOdd), "./heptagram.png")
+    png::write_matte(p.fill(&path, FillRule::EvenOdd), "./heptagram.png")
 }

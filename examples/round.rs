@@ -13,5 +13,5 @@ fn main() -> Result<(), std::io::Error> {
         .build();
     let mut p = Plotter::new(100, 100);
     p.set_join(JoinStyle::Round);
-    png::write_mask(p.stroke(&path), "./round.png")
+    png::write_matte(p.stroke(&path), "./round.png")
 }

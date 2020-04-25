@@ -1,7 +1,8 @@
 // fishy2.rs
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::{AssocSRgba8, Ch8, Format, RasterBuilder, SepSRgba8};
-use pixops::raster_over;
+use pix::ops::SrcOver;
+use pix::rgb::{Rgba8p, SRgba8};
+use pix::Raster;
 
 mod png;
 
@@ -24,40 +25,18 @@ fn main() -> Result<(), std::io::Error> {
         .move_to(0.0, -8.0)
         .line_to(-8.0, 8.0)
         .build();
-    let v = vec![
-        AssocSRgba8::with_rgba([
-            Ch8::new(0),
-            Ch8::new(0),
-            Ch8::new(0),
-            Ch8::new(0)
-        ]);
-        128 * 128
-    ];
+    let v = vec![Rgba8p::new(0, 0, 0, 0); 128 * 128];
     let mut p = Plotter::new(128, 128);
-    let mut r = RasterBuilder::<AssocSRgba8>::new().with_pixels(
-        p.width(),
-        p.height(),
-        v,
-    );
-    raster_over(
-        &mut r,
-        p.fill(&fish, FillRule::NonZero),
-        AssocSRgba8::new(127, 96, 96),
-        0,
-        0,
-    );
+    let mut r = Raster::<Rgba8p>::with_pixels(p.width(), p.height(), v);
+    let clr = Rgba8p::new(127, 96, 96, 255);
+    r.composite_matte((), p.fill(&fish, FillRule::NonZero), (), clr, SrcOver);
     p.clear_mask();
-    raster_over(
-        &mut r,
-        p.stroke(&fish),
-        AssocSRgba8::new(255, 208, 208),
-        0,
-        0,
-    );
+    let clr = Rgba8p::new(255, 208, 208, 255);
+    r.composite_matte((), p.stroke(&fish), (), clr, SrcOver);
     p.clear_mask();
-    raster_over(&mut r, p.stroke(&eye), AssocSRgba8::new(0, 0, 0), 0, 0);
+    let clr = Rgba8p::new(0, 0, 0, 255);
+    r.composite_matte((), p.stroke(&eye), (), clr, SrcOver);
 
-    let r = RasterBuilder::<SepSRgba8>::new().with_raster(&r);
-
+    let r = Raster::<SRgba8>::with_raster(&r);
     png::write(&r, "./fishy2.png")
 }

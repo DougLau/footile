@@ -13,5 +13,5 @@ fn main() -> Result<(), std::io::Error> {
         .close()
         .build();
     let mut p = Plotter::new(64, 64);
-    png::write_mask(p.stroke(&path), "./stroke.png")
+    png::write_matte(p.stroke(&path), "./stroke.png")
 }
