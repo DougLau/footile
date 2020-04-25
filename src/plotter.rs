@@ -14,7 +14,7 @@ use std::borrow::Borrow;
 ///
 /// This is a software vector rasterizer featuring anti-aliasing.
 /// Paths can be created using [PathBuilder](struct.PathBuilder.html).
-/// The plotter contains a mask of the current plot, which is affected by fill
+/// The plotter contains a matte of the current plot, which is affected by fill
 /// and stroke calls.
 ///
 /// # Example
@@ -29,13 +29,20 @@ use std::borrow::Borrow;
 /// p.stroke(&path);
 /// ```
 pub struct Plotter {
-    mask: Raster<Matte8>,  // image mask
-    sgn_area: Vec<i16>,    // signed area buffer
-    pen: Vec2w,            // current pen position and width
-    transform: Transform,  // user to pixel affine transform
-    tol_sq: f32,           // curve decomposition tolerance squared
-    s_width: f32,          // current stroke width
-    join_style: JoinStyle, // current join style
+    /// Image matte
+    matte: Raster<Matte8>,
+    /// Signed area buffer
+    sgn_area: Vec<i16>,
+    /// Current pen position and width
+    pen: Vec2w,
+    /// User to pixel affine transform
+    transform: Transform,
+    /// Curve decomposition tolerance squared
+    tol_sq: f32,
+    /// Current stroke width
+    s_width: f32,
+    /// Current join style
+    join_style: JoinStyle,
 }
 
 /// Plot destination
@@ -86,7 +93,7 @@ impl Plotter {
             sgn_area.pop();
         }
         Plotter {
-            mask: Raster::with_clear(w, h),
+            matte: Raster::with_clear(w, h),
             sgn_area,
             pen: Vec2w::new(0.0, 0.0, 1.0),
             transform: Transform::new(),
@@ -97,19 +104,19 @@ impl Plotter {
     }
     /// Get width in pixels.
     pub fn width(&self) -> u32 {
-        self.mask.width()
+        self.matte.width()
     }
     /// Get height in pixels.
     pub fn height(&self) -> u32 {
-        self.mask.height()
+        self.matte.height()
     }
     /// Reset pen.
     fn reset(&mut self) {
         self.pen = Vec2w::new(0.0, 0.0, self.s_width);
     }
-    /// Clear the mask.
-    pub fn clear_mask(&mut self) -> &mut Self {
-        self.mask.clear();
+    /// Clear the matte.
+    pub fn clear_matte(&mut self) -> &mut Self {
+        self.matte.clear();
         self
     }
     /// Set tolerance threshold for curve decomposition.
@@ -316,7 +323,7 @@ impl Plotter {
             self.cubic_to_tran(dst, e, bc_cd, cd, d);
         }
     }
-    /// Fill path onto the mask.
+    /// Fill path onto the matte.
     ///
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
@@ -329,10 +336,10 @@ impl Plotter {
         self.add_ops(ops, &mut fig);
         // Closing figure required to handle coincident start/end points
         fig.close();
-        fig.fill(&mut self.mask, &mut self.sgn_area[..], rule);
-        &mut self.mask
+        fig.fill(&mut self.matte, &mut self.sgn_area[..], rule);
+        &mut self.matte
     }
-    /// Stroke path onto the mask.
+    /// Stroke path onto the matte.
     ///
     /// * `ops` PathOp iterator.
     pub fn stroke<T>(&mut self, ops: T) -> &mut Raster<Matte8>
@@ -345,8 +352,8 @@ impl Plotter {
         let ops = stroke.path_ops();
         self.fill(ops.iter(), FillRule::NonZero)
     }
-    /// Get the mask.
-    pub fn mask(&mut self) -> &mut Raster<Matte8> {
-        &mut self.mask
+    /// Get the matte.
+    pub fn matte(&mut self) -> &mut Raster<Matte8> {
+        &mut self.matte
     }
 }

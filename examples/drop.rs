@@ -24,7 +24,7 @@ fn main() -> Result<(), std::io::Error> {
         Graya8p::new(128, 255),
         SrcOver,
     );
-    p.clear_mask();
+    p.clear_matte();
     r.composite_matte((), p.stroke(&path), (), Graya8p::new(255, 255), SrcOver);
     let r = Raster::<SGray8>::with_raster(&r);
 

@@ -34,7 +34,7 @@ fn main() -> Result<(), std::io::Error> {
         Rgba8p::new(127, 96, 96, 255),
         SrcOver,
     );
-    p.clear_mask();
+    p.clear_matte();
     r.composite_matte(
         (),
         p.stroke(&fish),
@@ -42,7 +42,7 @@ fn main() -> Result<(), std::io::Error> {
         Rgba8p::new(255, 208, 208, 255),
         SrcOver,
     );
-    p.clear_mask();
+    p.clear_matte();
     r.composite_matte(
         (),
         p.stroke(&eye),

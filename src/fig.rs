@@ -52,24 +52,35 @@ struct Edge {
 }
 
 /// A Fig is a series of 2D points which can be rendered to
-/// an image mask.
+/// an image matte.
 ///
 pub struct Fig {
-    points: Vec<Vec2>, // all points
-    subs: Vec<SubFig>, // all sub-figures
+    /// All pionts
+    points: Vec<Vec2>,
+    /// All sub-figures
+    subs: Vec<SubFig>,
 }
 
 /// Figure scanner structure
 struct Scanner<'a> {
-    fig: &'a Fig,                // the figure
-    mask: &'a mut Raster<Matte8>,// alpha mask
-    sgn_area: &'a mut [i16],     // signed area buffer
-    edges: Vec<Edge>,            // active edges
-    dir: FigDir,                 // figure direction
-    rule: FillRule,              // fill rule
-    y_now: Fixed,                // current scan Y
-    y_prev: Fixed,               // previous scan Y
-    y_bot: Fixed,                // Y at bottom of mask
+    /// The figure
+    fig: &'a Fig,
+    /// Alpha matte
+    matte: &'a mut Raster<Matte8>,
+    /// Signed area buffer
+    sgn_area: &'a mut [i16],
+    /// Active edges
+    edges: Vec<Edge>,
+    /// Figure direction
+    dir: FigDir,
+    /// Fill rule
+    rule: FillRule,
+    /// Current scan Y
+    y_now: Fixed,
+    /// Previous scan Y
+    y_prev: Fixed,
+    /// Y at bottom of matte
+    y_bot: Fixed,
 }
 
 /// Compare two f32 for fixed-point equality
@@ -415,14 +426,14 @@ impl Fig {
             Equal => p0.x.partial_cmp(&p1.x).unwrap_or(Equal),
         }
     }
-    /// Fill the figure to an image mask.
+    /// Fill the figure to an image matte.
     ///
-    /// * `mask` Output mask.
+    /// * `matte` Output matte.
     /// * `sgn_area` Signed area buffer.
     /// * `rule` Fill rule.
     pub fn fill(
         &self,
-        mask: &mut Raster<Matte8>,
+        matte: &mut Raster<Matte8>,
         sgn_area: &mut [i16],
         rule: FillRule,
     ) {
@@ -432,7 +443,7 @@ impl Fig {
             let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
             vids.sort_by(|a, b| self.compare_vids(*a, *b));
             let dir = self.get_dir(vids[0]);
-            let mut scan = Scanner::new(self, mask, sgn_area, dir, rule);
+            let mut scan = Scanner::new(self, matte, sgn_area, dir, rule);
             for vid in vids {
                 if scan.is_complete() {
                     break;
@@ -448,17 +459,17 @@ impl<'a> Scanner<'a> {
     /// Create a new figure scanner struct
     fn new(
         fig: &'a Fig,
-        mask: &'a mut Raster<Matte8>,
+        matte: &'a mut Raster<Matte8>,
         sgn_area: &'a mut [i16],
         dir: FigDir,
         rule: FillRule,
     ) -> Scanner<'a> {
-        assert!(mask.width() <= sgn_area.len() as u32);
-        let y_bot = Fixed::from(mask.height() as i32);
+        assert!(matte.width() <= sgn_area.len() as u32);
+        let y_bot = Fixed::from(matte.height() as i32);
         let edges = Vec::with_capacity(16);
         Scanner {
             fig,
-            mask,
+            matte,
             sgn_area,
             edges,
             dir,
@@ -508,7 +519,7 @@ impl<'a> Scanner<'a> {
             }
         }
     }
-    /// Check if scan is complete (reached bottom of mask)
+    /// Check if scan is complete (reached bottom of matte)
     fn is_complete(&self) -> bool {
         line_of(self.y_now) >= line_of(self.y_bot)
     }
@@ -559,12 +570,12 @@ impl<'a> Scanner<'a> {
             }
         }
     }
-    /// Accumulate signed area to mask.
+    /// Accumulate signed area to matte.
     /// Signed area is zeroed upon return.
     fn scan_accumulate(&mut self) {
         if self.y_now > Fixed::ZERO && self.y_now <= self.y_bot {
             let y = line_of(self.y_now) as u32;
-            scan_accumulate(self.mask, self.sgn_area, y, self.rule);
+            scan_accumulate(self.matte, self.sgn_area, y, self.rule);
         }
     }
     /// Get scan coverage for partial scan line
@@ -641,16 +652,16 @@ impl<'a> Scanner<'a> {
     }
 }
 
-/// Accumulate signed area to mask.
+/// Accumulate signed area to matte.
 fn scan_accumulate(
-    mask: &mut Raster<Matte8>,
+    matte: &mut Raster<Matte8>,
     sgn_area: &mut [i16],
     row: u32,
     rule: FillRule,
 ) {
-    assert!(mask.width() <= sgn_area.len() as u32);
-    assert!(row < mask.height());
-    let dst = scan_line(mask, row);
+    assert!(matte.width() <= sgn_area.len() as u32);
+    assert!(row < matte.height());
+    let dst = scan_line(matte, row);
     match rule {
         FillRule::NonZero => accumulate_non_zero(dst, sgn_area),
         FillRule::EvenOdd => accumulate_odd(dst, sgn_area),
@@ -658,10 +669,10 @@ fn scan_accumulate(
 }
 
 /// Get one scan line (row)
-fn scan_line(mask: &mut Raster<Matte8>, row: u32) -> &mut [u8] {
-    let s = (row * mask.width()) as usize;
-    let t = s + mask.width() as usize;
-    let pix = mask.as_u8_slice_mut();
+fn scan_line(matte: &mut Raster<Matte8>, row: u32) -> &mut [u8] {
+    let s = (row * matte.width()) as usize;
+    let t = s + matte.width() as usize;
+    let pix = matte.as_u8_slice_mut();
     &mut pix[s..t]
 }
 

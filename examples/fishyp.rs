@@ -41,10 +41,10 @@ fn main() -> Result<(), std::io::Error> {
     let mut r = Raster::<Rgba8p>::with_pixels(p.width(), p.height(), v);
     let clr = Rgba8p::new(127, 96, 96, 255);
     r.composite_matte((), p.fill(&fish, FillRule::NonZero), (), clr, SrcOver);
-    p.clear_mask();
+    p.clear_matte();
     let clr = Rgba8p::new(255, 208, 208, 255);
     r.composite_matte((), p.stroke(&fish), (), clr, SrcOver);
-    p.clear_mask();
+    p.clear_matte();
     let clr = Rgba8p::new(0, 0, 0, 255);
     r.composite_matte((), p.stroke(&eye), (), clr, SrcOver);
 
