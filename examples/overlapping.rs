@@ -1,4 +1,4 @@
-use footile::{Plotter, PathOp::*};
+use footile::{PathOp::*, Plotter};
 
 mod png;
 
@@ -14,5 +14,8 @@ fn main() -> Result<(), std::io::Error> {
     ];
     let mut p = Plotter::new(64, 64);
 
-    png::write_matte(p.fill(&path, footile::FillRule::NonZero), "./overlapping.png")
+    png::write_matte(
+        p.fill(&path, footile::FillRule::NonZero),
+        "./overlapping.png",
+    )
 }

@@ -1,6 +1,6 @@
 // drop.rs
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::gray::{SGray8, Graya8p};
+use pix::gray::{Graya8p, SGray8};
 use pix::ops::SrcOver;
 use pix::Raster;
 

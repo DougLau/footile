@@ -48,7 +48,7 @@ fn main() -> Result<(), std::io::Error> {
         p.stroke(&eye),
         (),
         Rgba8p::new(0, 0, 0, 255),
-        SrcOver
+        SrcOver,
     );
 
     let r = Raster::<SRgba8>::with_raster(&r);

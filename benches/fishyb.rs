@@ -46,11 +46,5 @@ fn make_fishy() -> Path2D {
         .build()
 }
 
-criterion_group!(
-    benches,
-    fill_256,
-    fill_512,
-    stroke_256,
-    stroke_512,
-);
+criterion_group!(benches, fill_256, fill_512, stroke_256, stroke_512,);
 criterion_main!(benches);
