@@ -1,12 +1,13 @@
 // fig.rs    A 2D rasterizer.
 //
-// Copyright (c) 2017-2019  Douglas P Lau
+// Copyright (c) 2017-2020  Douglas P Lau
 //
 use crate::fixed::Fixed;
 use crate::geom::Vec2;
 use crate::imgbuf::{accumulate_non_zero, accumulate_odd};
 use crate::path::FillRule;
-use pix::{Mask8, Raster};
+use pix::matte::Matte8;
+use pix::Raster;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
@@ -61,7 +62,7 @@ pub struct Fig {
 /// Figure scanner structure
 struct Scanner<'a> {
     fig: &'a Fig,                // the figure
-    mask: &'a mut Raster<Mask8>, // alpha mask
+    mask: &'a mut Raster<Matte8>,// alpha mask
     sgn_area: &'a mut [i16],     // signed area buffer
     edges: Vec<Edge>,            // active edges
     dir: FigDir,                 // figure direction
@@ -421,7 +422,7 @@ impl Fig {
     /// * `rule` Fill rule.
     pub fn fill(
         &self,
-        mask: &mut Raster<Mask8>,
+        mask: &mut Raster<Matte8>,
         sgn_area: &mut [i16],
         rule: FillRule,
     ) {
@@ -447,7 +448,7 @@ impl<'a> Scanner<'a> {
     /// Create a new figure scanner struct
     fn new(
         fig: &'a Fig,
-        mask: &'a mut Raster<Mask8>,
+        mask: &'a mut Raster<Matte8>,
         sgn_area: &'a mut [i16],
         dir: FigDir,
         rule: FillRule,
@@ -642,7 +643,7 @@ impl<'a> Scanner<'a> {
 
 /// Accumulate signed area to mask.
 fn scan_accumulate(
-    mask: &mut Raster<Mask8>,
+    mask: &mut Raster<Matte8>,
     sgn_area: &mut [i16],
     row: u32,
     rule: FillRule,
@@ -657,7 +658,7 @@ fn scan_accumulate(
 }
 
 /// Get one scan line (row)
-fn scan_line(mask: &mut Raster<Mask8>, row: u32) -> &mut [u8] {
+fn scan_line(mask: &mut Raster<Matte8>, row: u32) -> &mut [u8] {
     let s = (row * mask.width()) as usize;
     let t = s + mask.width() as usize;
     let pix = mask.as_u8_slice_mut();
@@ -678,7 +679,7 @@ fn pixel_cov(fcov: Fixed) -> i16 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use pix::RasterBuilder;
+    use pix::Raster;
     #[test]
     fn compare_fixed() {
         assert_eq!(cmp_fixed(0.0, 0.0), Ordering::Equal);
@@ -688,7 +689,7 @@ mod test {
     }
     #[test]
     fn fig_3x3() {
-        let mut m = RasterBuilder::<Mask8>::new().with_clear(3, 3);
+        let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 3];
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.0, 0.0));
@@ -700,7 +701,7 @@ mod test {
     }
     #[test]
     fn fig_9x1() {
-        let mut m = RasterBuilder::<Mask8>::new().with_clear(9, 1);
+        let mut m = Raster::<Matte8>::with_clear(9, 1);
         let mut s = vec![0; 16];
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.0, 0.0));
@@ -712,7 +713,7 @@ mod test {
     }
     #[test]
     fn fig_x_bounds() {
-        let mut m = RasterBuilder::<Mask8>::new().with_clear(3, 3);
+        let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 4];
         let mut f = Fig::new();
         f.add_point(Vec2::new(-1.0, 0.0));
@@ -724,7 +725,7 @@ mod test {
     }
     #[test]
     fn fig_partial() {
-        let mut m = RasterBuilder::<Mask8>::new().with_clear(1, 3);
+        let mut m = Raster::<Matte8>::with_clear(1, 3);
         let mut s = vec![0; 4];
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.5, 0.0));
@@ -737,7 +738,7 @@ mod test {
     }
     #[test]
     fn fig_partial2() {
-        let mut m = RasterBuilder::<Mask8>::new().with_clear(3, 3);
+        let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 3];
         let mut f = Fig::new();
         f.add_point(Vec2::new(1.5, 0.0));
@@ -751,7 +752,7 @@ mod test {
     }
     #[test]
     fn fig_partial3() {
-        let mut m = RasterBuilder::<Mask8>::new().with_clear(9, 1);
+        let mut m = Raster::<Matte8>::with_clear(9, 1);
         let mut s = vec![0; 16];
         let mut f = Fig::new();
         f.add_point(Vec2::new(0.0, 0.3));

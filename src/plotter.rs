@@ -1,12 +1,13 @@
 // plotter.rs      Vector path plotter.
 //
-// Copyright (c) 2017-2019  Douglas P Lau
+// Copyright (c) 2017-2020  Douglas P Lau
 //
 use crate::fig::Fig;
 use crate::geom::{float_lerp, Transform, Vec2, Vec2w};
 use crate::path::{FillRule, PathOp};
 use crate::stroker::{JoinStyle, Stroke};
-use pix::{Mask8, Raster, RasterBuilder};
+use pix::matte::Matte8;
+use pix::Raster;
 use std::borrow::Borrow;
 
 /// Plotter for 2D vector paths.
@@ -28,7 +29,7 @@ use std::borrow::Borrow;
 /// p.stroke(&path);
 /// ```
 pub struct Plotter {
-    mask: Raster<Mask8>,   // image mask
+    mask: Raster<Matte8>,  // image mask
     sgn_area: Vec<i16>,    // signed area buffer
     pen: Vec2w,            // current pen position and width
     transform: Transform,  // user to pixel affine transform
@@ -85,7 +86,7 @@ impl Plotter {
             sgn_area.pop();
         }
         Plotter {
-            mask: RasterBuilder::new().with_clear(w, h),
+            mask: Raster::with_clear(w, h),
             sgn_area,
             pen: Vec2w::new(0.0, 0.0, 1.0),
             transform: Transform::new(),
@@ -319,7 +320,7 @@ impl Plotter {
     ///
     /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill<T>(&mut self, ops: T, rule: FillRule) -> &mut Raster<Mask8>
+    pub fn fill<T>(&mut self, ops: T, rule: FillRule) -> &mut Raster<Matte8>
     where
         T: IntoIterator,
         T::Item: Borrow<PathOp>,
@@ -334,7 +335,7 @@ impl Plotter {
     /// Stroke path onto the mask.
     ///
     /// * `ops` PathOp iterator.
-    pub fn stroke<T>(&mut self, ops: T) -> &mut Raster<Mask8>
+    pub fn stroke<T>(&mut self, ops: T) -> &mut Raster<Matte8>
     where
         T: IntoIterator,
         T::Item: Borrow<PathOp>,
@@ -345,7 +346,7 @@ impl Plotter {
         self.fill(ops.iter(), FillRule::NonZero)
     }
     /// Get the mask.
-    pub fn mask(&mut self) -> &mut Raster<Mask8> {
+    pub fn mask(&mut self) -> &mut Raster<Matte8> {
         &mut self.mask
     }
 }

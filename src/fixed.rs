@@ -15,7 +15,7 @@ pub struct Fixed {
 const FRACT_BITS: i32 = 16;
 
 /// Mask of fixed fractional bits
-const FRACT_MASK: i32 = ((1 << FRACT_BITS) - 1);
+const FRACT_MASK: i32 = (1 << FRACT_BITS) - 1;
 
 /// Fixed-point constants
 const FX_ZERO: Fixed = Fixed { v: 0 };
