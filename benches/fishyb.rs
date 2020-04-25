@@ -1,11 +1,8 @@
 #[macro_use]
 extern crate criterion;
-extern crate footile;
 
 use criterion::Criterion;
 use footile::*;
-use pix::*;
-use pixops::*;
 
 fn fill_256(c: &mut Criterion) {
     c.bench_function("fill_256", |b| b.iter(|| fill(256)));
@@ -29,74 +26,6 @@ fn stroke_512(c: &mut Criterion) {
 
 fn gray_stroke(i: u32) {
     make_plotter(i).stroke(&make_fishy());
-}
-
-fn gray_over_256(c: &mut Criterion) {
-    let mut p = make_plotter(256);
-    p.fill(&make_fishy(), FillRule::NonZero);
-    c.bench_function("gray_over_256", move |b| {
-        let mut r =
-            RasterBuilder::<SepSGray8>::new().with_clear(p.width(), p.height());
-        b.iter(|| raster_over(&mut r, p.mask(), SepSGray8::new(100), 0, 0))
-    });
-}
-
-fn gray_over_512(c: &mut Criterion) {
-    let mut p = make_plotter(512);
-    p.fill(&make_fishy(), FillRule::NonZero);
-    c.bench_function("gray_over_512", move |b| {
-        let mut r =
-            RasterBuilder::<SepSGray8>::new().with_clear(p.width(), p.height());
-        b.iter(|| raster_over(&mut r, p.mask(), SepSGray8::new(100), 0, 0))
-    });
-}
-
-fn rgb_over_256(c: &mut Criterion) {
-    let mut p = make_plotter(256);
-    p.fill(&make_fishy(), FillRule::NonZero);
-    c.bench_function("rgb_over_256", move |b| {
-        let mut r =
-            RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
-        b.iter(|| {
-            raster_over(&mut r, p.mask(), SepSRgb8::new(127, 96, 96), 0, 0)
-        })
-    });
-}
-
-fn rgb_over_512(c: &mut Criterion) {
-    let mut p = make_plotter(512);
-    p.fill(&make_fishy(), FillRule::NonZero);
-    c.bench_function("rgb_over_512", move |b| {
-        let mut r =
-            RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
-        b.iter(|| {
-            raster_over(&mut r, p.mask(), SepSRgb8::new(127, 96, 96), 0, 0)
-        })
-    });
-}
-
-fn rgba_over_256(c: &mut Criterion) {
-    let mut p = make_plotter(256);
-    p.fill(&make_fishy(), FillRule::NonZero);
-    c.bench_function("rgba_over_256", move |b| {
-        let mut r =
-            RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
-        b.iter(|| {
-            raster_over(&mut r, p.mask(), SepSRgba8::new(127, 96, 96), 0, 0)
-        })
-    });
-}
-
-fn rgba_over_512(c: &mut Criterion) {
-    let mut p = make_plotter(512);
-    p.fill(&make_fishy(), FillRule::NonZero);
-    c.bench_function("rgba_over_512", move |b| {
-        let mut r =
-            RasterBuilder::<SepSRgb8>::new().with_clear(p.width(), p.height());
-        b.iter(|| {
-            raster_over(&mut r, p.mask(), SepSRgba8::new(127, 96, 96), 0, 0)
-        })
-    });
 }
 
 fn make_plotter(i: u32) -> Plotter {
@@ -123,11 +52,5 @@ criterion_group!(
     fill_512,
     stroke_256,
     stroke_512,
-    gray_over_256,
-    gray_over_512,
-    rgb_over_256,
-    rgb_over_512,
-    rgba_over_256,
-    rgba_over_512
 );
 criterion_main!(benches);
