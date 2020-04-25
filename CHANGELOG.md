@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [0.4.0] - 2020-04-24
+### Changed
+* Renamed "mask" to "matte"
+### Removed
+* Moved Raster and supporting code to pix crate
+
 ## [0.3.1] - 2019-03-07
 ### Added
 * Support target_arch = "wasm32"

@@ -1,6 +1,6 @@
 [package]
 name = "footile"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Douglas Lau <doug.p.lau@gmail.com>"]
 description = "A 2D vector graphics library"
 license = "MIT/Apache-2.0"
@@ -11,12 +11,11 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-pix = "0.7"
+pix = "0.12"
 
 [dev-dependencies]
 criterion = "0.3"
-png_pong = "0.1"
-pixops = "0.0"
+png_pong = "0.4"
 
 [[bench]]
 name = "fishyb"
@@ -25,8 +24,3 @@ harness = false
 [features]
 default = ["simd"]
 simd = []
-
-[replace]
-"pix:0.7.0" = { path = "../pix" }
-"pixops:0.0.2" = { path = "../pixops" }
-"png_pong:0.1.0" = { path = "../png_pong" }
