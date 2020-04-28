@@ -96,7 +96,7 @@ impl Plotter {
             matte: Raster::with_clear(w, h),
             sgn_area,
             pen: Vec2w::new(0.0, 0.0, 1.0),
-            transform: Transform::new(),
+            transform: Transform::default(),
             tol_sq: tol * tol,
             s_width: 1.0,
             join_style: JoinStyle::Miter(4.0),

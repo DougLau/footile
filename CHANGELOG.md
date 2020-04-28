@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+* Replaced PathBuilder::new() with default() (Default impl)
+* Replaced Transform::new() with default() (Default implt)
+
 ## [0.4.0] - 2020-04-24
 ### Changed
 * Renamed "mask" to "matte"

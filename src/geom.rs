@@ -240,13 +240,16 @@ impl ops::Mul<Vec2> for Transform {
     }
 }
 
-impl Transform {
+impl Default for Transform {
     /// Create a new identity transform.
-    pub fn new() -> Self {
+    fn default() -> Self {
         Transform {
             e: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0],
         }
     }
+}
+
+impl Transform {
     /// Multiple two affine transforms.
     fn mul_e(&self, other: &Self) -> [f32; 6] {
         let mut e = [0.0; 6];
@@ -359,12 +362,12 @@ mod test {
     }
     #[test]
     fn test_identity() {
-        assert_eq!(Transform::new().e, [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
+        assert_eq!(Transform::default().e, [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
         assert_eq!(
-            (Transform::new() * Transform::new()).e,
+            (Transform::default() * Transform::default()).e,
             [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         );
-        assert_eq!(Transform::new() * Vec2::new(1.0, 2.0), Vec2::new(1.0, 2.0));
+        assert_eq!(Transform::default() * Vec2::new(1.0, 2.0), Vec2::new(1.0, 2.0));
     }
     #[test]
     fn test_translate() {
@@ -373,11 +376,11 @@ mod test {
             [1.0, 0.0, 1.5, 0.0, 1.0, -1.5]
         );
         assert_eq!(
-            Transform::new().translate(2.5, -3.5).e,
+            Transform::default().translate(2.5, -3.5).e,
             [1.0, 0.0, 2.5, 0.0, 1.0, -3.5]
         );
         assert_eq!(
-            Transform::new().translate(5.0, 7.0) * Vec2::new(1.0, -2.0),
+            Transform::default().translate(5.0, 7.0) * Vec2::new(1.0, -2.0),
             Vec2::new(6.0, 5.0)
         );
     }
@@ -388,11 +391,11 @@ mod test {
             [2.0, 0.0, 0.0, 0.0, 4.0, 0.0]
         );
         assert_eq!(
-            Transform::new().scale(3.0, 5.0).e,
+            Transform::default().scale(3.0, 5.0).e,
             [3.0, 0.0, 0.0, 0.0, 5.0, 0.0]
         );
         assert_eq!(
-            Transform::new().scale(2.0, 3.0) * Vec2::new(1.5, -2.0),
+            Transform::default().scale(2.0, 3.0) * Vec2::new(1.5, -2.0),
             Vec2::new(3.0, -6.0)
         );
     }
@@ -402,11 +405,11 @@ mod test {
         const V: f32 = 0.00000008742278;
         assert_eq!(Transform::new_rotate(PI).e, [-1.0, V, 0.0, -V, -1.0, 0.0]);
         assert_eq!(
-            Transform::new().rotate(PI).e,
+            Transform::default().rotate(PI).e,
             [-1.0, V, 0.0, -V, -1.0, 0.0]
         );
         assert_eq!(
-            Transform::new().rotate(PI / 2.0) * Vec2::new(15.0, 7.0),
+            Transform::default().rotate(PI / 2.0) * Vec2::new(15.0, 7.0),
             Vec2::new(-7.0000005, 15.0)
         );
     }
@@ -418,7 +421,7 @@ mod test {
             [1.0, -22877334.0, 0.0, 0.0, 1.0, 0.0]
         );
         assert_eq!(
-            Transform::new().skew(PI / 2.0, 0.0).e,
+            Transform::default().skew(PI / 2.0, 0.0).e,
             [1.0, -22877334.0, 0.0, 0.0, 1.0, 0.0]
         );
         assert_eq!(
@@ -426,15 +429,15 @@ mod test {
             [1.0, 0.0, 0.0, 1.0, 1.0, 0.0]
         );
         assert_eq!(
-            Transform::new().skew(0.0, PI / 4.0).e,
+            Transform::default().skew(0.0, PI / 4.0).e,
             [1.0, 0.0, 0.0, 1.0, 1.0, 0.0]
         );
         assert_eq!(
-            Transform::new().skew(0.0, PI / 4.0) * Vec2::new(5.0, 3.0),
+            Transform::default().skew(0.0, PI / 4.0) * Vec2::new(5.0, 3.0),
             Vec2::new(5.0, 8.0)
         );
         assert_eq!(
-            Transform::new().skew(0.0, PI / 4.0) * Vec2::new(15.0, 7.0),
+            Transform::default().skew(0.0, PI / 4.0) * Vec2::new(15.0, 7.0),
             Vec2::new(15.0, 22.0)
         );
     }
@@ -451,7 +454,7 @@ mod test {
                 * Transform::new_scale(7.0, 11.0)
                 * Transform::new_rotate(f32::consts::PI / 2.0)
                 * Transform::new_skew(1.0, -2.0),
-            Transform::new()
+            Transform::default()
                 .translate(3.0, 5.0)
                 .scale(7.0, 11.0)
                 .rotate(f32::consts::PI / 2.0)
