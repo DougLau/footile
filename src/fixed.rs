@@ -7,23 +7,13 @@ use std::ops;
 
 /// Fixed-point type
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Fixed {
-    v: i32,
-}
+pub struct Fixed(i32);
 
 /// Number of bits at fixed point (16.16)
 const FRACT_BITS: i32 = 16;
 
 /// Mask of fixed fractional bits
 const FRACT_MASK: i32 = (1 << FRACT_BITS) - 1;
-
-/// Fixed-point constants
-const FX_ZERO: Fixed = Fixed { v: 0 };
-const FX_EPSILON: Fixed = Fixed { v: 1 };
-const FX_HALF: Fixed = Fixed {
-    v: 1 << (FRACT_BITS - 1),
-};
-const FX_ONE: Fixed = Fixed { v: 1 << FRACT_BITS };
 
 impl fmt::Debug for Fixed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -34,147 +24,137 @@ impl fmt::Debug for Fixed {
 impl ops::Add for Fixed {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self {
-        let v = self.v + other.v;
-        Fixed { v }
+    fn add(self, rhs: Self) -> Self {
+        Fixed(self.0 + rhs.0)
     }
 }
 
 impl ops::Sub for Fixed {
     type Output = Self;
 
-    fn sub(self, other: Self) -> Self {
-        let v = self.v - other.v;
-        Fixed { v }
+    fn sub(self, rhs: Self) -> Self {
+        Fixed(self.0 - rhs.0)
     }
 }
 
 impl ops::Mul for Fixed {
     type Output = Self;
 
-    fn mul(self, other: Self) -> Self {
-        let v: i64 = (self.v as i64 * other.v as i64) >> FRACT_BITS;
-        Fixed { v: v as i32 }
+    fn mul(self, rhs: Self) -> Self {
+        let v = (self.0 as i64 * rhs.0 as i64) >> FRACT_BITS;
+        Fixed(v as i32)
     }
 }
 
 impl ops::Div for Fixed {
     type Output = Self;
 
-    fn div(self, other: Self) -> Self {
-        let v = ((self.v as i64) << (FRACT_BITS as i64)) / other.v as i64;
-        Fixed { v: v as i32 }
+    fn div(self, rhs: Self) -> Self {
+        let v = ((self.0 as i64) << (FRACT_BITS as i64)) / rhs.0 as i64;
+        Fixed(v as i32)
     }
 }
 
 impl ops::Shl<u32> for Fixed {
     type Output = Self;
 
-    fn shl(self, other: u32) -> Self {
-        let v = self.v << other;
-        Fixed { v }
+    fn shl(self, rhs: u32) -> Self {
+        Fixed(self.0 << rhs)
     }
 }
 
 impl ops::Shr<u32> for Fixed {
     type Output = Self;
 
-    fn shr(self, other: u32) -> Self {
-        let v = self.v >> other;
-        Fixed { v }
+    fn shr(self, rhs: u32) -> Self {
+        Fixed(self.0 >> rhs)
     }
 }
 
 impl From<i32> for Fixed {
     /// Get a fixed point value from an i32
     fn from(i: i32) -> Self {
-        let v = i << FRACT_BITS;
-        Fixed { v }
+        Fixed(i << FRACT_BITS)
     }
 }
 
 impl From<Fixed> for i32 {
     /// Get an i32 from a fixed point value
     fn from(f: Fixed) -> Self {
-        f.v >> FRACT_BITS
+        f.0 >> FRACT_BITS
     }
 }
 
 impl From<f32> for Fixed {
     /// Get a fixed point value from an f32
     fn from(f: f32) -> Self {
-        let v = (f * (FX_ONE.v as f32)) as i32;
-        Fixed { v }
+        Fixed((f * (Self::ONE.0 as f32)) as i32)
     }
 }
 
 impl From<Fixed> for f32 {
     /// Get an f32 from a fixed point value
     fn from(f: Fixed) -> Self {
-        f.v as f32 / FX_ONE.v as f32
+        f.0 as f32 / Fixed::ONE.0 as f32
     }
 }
 
 impl Fixed {
     /// Fixed value of 0.
-    pub const ZERO: Fixed = FX_ZERO;
+    pub const ZERO: Self = Fixed(0);
 
     /// Fixed value of epsilon.
-    pub const EPSILON: Fixed = FX_EPSILON;
+    pub const EPSILON: Self = Fixed(1);
 
     /// Fixed value of 1/2.
-    pub const HALF: Fixed = FX_HALF;
+    pub const HALF: Self = Fixed(1 << (FRACT_BITS - 1));
 
     /// Fixed value of 1.
-    pub const ONE: Fixed = FX_ONE;
+    pub const ONE: Self = Fixed(1 << FRACT_BITS);
 
     /// Get the smallest value that can be represented by this type.
-    pub fn min_value() -> Self {
-        Fixed {
-            v: i32::min_value(),
-        }
-    }
+    pub const MIN: Self = Fixed(i32::MIN);
+
     /// Get the largest value that can be represented by this type.
-    pub fn max_value() -> Self {
-        Fixed {
-            v: i32::max_value(),
-        }
-    }
+    pub const MAX: Self = Fixed(i32::MAX);
+
     /// Get the absolute value of a number.
     pub fn abs(self) -> Self {
-        let v = self.v.abs();
-        Fixed { v }
+        Fixed(self.0.abs())
     }
+
     /// Get the largest integer less than or equal to a number.
     pub fn floor(self) -> Self {
-        let v = self.v & !FRACT_MASK;
-        Fixed { v }
+        Fixed(self.0 & !FRACT_MASK)
     }
+
     /// Get the smallest integer greater than or equal to a number.
     pub fn ceil(self) -> Self {
-        (self + FX_ONE - FX_EPSILON).floor()
+        (self + Self::ONE - Self::EPSILON).floor()
     }
+
     /// Round a number to the nearest integer.
     pub fn round(self) -> Self {
-        (self + FX_HALF).floor()
+        (self + Self::HALF).floor()
     }
+
     /// Get the integer part of a number.
     pub fn trunc(self) -> Self {
-        if self.v >= 0 {
+        if self.0 >= 0 {
             self.floor()
         } else {
             self.ceil()
         }
     }
+
     /// Get the fractional part of a number.
     pub fn fract(self) -> Self {
-        let v = self.v & FRACT_MASK;
-        Fixed { v }
+        Fixed(self.0 & FRACT_MASK)
     }
+
     /// Get the average of two numbers.
-    pub fn avg(self, other: Fixed) -> Self {
-        let v = (self.v + other.v) >> 1;
-        Fixed { v }
+    pub fn avg(self, rhs: Fixed) -> Self {
+        Fixed((self.0 + rhs.0) >> 1)
     }
 }
 
