@@ -35,7 +35,7 @@ fn make_plotter(i: u32) -> Plotter {
 }
 
 fn make_fishy() -> Path2D {
-    PathBuilder::new()
+    PathBuilder::default()
         .relative()
         .move_to(112f32, 16f32)
         .line_to(-48f32, 32f32)

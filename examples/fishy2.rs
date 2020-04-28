@@ -7,7 +7,7 @@ use pix::Raster;
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let fish = PathBuilder::new()
+    let fish = PathBuilder::default()
         .relative()
         .pen_width(3.0)
         .move_to(112.0, 24.0)
@@ -17,7 +17,7 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(-16.0, -40.0)
         .close()
         .build();
-    let eye = PathBuilder::new()
+    let eye = PathBuilder::default()
         .relative()
         .pen_width(2.0)
         .move_to(24.0, 48.0)

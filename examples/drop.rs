@@ -7,7 +7,7 @@ use pix::Raster;
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = PathBuilder::new()
+    let path = PathBuilder::default()
         .relative()
         .pen_width(3.0)
         .move_to(50.0, 34.0)

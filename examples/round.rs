@@ -4,7 +4,7 @@ use footile::{JoinStyle, PathBuilder, Plotter};
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = PathBuilder::new()
+    let path = PathBuilder::default()
         .relative()
         .pen_width(40.0)
         .move_to(10.0, 60.0)

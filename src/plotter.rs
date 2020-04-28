@@ -20,7 +20,7 @@ use std::borrow::Borrow;
 /// # Example
 /// ```
 /// use footile::{PathBuilder, Plotter};
-/// let path = PathBuilder::new().pen_width(3.0)
+/// let path = PathBuilder::default().pen_width(3.0)
 ///     .move_to(50.0, 34.0)
 ///     .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
 ///     .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)

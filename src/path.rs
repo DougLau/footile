@@ -46,7 +46,7 @@ pub struct IterPath2D<'a> {
 /// # Example
 /// ```
 /// use footile::PathBuilder;
-/// let path = PathBuilder::new()
+/// let path = PathBuilder::default()
 ///     .move_to(10.0, 10.0)
 ///     .line_to(90.0, 90.0)
 ///     .build();
@@ -84,9 +84,9 @@ impl<'a> Iterator for IterPath2D<'a> {
     }
 }
 
-impl PathBuilder {
+impl Default for PathBuilder {
     /// Create a new PathBuilder.
-    pub fn new() -> PathBuilder {
+    fn default() -> PathBuilder {
         let ops = Vec::with_capacity(32);
         PathBuilder {
             ops,
@@ -95,11 +95,15 @@ impl PathBuilder {
             pen_y: 0f32,
         }
     }
+}
+
+impl PathBuilder {
     /// Use absolute coordinates for subsequent operations.
     pub fn absolute(mut self) -> Self {
         self.absolute = true;
         self
     }
+
     /// Use relative coordinates for subsequent operations.
     ///
     /// This is the default setting.
@@ -107,6 +111,7 @@ impl PathBuilder {
         self.absolute = false;
         self
     }
+
     /// Get absolute point.
     fn pt(&self, x: f32, y: f32) -> (f32, f32) {
         if self.absolute {
@@ -115,6 +120,7 @@ impl PathBuilder {
             (self.pen_x + x, self.pen_y + y)
         }
     }
+
     /// Close current sub-path and move pen to origin.
     pub fn close(mut self) -> Self {
         self.ops.push(PathOp::Close());
@@ -122,6 +128,7 @@ impl PathBuilder {
         self.pen_y = 0f32;
         self
     }
+
     /// Move pen to a point.
     ///
     /// * `bx` X-position of point.
@@ -133,6 +140,7 @@ impl PathBuilder {
         self.pen_y = aby;
         self
     }
+
     /// Add a line from pen to a point.
     ///
     /// * `bx` X-position of end point.
@@ -144,6 +152,7 @@ impl PathBuilder {
         self.pen_y = aby;
         self
     }
+
     /// Add a quadratic bézier spline.
     ///
     /// The points are A (current pen position), B (control point), and C
@@ -161,6 +170,7 @@ impl PathBuilder {
         self.pen_y = acy;
         self
     }
+
     /// Add a cubic bézier spline.
     ///
     /// The points are A (current pen position), B (first control point), C
@@ -189,6 +199,7 @@ impl PathBuilder {
         self.pen_y = ady;
         self
     }
+
     /// Set pen stroke width.
     ///
     /// All subsequent path points will be affected, until the stroke width
@@ -199,6 +210,7 @@ impl PathBuilder {
         self.ops.push(PathOp::PenWidth(width));
         self
     }
+
     /// Build path from specified operations.
     pub fn build(self) -> Path2D {
         Path2D { ops: self.ops }

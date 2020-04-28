@@ -4,7 +4,7 @@ use footile::{FillRule, PathBuilder, Plotter};
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let pb = PathBuilder::new().absolute();
+    let pb = PathBuilder::default().absolute();
     let path = pb
         .move_to(88.61539, 64.895096)
         .quad_to(62.433567, 64.895096, 47.88811, 81.79021)
