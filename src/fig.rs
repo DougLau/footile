@@ -6,14 +6,12 @@ use crate::fixed::Fixed;
 use crate::geom::Vec2;
 use crate::imgbuf::{accumulate_non_zero, accumulate_odd};
 use crate::path::FillRule;
+use crate::vid::Vid;
 use pix::matte::Matte8;
 use pix::Raster;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
-
-/// Vertex ID
-type Vid = u16;
 
 /// Figure direction enum
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -32,9 +30,12 @@ fn opposite(dir: FigDir) -> FigDir {
 
 /// Sub-figure structure
 struct SubFig {
-    start: Vid,    // starting point
-    n_points: Vid, // number of points
-    done: bool,    // done flag
+    /// Starting point
+    start: Vid,
+    /// Number of points
+    n_points: Vid,
+    /// Done flag
+    done: bool,
 }
 
 /// Edge structure
@@ -98,7 +99,7 @@ impl SubFig {
     fn new(start: Vid) -> SubFig {
         SubFig {
             start,
-            n_points: 0 as Vid,
+            n_points: Vid(0),
             done: false,
         }
     }
@@ -106,7 +107,7 @@ impl SubFig {
     fn next(&self, vid: Vid, dir: FigDir) -> Vid {
         match dir {
             FigDir::Forward => {
-                let v = vid + 1 as Vid;
+                let v = vid + 1;
                 if v < self.start + self.n_points {
                     v
                 } else {
@@ -115,9 +116,9 @@ impl SubFig {
             }
             FigDir::Reverse => {
                 if vid > self.start {
-                    vid - 1 as Vid
+                    vid - 1
                 } else {
-                    self.start + self.n_points - 1 as Vid
+                    self.start + self.n_points - 1
                 }
             }
         }
@@ -253,9 +254,10 @@ impl Edge {
 impl fmt::Debug for Fig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for sub in &self.subs {
-            write!(f, "sub {}+{} ", sub.start, sub.n_points)?;
-            for v in sub.start..(sub.start + sub.n_points) {
-                write!(f, "{:?} ", self.get_point(v))?;
+            write!(f, "sub {:?}+{:?} ", sub.start, sub.n_points)?;
+            let end = sub.start + sub.n_points;
+            for v in usize::from(sub.start)..usize::from(end) {
+                write!(f, "{:?} ", self.get_point(Vid::from(v)))?;
             }
         }
         Ok(())
@@ -267,7 +269,7 @@ impl Fig {
     pub fn new() -> Fig {
         let points = Vec::with_capacity(1024);
         let mut subs = Vec::with_capacity(16);
-        subs.push(SubFig::new(0 as Vid));
+        subs.push(SubFig::new(Vid(0)));
         Fig { points, subs }
     }
     /// Get the current sub-figure
@@ -276,7 +278,7 @@ impl Fig {
     }
     /// Add a new sub-figure
     fn sub_add(&mut self) {
-        let vid = self.points.len() as Vid;
+        let vid = Vid::from(self.points.len());
         self.subs.push(SubFig::new(vid));
     }
     /// Add a point to the current sub-figure
@@ -297,7 +299,7 @@ impl Fig {
             self.points.pop();
         }
         let sub = self.sub_current();
-        debug_assert!(sub.n_points > 0);
+        debug_assert!(sub.n_points > 0.into());
         sub.done = true;
         if c {
             sub.n_points -= 1;
@@ -377,7 +379,7 @@ impl Fig {
     ///
     /// * `vid` Vertex ID.
     fn get_point(&self, vid: Vid) -> Vec2 {
-        self.points[vid as usize]
+        self.points[usize::from(vid.0)]
     }
     /// Get Y value at a vertex.
     fn get_y(&self, vid: Vid) -> f32 {
@@ -388,7 +390,7 @@ impl Fig {
     /// * `pt` Point to add.
     pub fn add_point(&mut self, pt: Vec2) {
         let n_pts = self.points.len();
-        if n_pts < Vid::max_value() as usize {
+        if n_pts < usize::from(Vid::MAX) {
             let done = self.sub_is_done();
             if done {
                 self.sub_add();
@@ -437,10 +439,11 @@ impl Fig {
         sgn_area: &mut [i16],
         rule: FillRule,
     ) {
-        let n_points = self.points.len() as Vid;
+        let n_points = self.points.len();
         if n_points > 0 {
             debug_assert!(self.sub_is_done());
-            let mut vids: Vec<Vid> = (0 as Vid..n_points).collect();
+            let mut vids: Vec<Vid> =
+                (0..n_points).map(Vid::from).collect();
             vids.sort_by(|a, b| self.compare_vids(*a, *b));
             let dir = self.get_dir(vids[0]);
             let mut scan = Scanner::new(self, matte, sgn_area, dir, rule);

@@ -13,6 +13,7 @@ mod imgbuf;
 mod path;
 mod plotter;
 mod stroker;
+mod vid;
 
 pub use geom::Transform;
 pub use path::{FillRule, Path2D, PathBuilder, PathOp};

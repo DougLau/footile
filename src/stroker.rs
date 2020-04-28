@@ -4,10 +4,8 @@
 //
 use crate::geom::{intersection, Vec2, Vec2w};
 use crate::path::PathOp;
+use crate::vid::Vid;
 use std::fmt;
-
-/// Vertex ID
-type Vid = u16;
 
 /// Style for stroke joins.
 #[derive(Clone, Copy, Debug)]
@@ -48,7 +46,7 @@ impl SubStroke {
     fn new(start: Vid) -> SubStroke {
         SubStroke {
             start,
-            n_points: 0 as Vid,
+            n_points: Vid(0),
             joined: false,
             done: false,
         }
@@ -57,7 +55,7 @@ impl SubStroke {
     fn next(&self, vid: Vid, dir: Dir) -> Vid {
         match dir {
             Dir::Forward => {
-                let v = vid + 1 as Vid;
+                let v = vid + 1;
                 if v < self.start + self.n_points {
                     v
                 } else {
@@ -66,9 +64,9 @@ impl SubStroke {
             }
             Dir::Reverse => {
                 if vid > self.start {
-                    vid - 1 as Vid
+                    vid - 1
                 } else {
-                    self.start + self.n_points - 1 as Vid
+                    self.start + self.n_points - 1
                 }
             }
         }
@@ -76,11 +74,11 @@ impl SubStroke {
     /// Get count of points
     fn count(&self) -> Vid {
         if self.joined {
-            self.n_points + 1 as Vid
-        } else if self.n_points > 0 {
-            self.n_points - 1 as Vid
+            self.n_points + 1
+        } else if self.n_points > Vid(0) {
+            self.n_points - 1
         } else {
-            0 as Vid
+            Vid(0)
         }
     }
 }
@@ -88,9 +86,10 @@ impl SubStroke {
 impl fmt::Debug for Stroke {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for sub in &self.subs {
-            write!(f, "sub {}+{} ", sub.start, sub.n_points)?;
-            for v in sub.start..(sub.start + sub.n_points) {
-                write!(f, "{:?} ", self.get_point(v))?;
+            write!(f, "sub {:?}+{:?} ", sub.start, sub.n_points)?;
+            let end = sub.start + sub.n_points;
+            for v in usize::from(sub.start)..usize::from(end) {
+                write!(f, "{:?} ", self.get_point(Vid::from(v)))?;
             }
         }
         Ok(())
@@ -102,7 +101,7 @@ impl Stroke {
     pub fn new(join_style: JoinStyle, tol_sq: f32) -> Stroke {
         let points = Vec::with_capacity(1024);
         let mut subs = Vec::with_capacity(16);
-        subs.push(SubStroke::new(0 as Vid));
+        subs.push(SubStroke::new(Vid(0)));
         Stroke {
             join_style,
             tol_sq,
@@ -142,7 +141,7 @@ impl Stroke {
     }
     /// Add a new sub-stroke
     fn sub_add(&mut self) {
-        let vid = self.points.len() as Vid;
+        let vid = Vid::from(self.points.len());
         self.subs.push(SubStroke::new(vid));
     }
     /// Add a point to the current sub-stroke
@@ -171,14 +170,14 @@ impl Stroke {
     ///
     /// * `vid` Vertex ID.
     fn get_point(&self, vid: Vid) -> Vec2w {
-        self.points[vid as usize]
+        self.points[usize::from(vid)]
     }
     /// Add a point.
     ///
     /// * `pt` Point to add (w indicates stroke width).
     pub fn add_point(&mut self, pt: Vec2w) {
         let n_pts = self.points.len();
-        if n_pts < Vid::max_value() as usize {
+        if n_pts < usize::from(Vid::MAX) {
             let done = self.sub_current().done;
             if done {
                 self.sub_add();
@@ -219,7 +218,7 @@ impl Stroke {
     }
     /// Stroke one sub-figure.
     fn stroke_sub(&self, ops: &mut Vec<PathOp>, i: usize) {
-        if self.sub_points(i) > 0 {
+        if self.sub_points(i) > Vid(0) {
             let start = self.sub_start(i);
             let end = self.sub_end(i);
             let joined = self.sub_joined(i);
@@ -243,7 +242,7 @@ impl Stroke {
         let mut v0 = start;
         let mut v1 = self.next(v0, dir);
         let joined = self.sub_joined(i);
-        for _ in 0..self.sub_points(i) {
+        for _ in 0..usize::from(self.sub_points(i)) {
             let p0 = self.get_point(v0);
             let p1 = self.get_point(v1);
             let bounds = self.stroke_offset(p0, p1);
