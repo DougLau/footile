@@ -1,6 +1,6 @@
 // geom.rs    Simple geometry stuff.
 //
-// Copyright (c) 2017-2018  Douglas P Lau
+// Copyright (c) 2017-2020  Douglas P Lau
 //
 use std::f32;
 use std::ops;
@@ -42,16 +42,16 @@ pub struct Transform {
 impl ops::Add for Vec2 {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self {
-        Vec2::new(self.x + other.x, self.y + other.y)
+    fn add(self, rhs: Self) -> Self {
+        Vec2::new(self.x + rhs.x, self.y + rhs.y)
     }
 }
 
 impl ops::Sub for Vec2 {
     type Output = Self;
 
-    fn sub(self, other: Self) -> Self {
-        Vec2::new(self.x - other.x, self.y - other.y)
+    fn sub(self, rhs: Self) -> Self {
+        Vec2::new(self.x - rhs.x, self.y - rhs.y)
     }
 }
 
@@ -67,8 +67,8 @@ impl ops::Mul for Vec2 {
     type Output = f32;
 
     /// Calculate the cross product of two Vec2
-    fn mul(self, other: Self) -> f32 {
-        self.x * other.y - self.y * other.x
+    fn mul(self, rhs: Self) -> f32 {
+        self.x * rhs.y - self.y * rhs.x
     }
 }
 
@@ -93,14 +93,17 @@ impl Vec2 {
     pub fn new(x: f32, y: f32) -> Self {
         Vec2 { x, y }
     }
+
     /// Create a zero Vec2
     pub fn zero() -> Self {
         Vec2::new(0.0, 0.0)
     }
+
     /// Get the magnitude of a Vec2
     pub fn mag(self) -> f32 {
         self.x.hypot(self.y)
     }
+
     /// Create a copy normalized to unit length
     pub fn normalize(self) -> Self {
         let m = self.mag();
@@ -110,55 +113,63 @@ impl Vec2 {
             Vec2::zero()
         }
     }
+
     /// Calculate the distance squared between two Vec2
-    pub fn dist_sq(self, other: Self) -> f32 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
+    pub fn dist_sq(self, rhs: Self) -> f32 {
+        let dx = self.x - rhs.x;
+        let dy = self.y - rhs.y;
         dx * dx + dy * dy
     }
+
     /// Calculate the distance between two Vec2
     #[allow(dead_code)]
-    pub fn dist(self, other: Self) -> f32 {
-        self.dist_sq(other).sqrt()
+    pub fn dist(self, rhs: Self) -> f32 {
+        self.dist_sq(rhs).sqrt()
     }
+
     /// Get the midpoint of two Vec2
-    pub fn midpoint(self, other: Self) -> Self {
-        let x = (self.x + other.x) / 2.0;
-        let y = (self.y + other.y) / 2.0;
+    pub fn midpoint(self, rhs: Self) -> Self {
+        let x = (self.x + rhs.x) / 2.0;
+        let y = (self.y + rhs.y) / 2.0;
         Vec2::new(x, y)
     }
+
     /// Create a left-hand perpendicular Vec2
     pub fn left(self) -> Self {
         Vec2::new(-self.y, self.x)
     }
+
     /// Create a right-hand perpendicular Vec2
     #[allow(dead_code)]
     pub fn right(self) -> Self {
         Vec2::new(self.y, -self.x)
     }
+
     /// Calculate winding order for two Vec2.
     ///
     /// The Vec2 should be initialized as edges pointing toward the same vertex.
     /// Returns true if the winding order is widdershins (counter-clockwise).
-    pub fn widdershins(self, other: Self) -> bool {
+    pub fn widdershins(self, rhs: Self) -> bool {
         // Cross product (with Z zero) is used to determine the winding order.
-        (self.x * other.y) > (other.x * self.y)
+        (self.x * rhs.y) > (rhs.x * self.y)
     }
+
     /// Calculate linear interpolation of two Vec2
     ///
     /// * `t` Interpolation amount, from 0 to 1
     #[allow(dead_code)]
-    pub fn lerp(self, other: Self, t: f32) -> Self {
-        let x = float_lerp(self.x, other.x, t);
-        let y = float_lerp(self.y, other.y, t);
+    pub fn lerp(self, rhs: Self, t: f32) -> Self {
+        let x = float_lerp(self.x, rhs.x, t);
+        let y = float_lerp(self.y, rhs.y, t);
         Vec2::new(x, y)
     }
+
     /// Calculate the relative angle to another Vec2.
     ///
     /// The result will be between `-PI` and `+PI`.
-    pub fn angle_rel(self, other: Self) -> f32 {
+    pub fn angle_rel(self, rhs: Self) -> f32 {
         const PI: f32 = f32::consts::PI;
-        let th = self.y.atan2(self.x) - other.y.atan2(other.x);
+        let th = self.y.atan2(self.x) - rhs.y.atan2(rhs.x);
         if th < -PI {
             th + 2.0 * PI
         } else if th > PI {
@@ -206,26 +217,27 @@ impl Vec2w {
             w,
         }
     }
+
     /// Find the midpoint between two Vec2w
-    pub fn midpoint(self, other: Self) -> Self {
+    pub fn midpoint(self, rhs: Self) -> Self {
         Vec2w {
-            v: self.v.midpoint(other.v),
-            w: (self.w + other.w) / 2.0,
+            v: self.v.midpoint(rhs.v),
+            w: (self.w + rhs.w) / 2.0,
         }
     }
 }
 
 impl ops::MulAssign for Transform {
-    fn mul_assign(&mut self, other: Self) {
-        self.e = self.mul_e(&other);
+    fn mul_assign(&mut self, rhs: Self) {
+        self.e = self.mul_e(&rhs);
     }
 }
 
 impl ops::Mul for Transform {
     type Output = Self;
 
-    fn mul(self, other: Self) -> Self {
-        let e = self.mul_e(&other);
+    fn mul(self, rhs: Self) -> Self {
+        let e = self.mul_e(&rhs);
         Transform { e }
     }
 }
@@ -251,16 +263,17 @@ impl Default for Transform {
 
 impl Transform {
     /// Multiple two affine transforms.
-    fn mul_e(&self, other: &Self) -> [f32; 6] {
+    fn mul_e(&self, rhs: &Self) -> [f32; 6] {
         let mut e = [0.0; 6];
-        e[0] = self.e[0] * other.e[0] + self.e[3] * other.e[1];
-        e[1] = self.e[1] * other.e[0] + self.e[4] * other.e[1];
-        e[2] = self.e[2] * other.e[0] + self.e[5] * other.e[1] + other.e[2];
-        e[3] = self.e[0] * other.e[3] + self.e[3] * other.e[4];
-        e[4] = self.e[1] * other.e[3] + self.e[4] * other.e[4];
-        e[5] = self.e[2] * other.e[3] + self.e[5] * other.e[4] + other.e[5];
+        e[0] = self.e[0] * rhs.e[0] + self.e[3] * rhs.e[1];
+        e[1] = self.e[1] * rhs.e[0] + self.e[4] * rhs.e[1];
+        e[2] = self.e[2] * rhs.e[0] + self.e[5] * rhs.e[1] + rhs.e[2];
+        e[3] = self.e[0] * rhs.e[3] + self.e[3] * rhs.e[4];
+        e[4] = self.e[1] * rhs.e[3] + self.e[4] * rhs.e[4];
+        e[5] = self.e[2] * rhs.e[3] + self.e[5] * rhs.e[4] + rhs.e[5];
         e
     }
+
     /// Create a new translation transform.
     ///
     /// * `tx` Amount to translate X.
@@ -270,6 +283,7 @@ impl Transform {
             e: [1.0, 0.0, tx, 0.0, 1.0, ty],
         }
     }
+
     /// Create a new scale transform.
     ///
     /// * `sx` Scale factor for X dimension.
@@ -279,6 +293,7 @@ impl Transform {
             e: [sx, 0.0, 0.0, 0.0, sy, 0.0],
         }
     }
+
     /// Create a new rotation transform.
     ///
     /// * `th` Angle to rotate coordinates (radians).
@@ -289,6 +304,7 @@ impl Transform {
             e: [cs, -sn, 0.0, sn, cs, 0.0],
         }
     }
+
     /// Create a new skew transform.
     ///
     /// * `ax` Angle to skew X-axis (radians).
@@ -300,6 +316,7 @@ impl Transform {
             e: [1.0, tnx, 0.0, tny, 1.0, 0.0],
         }
     }
+
     /// Apply translation to a transform.
     ///
     /// * `tx` Amount to translate X.
@@ -308,6 +325,7 @@ impl Transform {
         self *= Transform::new_translate(tx, ty);
         self
     }
+
     /// Apply scaling to a transform.
     ///
     /// * `sx` Scale factor for X dimension.
@@ -316,6 +334,7 @@ impl Transform {
         self *= Transform::new_scale(sx, sy);
         self
     }
+
     /// Apply rotation to a transform.
     ///
     /// * `th` Angle to rotate coordinates (radians).
@@ -323,6 +342,7 @@ impl Transform {
         self *= Transform::new_rotate(th);
         self
     }
+
     /// Apply skew to a transform.
     ///
     /// * `ax` Angle to skew X-axis (radians).
