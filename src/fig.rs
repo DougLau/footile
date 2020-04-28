@@ -442,8 +442,7 @@ impl Fig {
         let n_points = self.points.len();
         if n_points > 0 {
             debug_assert!(self.sub_is_done());
-            let mut vids: Vec<Vid> =
-                (0..n_points).map(Vid::from).collect();
+            let mut vids: Vec<Vid> = (0..n_points).map(Vid::from).collect();
             vids.sort_by(|a, b| self.compare_vids(*a, *b));
             let dir = self.get_dir(vids[0]);
             let mut scan = Scanner::new(self, matte, sgn_area, dir, rule);
