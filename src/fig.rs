@@ -3,7 +3,7 @@
 // Copyright (c) 2017-2020  Douglas P Lau
 //
 use crate::fixed::Fixed;
-use crate::geom::Vec2;
+use crate::geom::Pt;
 use crate::imgbuf::{accumulate_non_zero, accumulate_odd};
 use crate::path::FillRule;
 use crate::vid::Vid;
@@ -57,7 +57,7 @@ struct Edge {
 ///
 pub struct Fig {
     /// All pionts
-    points: Vec<Vec2>,
+    points: Vec<Pt>,
     /// All sub-figures
     subs: Vec<SubFig>,
 }
@@ -127,15 +127,15 @@ impl SubFig {
 
 impl Edge {
     /// Create a new edge
-    fn new(v0: Vid, v1: Vid, p0: Vec2, p1: Vec2, dir: FigDir) -> Edge {
+    fn new(v0: Vid, v1: Vid, p0: Pt, p1: Pt, dir: FigDir) -> Edge {
         debug_assert_ne!(v0, v1);
-        let dx = Fixed::from(p1.x - p0.x); // delta X
-        let dy = Fixed::from(p1.y - p0.y); // delta Y
+        let dx = Fixed::from(p1.x() - p0.x()); // delta X
+        let dy = Fixed::from(p1.y() - p0.y()); // delta Y
         debug_assert!(dy > Fixed::ZERO);
         let step_pix = Edge::calculate_step(dx, dy);
         let islope = dx / dy;
-        let y0 = Fixed::from(p0.y);
-        let y1 = Fixed::from(p1.y);
+        let y0 = Fixed::from(p0.y());
+        let y1 = Fixed::from(p1.y());
         let y0f = if y0.fract() > Fixed::ZERO {
             Some(y0.into())
         } else {
@@ -147,7 +147,7 @@ impl Edge {
             None
         };
         let fm = (y0.ceil() - y0) * islope;
-        let x_bot = fm + Fixed::from(p0.x);
+        let x_bot = fm + Fixed::from(p0.x());
         Edge {
             v1,
             y0f,
@@ -341,7 +341,7 @@ impl Fig {
         let mut v = sub.next(vid, dir);
         while v != vid {
             let p = self.get_point(v);
-            if p.x < pp.x || cmp_fixed(pp.y, p.y) != Equal {
+            if p.x() < pp.x() || cmp_fixed(pp.y(), p.y()) != Equal {
                 return v;
             }
             v = sub.next(v, dir);
@@ -378,17 +378,17 @@ impl Fig {
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
-    fn get_point(&self, vid: Vid) -> Vec2 {
+    fn get_point(&self, vid: Vid) -> Pt {
         self.points[usize::from(vid.0)]
     }
     /// Get Y value at a vertex.
     fn get_y(&self, vid: Vid) -> f32 {
-        self.get_point(vid).y
+        self.get_point(vid).y()
     }
     /// Add a point.
     ///
     /// * `pt` Point to add.
-    pub fn add_point(&mut self, pt: Vec2) {
+    pub fn add_point(&mut self, pt: Pt) {
         let n_pts = self.points.len();
         if n_pts < usize::from(Vid::MAX) {
             let done = self.sub_is_done();
@@ -402,7 +402,7 @@ impl Fig {
         }
     }
     /// Check if a point is coincident with previous point.
-    fn coincident(&self, pt: Vec2) -> bool {
+    fn coincident(&self, pt: Pt) -> bool {
         if let Some(p) = self.points.last() {
             pt == *p
         } else {
@@ -422,10 +422,10 @@ impl Fig {
     fn compare_vids(&self, v0: Vid, v1: Vid) -> Ordering {
         let p0 = self.get_point(v0);
         let p1 = self.get_point(v1);
-        match cmp_fixed(p0.y, p1.y) {
+        match cmp_fixed(p0.y(), p1.y()) {
             Less => Less,
             Greater => Greater,
-            Equal => p0.x.partial_cmp(&p1.x).unwrap_or(Equal),
+            Equal => p0.x().partial_cmp(&p1.x()).unwrap_or(Equal),
         }
     }
     /// Fill the figure to an image matte.
@@ -693,6 +693,7 @@ fn pixel_cov(fcov: Fixed) -> i16 {
 mod test {
     use super::*;
     use pix::Raster;
+
     #[test]
     fn compare_fixed() {
         assert_eq!(cmp_fixed(0.0, 0.0), Ordering::Equal);
@@ -700,77 +701,83 @@ mod test {
         assert_eq!(cmp_fixed(0.0, 0.0001), Ordering::Less);
         assert_eq!(cmp_fixed(0.0, -0.0001), Ordering::Greater);
     }
+
     #[test]
     fn fig_3x3() {
         let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 3];
         let mut f = Fig::new();
-        f.add_point(Vec2::new(0.0, 0.0));
-        f.add_point(Vec2::new(3.0, 3.0));
-        f.add_point(Vec2::new(0.0, 3.0));
+        f.add_point(Pt(0.0, 0.0));
+        f.add_point(Pt(3.0, 3.0));
+        f.add_point(Pt(0.0, 3.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         assert_eq!([128, 0, 0, 255, 128, 0, 255, 255, 128], m.as_u8_slice());
     }
+
     #[test]
     fn fig_9x1() {
         let mut m = Raster::<Matte8>::with_clear(9, 1);
         let mut s = vec![0; 16];
         let mut f = Fig::new();
-        f.add_point(Vec2::new(0.0, 0.0));
-        f.add_point(Vec2::new(9.0, 1.0));
-        f.add_point(Vec2::new(0.0, 1.0));
+        f.add_point(Pt(0.0, 0.0));
+        f.add_point(Pt(9.0, 1.0));
+        f.add_point(Pt(0.0, 1.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         assert_eq!([242, 213, 185, 156, 128, 100, 71, 43, 14], m.as_u8_slice());
     }
+
     #[test]
     fn fig_x_bounds() {
         let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 4];
         let mut f = Fig::new();
-        f.add_point(Vec2::new(-1.0, 0.0));
-        f.add_point(Vec2::new(-1.0, 3.0));
-        f.add_point(Vec2::new(3.0, 1.5));
+        f.add_point(Pt(-1.0, 0.0));
+        f.add_point(Pt(-1.0, 3.0));
+        f.add_point(Pt(3.0, 1.5));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         assert_eq!([112, 16, 0, 255, 224, 32, 112, 16, 0], m.as_u8_slice());
     }
+
     #[test]
     fn fig_partial() {
         let mut m = Raster::<Matte8>::with_clear(1, 3);
         let mut s = vec![0; 4];
         let mut f = Fig::new();
-        f.add_point(Vec2::new(0.5, 0.0));
-        f.add_point(Vec2::new(0.5, 1.5));
-        f.add_point(Vec2::new(1.0, 3.0));
-        f.add_point(Vec2::new(1.0, 0.0));
+        f.add_point(Pt(0.5, 0.0));
+        f.add_point(Pt(0.5, 1.5));
+        f.add_point(Pt(1.0, 3.0));
+        f.add_point(Pt(1.0, 0.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         assert_eq!([128, 117, 43], m.as_u8_slice());
     }
+
     #[test]
     fn fig_partial2() {
         let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 3];
         let mut f = Fig::new();
-        f.add_point(Vec2::new(1.5, 0.0));
-        f.add_point(Vec2::new(1.5, 1.5));
-        f.add_point(Vec2::new(2.0, 3.0));
-        f.add_point(Vec2::new(3.0, 3.0));
-        f.add_point(Vec2::new(3.0, 0.0));
+        f.add_point(Pt(1.5, 0.0));
+        f.add_point(Pt(1.5, 1.5));
+        f.add_point(Pt(2.0, 3.0));
+        f.add_point(Pt(3.0, 3.0));
+        f.add_point(Pt(3.0, 0.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         assert_eq!([0, 128, 255, 0, 117, 255, 0, 43, 255], m.as_u8_slice());
     }
+
     #[test]
     fn fig_partial3() {
         let mut m = Raster::<Matte8>::with_clear(9, 1);
         let mut s = vec![0; 16];
         let mut f = Fig::new();
-        f.add_point(Vec2::new(0.0, 0.3));
-        f.add_point(Vec2::new(9.0, 0.0));
-        f.add_point(Vec2::new(0.0, 0.0));
+        f.add_point(Pt(0.0, 0.3));
+        f.add_point(Pt(9.0, 0.0));
+        f.add_point(Pt(0.0, 0.0));
         f.close();
         f.fill(&mut m, &mut s, FillRule::NonZero);
         assert_eq!([73, 64, 56, 47, 39, 30, 22, 13, 4], m.as_u8_slice());

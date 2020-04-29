@@ -3,21 +3,15 @@
 // Copyright (c) 2017-2020  Douglas P Lau
 //
 use std::f32;
-use std::ops;
+use std::ops::{Add, Div, Mul, MulAssign, Neg, Sub};
 
-/// 2-dimensional vector.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Vec2 {
-    pub x: f32,
-    pub y: f32,
-}
+/// 2-dimensional vector / point.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Pt(pub f32, pub f32);
 
-/// 2-dimensional vector with associated width.
+/// 2-dimensional vector / point with associated width.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Vec2w {
-    pub v: Vec2,
-    pub w: f32,
-}
+pub struct WidePt(pub Pt, pub f32);
 
 /// An affine transform can translate, scale, rotate and skew 2D points.
 ///
@@ -39,69 +33,69 @@ pub struct Transform {
     e: [f32; 6],
 }
 
-impl ops::Add for Vec2 {
+impl Add for Pt {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        Vec2::new(self.x + rhs.x, self.y + rhs.y)
+        Pt(self.x() + rhs.x(), self.y() + rhs.y())
     }
 }
 
-impl ops::Sub for Vec2 {
+impl Sub for Pt {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
-        Vec2::new(self.x - rhs.x, self.y - rhs.y)
+        Pt(self.x() - rhs.x(), self.y() - rhs.y())
     }
 }
 
-impl ops::Mul<f32> for Vec2 {
+impl Mul<f32> for Pt {
     type Output = Self;
 
     fn mul(self, s: f32) -> Self {
-        Vec2::new(self.x * s, self.y * s)
+        Pt(self.x() * s, self.y() * s)
     }
 }
 
-impl ops::Mul for Vec2 {
+impl Mul for Pt {
     type Output = f32;
 
-    /// Calculate the cross product of two Vec2
+    /// Calculate the cross product of two vectors
     fn mul(self, rhs: Self) -> f32 {
-        self.x * rhs.y - self.y * rhs.x
+        self.x() * rhs.y() - self.y() * rhs.x()
     }
 }
 
-impl ops::Div<f32> for Vec2 {
+impl Div<f32> for Pt {
     type Output = Self;
 
     fn div(self, s: f32) -> Self {
-        Vec2::new(self.x / s, self.y / s)
+        Pt(self.x() / s, self.y() / s)
     }
 }
 
-impl ops::Neg for Vec2 {
+impl Neg for Pt {
     type Output = Self;
 
     fn neg(self) -> Self {
-        Vec2::new(-self.x, -self.y)
+        Pt(-self.x(), -self.y())
     }
 }
 
-impl Vec2 {
-    /// Create a new Vec2
-    pub fn new(x: f32, y: f32) -> Self {
-        Vec2 { x, y }
+impl Pt {
+    /// Get the X value
+    pub fn x(self) -> f32 {
+        self.0
     }
 
-    /// Create a zero Vec2
-    pub fn zero() -> Self {
-        Vec2::new(0.0, 0.0)
+    /// Get the Y value
+    pub fn y(self) -> f32 {
+        self.1
     }
 
-    /// Get the magnitude of a Vec2
+    /// Get the magnitude of a vector
     pub fn mag(self) -> f32 {
-        self.x.hypot(self.y)
+        self.x().hypot(self.y())
     }
 
     /// Create a copy normalized to unit length
@@ -110,66 +104,67 @@ impl Vec2 {
         if m > 0.0 {
             self / m
         } else {
-            Vec2::zero()
+            Pt::default()
         }
     }
 
-    /// Calculate the distance squared between two Vec2
+    /// Calculate the distance squared between two points
     pub fn dist_sq(self, rhs: Self) -> f32 {
-        let dx = self.x - rhs.x;
-        let dy = self.y - rhs.y;
+        let dx = self.x() - rhs.x();
+        let dy = self.y() - rhs.y();
         dx * dx + dy * dy
     }
 
-    /// Calculate the distance between two Vec2
+    /// Calculate the distance between two points
     #[allow(dead_code)]
     pub fn dist(self, rhs: Self) -> f32 {
         self.dist_sq(rhs).sqrt()
     }
 
-    /// Get the midpoint of two Vec2
+    /// Get the midpoint of two points
     pub fn midpoint(self, rhs: Self) -> Self {
-        let x = (self.x + rhs.x) / 2.0;
-        let y = (self.y + rhs.y) / 2.0;
-        Vec2::new(x, y)
+        let x = (self.x() + rhs.x()) / 2.0;
+        let y = (self.y() + rhs.y()) / 2.0;
+        Pt(x, y)
     }
 
-    /// Create a left-hand perpendicular Vec2
+    /// Create a left-hand perpendicular vector
     pub fn left(self) -> Self {
-        Vec2::new(-self.y, self.x)
+        Pt(-self.y(), self.x())
     }
 
-    /// Create a right-hand perpendicular Vec2
+    /// Create a right-hand perpendicular vector
     #[allow(dead_code)]
     pub fn right(self) -> Self {
-        Vec2::new(self.y, -self.x)
+        Pt(self.y(), -self.x())
     }
 
-    /// Calculate winding order for two Vec2.
+    /// Calculate winding order for two points.
     ///
-    /// The Vec2 should be initialized as edges pointing toward the same vertex.
+    /// The points should be initialized as edges pointing toward the same
+    /// vertex.
     /// Returns true if the winding order is widdershins (counter-clockwise).
     pub fn widdershins(self, rhs: Self) -> bool {
         // Cross product (with Z zero) is used to determine the winding order.
-        (self.x * rhs.y) > (rhs.x * self.y)
+        (self.x() * rhs.y()) > (rhs.x() * self.y())
     }
 
-    /// Calculate linear interpolation of two Vec2
+    /// Calculate linear interpolation of two points.
     ///
     /// * `t` Interpolation amount, from 0 to 1
     #[allow(dead_code)]
     pub fn lerp(self, rhs: Self, t: f32) -> Self {
-        let x = float_lerp(self.x, rhs.x, t);
-        let y = float_lerp(self.y, rhs.y, t);
-        Vec2::new(x, y)
+        let x = float_lerp(self.x(), rhs.x(), t);
+        let y = float_lerp(self.y(), rhs.y(), t);
+        Pt(x, y)
     }
 
-    /// Calculate the relative angle to another Vec2.
+    /// Calculate the relative angle to another vector / point.
     ///
     /// The result will be between `-PI` and `+PI`.
     pub fn angle_rel(self, rhs: Self) -> f32 {
         const PI: f32 = f32::consts::PI;
-        let th = self.y.atan2(self.x) - rhs.y.atan2(rhs.x);
+        let th = self.y().atan2(self.x()) - rhs.y().atan2(rhs.x());
         if th < -PI {
             th + 2.0 * PI
         } else if th > PI {
@@ -194,46 +189,48 @@ pub fn float_lerp(a: f32, b: f32, t: f32) -> f32 {
 /// * `b0` First point on line b.
 /// * `b1` Second point on line b.
 /// Returns None if the lines are colinear.
-pub fn intersection(a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) -> Option<Vec2> {
+pub fn intersection(a0: Pt, a1: Pt, b0: Pt, b1: Pt) -> Option<Pt> {
     let av = a0 - a1;
     let bv = b0 - b1;
     let den = av * bv;
     if den != 0.0 {
         let ca = a0 * a1;
         let cb = b0 * b1;
-        let xn = bv.x * ca - av.x * cb;
-        let yn = bv.y * ca - av.y * cb;
-        Some(Vec2::new(xn / den, yn / den))
+        let xn = bv.x() * ca - av.x() * cb;
+        let yn = bv.y() * ca - av.y() * cb;
+        Some(Pt(xn / den, yn / den))
     } else {
         None
     }
 }
 
-impl Vec2w {
-    /// Create a new Vec2w
-    pub fn new(x: f32, y: f32, w: f32) -> Self {
-        Vec2w {
-            v: Vec2::new(x, y),
-            w,
-        }
-    }
-
-    /// Find the midpoint between two Vec2w
-    pub fn midpoint(self, rhs: Self) -> Self {
-        Vec2w {
-            v: self.v.midpoint(rhs.v),
-            w: (self.w + rhs.w) / 2.0,
-        }
+impl Default for WidePt {
+    fn default() -> Self {
+        WidePt(Pt::default(), 1.0)
     }
 }
 
-impl ops::MulAssign for Transform {
+impl WidePt {
+    /// Get the width
+    pub fn w(self) -> f32 {
+        self.1
+    }
+
+    /// Find the midpoint between two wide points
+    pub fn midpoint(self, rhs: Self) -> Self {
+        let v = self.0.midpoint(rhs.0);
+        let w = (self.w() + rhs.w()) / 2.0;
+        WidePt(v, w)
+    }
+}
+
+impl MulAssign for Transform {
     fn mul_assign(&mut self, rhs: Self) {
         self.e = self.mul_e(&rhs);
     }
 }
 
-impl ops::Mul for Transform {
+impl Mul for Transform {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -242,13 +239,13 @@ impl ops::Mul for Transform {
     }
 }
 
-impl ops::Mul<Vec2> for Transform {
-    type Output = Vec2;
+impl Mul<Pt> for Transform {
+    type Output = Pt;
 
-    fn mul(self, s: Vec2) -> Vec2 {
-        let x = self.e[0] * s.x + self.e[1] * s.y + self.e[2];
-        let y = self.e[3] * s.x + self.e[4] * s.y + self.e[5];
-        Vec2::new(x, y)
+    fn mul(self, s: Pt) -> Pt {
+        let x = self.e[0] * s.x() + self.e[1] * s.y() + self.e[2];
+        let y = self.e[3] * s.x() + self.e[4] * s.y() + self.e[5];
+        Pt(x, y)
     }
 }
 
@@ -358,27 +355,27 @@ mod test {
     use super::*;
     #[test]
     fn test_vec2() {
-        let a = Vec2::new(2.0, 1.0);
-        let b = Vec2::new(3.0, 4.0);
-        let c = Vec2::new(-1.0, 1.0);
-        assert_eq!(a + b, Vec2::new(5.0, 5.0));
-        assert_eq!(b - a, Vec2::new(1.0, 3.0));
-        assert_eq!(a * 2.0, Vec2::new(4.0, 2.0));
-        assert_eq!(a / 2.0, Vec2::new(1.0, 0.5));
-        assert_eq!(-a, Vec2::new(-2.0, -1.0));
+        let a = Pt(2.0, 1.0);
+        let b = Pt(3.0, 4.0);
+        let c = Pt(-1.0, 1.0);
+        assert_eq!(a + b, Pt(5.0, 5.0));
+        assert_eq!(b - a, Pt(1.0, 3.0));
+        assert_eq!(a * 2.0, Pt(4.0, 2.0));
+        assert_eq!(a / 2.0, Pt(1.0, 0.5));
+        assert_eq!(-a, Pt(-2.0, -1.0));
         assert_eq!(b.mag(), 5.0);
-        assert_eq!(a.normalize(), Vec2::new(0.8944272, 0.4472136));
+        assert_eq!(a.normalize(), Pt(0.8944272, 0.4472136));
         assert_eq!(a.dist_sq(b), 10.0);
-        assert_eq!(b.dist(Vec2::new(0.0, 0.0)), 5.0);
-        assert_eq!(a.midpoint(b), Vec2::new(2.5, 2.5));
-        assert_eq!(a.left(), Vec2::new(-1.0, 2.0));
-        assert_eq!(a.right(), Vec2::new(1.0, -2.0));
+        assert_eq!(b.dist(Pt(0.0, 0.0)), 5.0);
+        assert_eq!(a.midpoint(b), Pt(2.5, 2.5));
+        assert_eq!(a.left(), Pt(-1.0, 2.0));
+        assert_eq!(a.right(), Pt(1.0, -2.0));
         assert!(a.widdershins(b));
         assert!(!b.widdershins(a));
         assert!(b.widdershins(c));
         assert_eq!(a.angle_rel(b), -0.4636476);
-        assert_eq!(c.angle_rel(Vec2::new(1.0, 1.0)), 1.5707963);
-        assert_eq!(Vec2::new(-1.0, -1.0).angle_rel(c), 1.5707965);
+        assert_eq!(c.angle_rel(Pt(1.0, 1.0)), 1.5707963);
+        assert_eq!(Pt(-1.0, -1.0).angle_rel(c), 1.5707965);
     }
     #[test]
     fn test_identity() {
@@ -388,8 +385,8 @@ mod test {
             [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         );
         assert_eq!(
-            Transform::default() * Vec2::new(1.0, 2.0),
-            Vec2::new(1.0, 2.0)
+            Transform::default() * Pt(1.0, 2.0),
+            Pt(1.0, 2.0)
         );
     }
     #[test]
@@ -403,8 +400,8 @@ mod test {
             [1.0, 0.0, 2.5, 0.0, 1.0, -3.5]
         );
         assert_eq!(
-            Transform::default().translate(5.0, 7.0) * Vec2::new(1.0, -2.0),
-            Vec2::new(6.0, 5.0)
+            Transform::default().translate(5.0, 7.0) * Pt(1.0, -2.0),
+            Pt(6.0, 5.0)
         );
     }
     #[test]
@@ -418,8 +415,8 @@ mod test {
             [3.0, 0.0, 0.0, 0.0, 5.0, 0.0]
         );
         assert_eq!(
-            Transform::default().scale(2.0, 3.0) * Vec2::new(1.5, -2.0),
-            Vec2::new(3.0, -6.0)
+            Transform::default().scale(2.0, 3.0) * Pt(1.5, -2.0),
+            Pt(3.0, -6.0)
         );
     }
     #[test]
@@ -432,8 +429,8 @@ mod test {
             [-1.0, V, 0.0, -V, -1.0, 0.0]
         );
         assert_eq!(
-            Transform::default().rotate(PI / 2.0) * Vec2::new(15.0, 7.0),
-            Vec2::new(-7.0000005, 15.0)
+            Transform::default().rotate(PI / 2.0) * Pt(15.0, 7.0),
+            Pt(-7.0000005, 15.0)
         );
     }
     #[test]
@@ -456,12 +453,12 @@ mod test {
             [1.0, 0.0, 0.0, 1.0, 1.0, 0.0]
         );
         assert_eq!(
-            Transform::default().skew(0.0, PI / 4.0) * Vec2::new(5.0, 3.0),
-            Vec2::new(5.0, 8.0)
+            Transform::default().skew(0.0, PI / 4.0) * Pt(5.0, 3.0),
+            Pt(5.0, 8.0)
         );
         assert_eq!(
-            Transform::default().skew(0.0, PI / 4.0) * Vec2::new(15.0, 7.0),
-            Vec2::new(15.0, 22.0)
+            Transform::default().skew(0.0, PI / 4.0) * Pt(15.0, 7.0),
+            Pt(15.0, 22.0)
         );
     }
     #[test]

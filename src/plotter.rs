@@ -3,7 +3,7 @@
 // Copyright (c) 2017-2020  Douglas P Lau
 //
 use crate::fig::Fig;
-use crate::geom::{float_lerp, Transform, Vec2, Vec2w};
+use crate::geom::{float_lerp, Pt, Transform, WidePt};
 use crate::path::{FillRule, PathOp};
 use crate::stroker::{JoinStyle, Stroke};
 use pix::matte::Matte8;
@@ -34,7 +34,7 @@ pub struct Plotter {
     /// Signed area buffer
     sgn_area: Vec<i16>,
     /// Current pen position and width
-    pen: Vec2w,
+    pen: WidePt,
     /// User to pixel affine transform
     transform: Transform,
     /// Curve decomposition tolerance squared
@@ -50,7 +50,8 @@ trait PlotDest {
     /// Add a point.
     ///
     /// * `pt` Point to add (w indicates stroke width).
-    fn add_point(&mut self, pt: Vec2w);
+    fn add_point(&mut self, pt: WidePt);
+
     /// Close the current sub-figure.
     ///
     /// * `joined` If true, join ends of sub-plot.
@@ -58,8 +59,8 @@ trait PlotDest {
 }
 
 impl PlotDest for Fig {
-    fn add_point(&mut self, pt: Vec2w) {
-        Fig::add_point(self, pt.v);
+    fn add_point(&mut self, pt: WidePt) {
+        Fig::add_point(self, pt.0);
     }
     fn close(&mut self, _joined: bool) {
         Fig::close(self);
@@ -67,7 +68,7 @@ impl PlotDest for Fig {
 }
 
 impl PlotDest for Stroke {
-    fn add_point(&mut self, pt: Vec2w) {
+    fn add_point(&mut self, pt: WidePt) {
         Stroke::add_point(self, pt);
     }
     fn close(&mut self, joined: bool) {
@@ -95,41 +96,48 @@ impl Plotter {
         Plotter {
             matte: Raster::with_clear(w, h),
             sgn_area,
-            pen: Vec2w::new(0.0, 0.0, 1.0),
+            pen: WidePt::default(),
             transform: Transform::default(),
             tol_sq: tol * tol,
             s_width: 1.0,
             join_style: JoinStyle::Miter(4.0),
         }
     }
+
     /// Get width in pixels.
     pub fn width(&self) -> u32 {
         self.matte.width()
     }
+
     /// Get height in pixels.
     pub fn height(&self) -> u32 {
         self.matte.height()
     }
+
     /// Reset pen.
     fn reset(&mut self) {
-        self.pen = Vec2w::new(0.0, 0.0, self.s_width);
+        self.pen = WidePt(Pt::default(), self.s_width);
     }
+
     /// Clear the matte.
     pub fn clear_matte(&mut self) -> &mut Self {
         self.matte.clear();
         self
     }
+
     /// Set tolerance threshold for curve decomposition.
     pub fn set_tolerance(&mut self, t: f32) -> &mut Self {
         let tol = t.max(0.01);
         self.tol_sq = tol * tol;
         self
     }
+
     /// Set the transform.
     pub fn set_transform(&mut self, t: Transform) -> &mut Self {
         self.transform = t;
         self
     }
+
     /// Set pen stroke width.
     ///
     /// All subsequent path points will be affected, until the stroke width
@@ -139,6 +147,7 @@ impl Plotter {
     fn pen_width(&mut self, width: f32) {
         self.s_width = width;
     }
+
     /// Set stroke join style.
     ///
     /// * `js` Join style.
@@ -146,15 +155,18 @@ impl Plotter {
         self.join_style = js;
         self
     }
+
     /// Move the pen.
-    fn move_pen(&mut self, p: Vec2w) {
+    fn move_pen(&mut self, p: WidePt) {
         self.pen = p;
     }
+
     /// Transform a point.
-    fn transform_point(&self, p: Vec2w) -> Vec2w {
-        let pt = self.transform * p.v;
-        Vec2w::new(pt.x, pt.y, p.w)
+    fn transform_point(&self, p: WidePt) -> WidePt {
+        let pt = self.transform * p.0;
+        WidePt(pt, p.w())
     }
+
     /// Add a series of ops.
     fn add_ops<T, D>(&mut self, ops: T, dst: &mut D)
     where
@@ -167,6 +179,7 @@ impl Plotter {
             self.add_op(dst, op.borrow());
         }
     }
+
     /// Add a path operation.
     fn add_op<D: PlotDest>(&mut self, dst: &mut D, op: &PathOp) {
         match *op {
@@ -180,32 +193,36 @@ impl Plotter {
             PathOp::PenWidth(w) => self.pen_width(w),
         };
     }
+
     /// Close current sub-path and move pen to origin.
     fn close<D: PlotDest>(&mut self, dst: &mut D) {
         dst.close(true);
         self.reset();
     }
+
     /// Move pen to a point.
     ///
     /// * `bx` X-position of point.
     /// * `by` Y-position of point.
     fn move_to<D: PlotDest>(&mut self, dst: &mut D, bx: f32, by: f32) {
-        let p = Vec2w::new(bx, by, self.s_width);
+        let p = WidePt(Pt(bx, by), self.s_width);
         dst.close(false);
         let b = self.transform_point(p);
         dst.add_point(b);
         self.move_pen(p);
     }
+
     /// Add a line from pen to a point.
     ///
     /// * `bx` X-position of end point.
     /// * `by` Y-position of end point.
     fn line_to<D: PlotDest>(&mut self, dst: &mut D, bx: f32, by: f32) {
-        let p = Vec2w::new(bx, by, self.s_width);
+        let p = WidePt(Pt(bx, by), self.s_width);
         let b = self.transform_point(p);
         dst.add_point(b);
         self.move_pen(p);
     }
+
     /// Add a quadratic bézier spline.
     ///
     /// The points are A (current pen position), B (control point), and C
@@ -224,14 +241,15 @@ impl Plotter {
         cy: f32,
     ) {
         let pen = self.pen;
-        let bb = Vec2w::new(bx, by, (pen.w + self.s_width) / 2.0);
-        let cc = Vec2w::new(cx, cy, self.s_width);
+        let bb = WidePt(Pt(bx, by), (pen.w() + self.s_width) / 2.0);
+        let cc = WidePt(Pt(cx, cy), self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
         let c = self.transform_point(cc);
         self.quad_to_tran(dst, a, b, c);
         self.move_pen(cc);
     }
+
     /// Add a quadratic bézier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
@@ -239,9 +257,9 @@ impl Plotter {
     fn quad_to_tran<D: PlotDest>(
         &self,
         dst: &mut D,
-        a: Vec2w,
-        b: Vec2w,
-        c: Vec2w,
+        a: WidePt,
+        b: WidePt,
+        c: WidePt,
     ) {
         let ab = a.midpoint(b);
         let bc = b.midpoint(c);
@@ -254,15 +272,18 @@ impl Plotter {
             self.quad_to_tran(dst, ab_bc, bc, c);
         }
     }
+
     /// Check if two points are within tolerance threshold.
-    fn is_within_tolerance(&self, a: Vec2w, b: Vec2w) -> bool {
-        self.is_within_tolerance2(a.v, b.v)
+    fn is_within_tolerance(&self, a: WidePt, b: WidePt) -> bool {
+        self.is_within_tolerance2(a.0, b.0)
     }
+
     /// Check if two points are within tolerance threshold.
-    fn is_within_tolerance2(&self, a: Vec2, b: Vec2) -> bool {
+    fn is_within_tolerance2(&self, a: Pt, b: Pt) -> bool {
         assert!(self.tol_sq > 0.0);
         a.dist_sq(b) <= self.tol_sq
     }
+
     /// Add a cubic bézier spline.
     ///
     /// The points are A (current pen position), B (first control point), C
@@ -285,11 +306,11 @@ impl Plotter {
         dy: f32,
     ) {
         let pen = self.pen;
-        let bw = float_lerp(pen.w, self.s_width, 1.0 / 3.0);
-        let cw = float_lerp(pen.w, self.s_width, 2.0 / 3.0);
-        let bb = Vec2w::new(bx, by, bw);
-        let cc = Vec2w::new(cx, cy, cw);
-        let dd = Vec2w::new(dx, dy, self.s_width);
+        let bw = float_lerp(pen.w(), self.s_width, 1.0 / 3.0);
+        let cw = float_lerp(pen.w(), self.s_width, 2.0 / 3.0);
+        let bb = WidePt(Pt(bx, by), bw);
+        let cc = WidePt(Pt(cx, cy), cw);
+        let dd = WidePt(Pt(dx, dy), self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
         let c = self.transform_point(cc);
@@ -297,6 +318,7 @@ impl Plotter {
         self.cubic_to_tran(dst, a, b, c, d);
         self.move_pen(dd);
     }
+
     /// Add a cubic bézier spline.
     ///
     /// The spline is decomposed into a series of lines using the DeCastlejau
@@ -304,10 +326,10 @@ impl Plotter {
     fn cubic_to_tran<D: PlotDest>(
         &self,
         dst: &mut D,
-        a: Vec2w,
-        b: Vec2w,
-        c: Vec2w,
-        d: Vec2w,
+        a: WidePt,
+        b: WidePt,
+        c: WidePt,
+        d: WidePt,
     ) {
         let ab = a.midpoint(b);
         let bc = b.midpoint(c);
@@ -323,6 +345,7 @@ impl Plotter {
             self.cubic_to_tran(dst, e, bc_cd, cd, d);
         }
     }
+
     /// Fill path onto the matte.
     ///
     /// * `ops` PathOp iterator.
@@ -339,6 +362,7 @@ impl Plotter {
         fig.fill(&mut self.matte, &mut self.sgn_area[..], rule);
         &mut self.matte
     }
+
     /// Stroke path onto the matte.
     ///
     /// * `ops` PathOp iterator.
@@ -352,6 +376,7 @@ impl Plotter {
         let ops = stroke.path_ops();
         self.fill(ops.iter(), FillRule::NonZero)
     }
+
     /// Get the matte.
     pub fn matte(&mut self) -> &mut Raster<Matte8> {
         &mut self.matte

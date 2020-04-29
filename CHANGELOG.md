@@ -3,6 +3,7 @@
 ### Changed
 * Replaced PathBuilder::new() with default() (Default impl)
 * Replaced Transform::new() with default() (Default implt)
+* Renamed Vec2/Vec2w to Pt/WidePt (to avoid confustion with Vec)
 
 ## [0.4.0] - 2020-04-24
 ### Changed

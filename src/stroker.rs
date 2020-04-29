@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2017-2020  Douglas P Lau
 //
-use crate::geom::{intersection, Vec2, Vec2w};
+use crate::geom::{intersection, Pt, WidePt};
 use crate::path::PathOp;
 use crate::vid::Vid;
 use std::fmt;
@@ -35,10 +35,14 @@ struct SubStroke {
 
 /// Stroke struct
 pub struct Stroke {
-    join_style: JoinStyle, // join style
-    tol_sq: f32,           // tolerance squared
-    points: Vec<Vec2w>,    // all points
-    subs: Vec<SubStroke>,  // all sub-strokes
+    /// Join style
+    join_style: JoinStyle,
+    /// Tolerance squared
+    tol_sq: f32,
+    /// All points
+    points: Vec<WidePt>,
+    /// All sub-strokes
+    subs: Vec<SubStroke>,
 }
 
 impl SubStroke {
@@ -109,46 +113,56 @@ impl Stroke {
             subs,
         }
     }
+
     /// Check if two points are within tolerance threshold.
-    fn is_within_tolerance2(&self, a: Vec2, b: Vec2) -> bool {
-        assert!(self.tol_sq > 0f32);
+    fn is_within_tolerance2(&self, a: Pt, b: Pt) -> bool {
+        assert!(self.tol_sq > 0.0);
         a.dist_sq(b) <= self.tol_sq
     }
+
     /// Get the count of sub-strokes
     fn sub_count(&self) -> usize {
         self.subs.len()
     }
+
     /// Get start of a sub-strokes
     fn sub_start(&self, i: usize) -> Vid {
         self.subs[i].start
     }
+
     /// Get end of a sub-strokes
     fn sub_end(&self, i: usize) -> Vid {
         let sub = &self.subs[i];
         sub.next(sub.start, Dir::Reverse)
     }
+
     /// Check if a sub-stroke is joined
     fn sub_joined(&self, i: usize) -> bool {
         self.subs[i].joined
     }
+
     /// Get the number of points in a sub-stroke
     fn sub_points(&self, i: usize) -> Vid {
         self.subs[i].count()
     }
+
     /// Get the current sub-stroke
     fn sub_current(&mut self) -> &mut SubStroke {
         self.subs.last_mut().unwrap()
     }
+
     /// Add a new sub-stroke
     fn sub_add(&mut self) {
         let vid = Vid::from(self.points.len());
         self.subs.push(SubStroke::new(vid));
     }
+
     /// Add a point to the current sub-stroke
     fn sub_add_point(&mut self) {
         let sub = self.sub_current();
         sub.n_points += 1;
     }
+
     /// Get the sub-stroke at a specified vertex ID
     fn sub_at(&self, vid: Vid) -> &SubStroke {
         let n_subs = self.subs.len();
@@ -161,21 +175,24 @@ impl Stroke {
         // Invalid vid indicates bug
         unreachable!();
     }
+
     /// Get next vertex
     fn next(&self, vid: Vid, dir: Dir) -> Vid {
         let sub = self.sub_at(vid);
         sub.next(vid, dir)
     }
+
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
-    fn get_point(&self, vid: Vid) -> Vec2w {
+    fn get_point(&self, vid: Vid) -> WidePt {
         self.points[usize::from(vid)]
     }
+
     /// Add a point.
     ///
     /// * `pt` Point to add (w indicates stroke width).
-    pub fn add_point(&mut self, pt: Vec2w) {
+    pub fn add_point(&mut self, pt: WidePt) {
         let n_pts = self.points.len();
         if n_pts < usize::from(Vid::MAX) {
             let done = self.sub_current().done;
@@ -189,9 +206,9 @@ impl Stroke {
         }
     }
     /// Check if a point is coincident with previous point.
-    fn coincident(&self, pt: Vec2w) -> bool {
+    fn coincident(&self, pt: WidePt) -> bool {
         if let Some(p) = self.points.last() {
-            pt.v == p.v
+            pt.0 == p.0
         } else {
             false
         }
@@ -238,7 +255,7 @@ impl Stroke {
         start: Vid,
         dir: Dir,
     ) {
-        let mut xr: Option<(Vec2, Vec2)> = None;
+        let mut xr: Option<(Pt, Pt)> = None;
         let mut v0 = start;
         let mut v1 = self.next(v0, dir);
         let joined = self.sub_joined(i);
@@ -266,18 +283,18 @@ impl Stroke {
     ///
     /// * `p0` First point.
     /// * `p1` Second point.
-    fn stroke_offset(&self, p0: Vec2w, p1: Vec2w) -> (Vec2, Vec2) {
+    fn stroke_offset(&self, p0: WidePt, p1: WidePt) -> (Pt, Pt) {
         // FIXME: scale offset to allow user units as well as pixel units
-        let pp0 = p0.v;
-        let pp1 = p1.v;
+        let pp0 = p0.0;
+        let pp1 = p1.0;
         let vr = (pp1 - pp0).right().normalize();
-        let pr0 = pp0 + vr * (p0.w / 2f32);
-        let pr1 = pp1 + vr * (p1.w / 2f32);
+        let pr0 = pp0 + vr * (p0.w() / 2.0);
+        let pr1 = pp1 + vr * (p1.w() / 2.0);
         (pr0, pr1)
     }
     /// Add a point to stroke figure.
-    fn stroke_point(&self, ops: &mut Vec<PathOp>, pt: Vec2) {
-        ops.push(PathOp::Line(pt.x, pt.y));
+    fn stroke_point(&self, ops: &mut Vec<PathOp>, pt: Pt) {
+        ops.push(PathOp::Line(pt.x(), pt.y()));
     }
     /// Add a stroke join.
     ///
@@ -289,11 +306,11 @@ impl Stroke {
     fn stroke_join(
         &self,
         ops: &mut Vec<PathOp>,
-        p: Vec2w,
-        a0: Vec2,
-        a1: Vec2,
-        b0: Vec2,
-        b1: Vec2,
+        p: WidePt,
+        a0: Pt,
+        a1: Pt,
+        b0: Pt,
+        b1: Pt,
     ) {
         match self.join_style {
             JoinStyle::Miter(ml) => self.stroke_miter(ops, a0, a1, b0, b1, ml),
@@ -305,20 +322,20 @@ impl Stroke {
     fn stroke_miter(
         &self,
         ops: &mut Vec<PathOp>,
-        a0: Vec2,
-        a1: Vec2,
-        b0: Vec2,
-        b1: Vec2,
+        a0: Pt,
+        a1: Pt,
+        b0: Pt,
+        b1: Pt,
         ml: f32,
     ) {
         // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
         //      so: stroke_width / miter_length = sin ( theta / 2 )
-        if ml > 0f32 {
+        if ml > 0.0 {
             // Minimum stroke:miter ratio
-            let sm_min = 1f32 / ml;
+            let sm_min = 1.0 / ml;
             let th = (a1 - a0).angle_rel(b0 - b1);
-            let sm = (th / 2f32).sin().abs();
-            if sm >= sm_min && sm < 1f32 {
+            let sm = (th / 2.0).sin().abs();
+            if sm >= sm_min && sm < 1.0 {
                 // Calculate miter point
                 if let Some(xp) = intersection(a0, a1, b0, b1) {
                     self.stroke_point(ops, xp);
@@ -329,7 +346,7 @@ impl Stroke {
         self.stroke_bevel(ops, a1, b0);
     }
     /// Add a bevel join.
-    fn stroke_bevel(&self, ops: &mut Vec<PathOp>, a1: Vec2, b0: Vec2) {
+    fn stroke_bevel(&self, ops: &mut Vec<PathOp>, a1: Pt, b0: Pt) {
         self.stroke_point(ops, a1);
         self.stroke_point(ops, b0);
     }
@@ -341,14 +358,14 @@ impl Stroke {
     fn stroke_round(
         &self,
         ops: &mut Vec<PathOp>,
-        p: Vec2w,
-        a0: Vec2,
-        a1: Vec2,
-        b0: Vec2,
-        b1: Vec2,
+        p: WidePt,
+        a0: Pt,
+        a1: Pt,
+        b0: Pt,
+        b1: Pt,
     ) {
         let th = (a1 - a0).angle_rel(b0 - b1);
-        if th <= 0f32 {
+        if th <= 0.0 {
             self.stroke_bevel(ops, a1, b0);
         } else {
             self.stroke_point(ops, a1);
@@ -356,10 +373,10 @@ impl Stroke {
         }
     }
     /// Add a stroke arc.
-    fn stroke_arc(&self, ops: &mut Vec<PathOp>, p: Vec2w, a: Vec2, b: Vec2) {
-        let p2 = p.v;
+    fn stroke_arc(&self, ops: &mut Vec<PathOp>, p: WidePt, a: Pt, b: Pt) {
+        let p2 = p.0;
         let vr = (b - a).right().normalize();
-        let c = p2 + vr * (p.w / 2f32);
+        let c = p2 + vr * (p.w() / 2.0);
         let ab = a.midpoint(b);
         if self.is_within_tolerance2(c, ab) {
             self.stroke_point(ops, b);
