@@ -30,18 +30,18 @@ fn gray_stroke(i: u32) {
 
 fn make_plotter(i: u32) -> Plotter {
     let mut p = Plotter::new(i, i);
-    p.set_transform(Transform::new_scale(2f32, 2f32));
+    p.set_transform(Transform::new_scale(2.0, 2.0));
     p
 }
 
 fn make_fishy() -> Path2D {
     PathBuilder::default()
         .relative()
-        .move_to(112f32, 16f32)
-        .line_to(-48f32, 32f32)
-        .cubic_to(-64f32, -48f32, -64f32, 80f32, 0f32, 32f32)
-        .line_to(48f32, 32f32)
-        .line_to(-32f32, -48f32)
+        .move_to(112.0, 16.0)
+        .line_to(-48.0, 32.0)
+        .cubic_to(-64.0, -48.0, -64.0, 80.0, 0.0, 32.0)
+        .line_to(48.0, 32.0)
+        .line_to(-32.0, -48.0)
         .close()
         .build()
 }

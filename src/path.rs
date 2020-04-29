@@ -91,8 +91,8 @@ impl Default for PathBuilder {
         PathBuilder {
             ops,
             absolute: false,
-            pen_x: 0f32,
-            pen_y: 0f32,
+            pen_x: 0.0,
+            pen_y: 0.0,
         }
     }
 }
@@ -124,8 +124,8 @@ impl PathBuilder {
     /// Close current sub-path and move pen to origin.
     pub fn close(mut self) -> Self {
         self.ops.push(PathOp::Close());
-        self.pen_x = 0f32;
-        self.pen_y = 0f32;
+        self.pen_x = 0.0;
+        self.pen_y = 0.0;
         self
     }
 
