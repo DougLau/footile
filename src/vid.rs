@@ -10,7 +10,10 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 pub struct Vid(pub u16);
 
 impl Vid {
+    /// Minimum vertex ID
     pub const MIN: Self = Vid(u16::MIN);
+
+    /// Maximum vertex ID
     pub const MAX: Self = Vid(u16::MAX);
 }
 
