@@ -30,6 +30,7 @@ pub struct WidePt(pub Pt, pub f32);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
+    /// First six values in 3x3 matrix (last row assumed to be 0 0 1)
     e: [f32; 6],
 }
 
@@ -353,8 +354,9 @@ impl Transform {
 #[cfg(test)]
 mod test {
     use super::*;
+
     #[test]
-    fn test_vec2() {
+    fn test_pt() {
         let a = Pt(2.0, 1.0);
         let b = Pt(3.0, 4.0);
         let c = Pt(-1.0, 1.0);
@@ -377,6 +379,7 @@ mod test {
         assert_eq!(c.angle_rel(Pt(1.0, 1.0)), 1.5707963);
         assert_eq!(Pt(-1.0, -1.0).angle_rel(c), 1.5707965);
     }
+
     #[test]
     fn test_identity() {
         assert_eq!(Transform::default().e, [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
@@ -389,6 +392,7 @@ mod test {
             Pt(1.0, 2.0)
         );
     }
+
     #[test]
     fn test_translate() {
         assert_eq!(
@@ -404,6 +408,7 @@ mod test {
             Pt(6.0, 5.0)
         );
     }
+
     #[test]
     fn test_scale() {
         assert_eq!(
@@ -419,6 +424,7 @@ mod test {
             Pt(3.0, -6.0)
         );
     }
+
     #[test]
     fn test_rotate() {
         const PI: f32 = f32::consts::PI;
@@ -433,6 +439,7 @@ mod test {
             Pt(-7.0000005, 15.0)
         );
     }
+
     #[test]
     fn test_skew() {
         const PI: f32 = f32::consts::PI;
@@ -461,6 +468,7 @@ mod test {
             Pt(15.0, 22.0)
         );
     }
+
     #[test]
     fn test_transform() {
         assert_eq!(
