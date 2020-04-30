@@ -162,8 +162,9 @@ impl Fixed {
 mod test {
     use super::*;
     use std::cmp;
+
     #[test]
-    fn test_add() {
+    fn fixed_add() {
         assert_eq!(Fixed::from(1) + Fixed::from(1), Fixed::from(2));
         assert_eq!(Fixed::from(2) + Fixed::from(2), Fixed::from(4));
         assert_eq!(Fixed::from(2) + Fixed::from(-2), Fixed::from(0));
@@ -171,8 +172,9 @@ mod test {
         assert_eq!(Fixed::from(1.5) + Fixed::from(1.5), Fixed::from(3));
         assert_eq!(Fixed::from(3.5) + Fixed::from(-1.25), Fixed::from(2.25));
     }
+
     #[test]
-    fn test_sub() {
+    fn fixed_sub() {
         assert_eq!(Fixed::from(1) - Fixed::from(1), Fixed::from(0));
         assert_eq!(Fixed::from(3) - Fixed::from(2), Fixed::from(1));
         assert_eq!(Fixed::from(2) - Fixed::from(-2), Fixed::from(4));
@@ -180,8 +182,9 @@ mod test {
         assert_eq!(Fixed::from(1.5) - Fixed::from(1.5), Fixed::from(0));
         assert_eq!(Fixed::from(3.5) - Fixed::from(1.25), Fixed::from(2.25));
     }
+
     #[test]
-    fn test_mul() {
+    fn fixed_mul() {
         assert_eq!(Fixed::from(2) * Fixed::from(2), Fixed::from(4));
         assert_eq!(Fixed::from(3) * Fixed::from(-2), Fixed::from(-6));
         assert_eq!(Fixed::from(4) * Fixed::from(0.5), Fixed::from(2));
@@ -189,8 +192,9 @@ mod test {
         assert_eq!(Fixed::from(37) * Fixed::from(3), Fixed::from(111));
         assert_eq!(Fixed::from(128) * Fixed::from(128), Fixed::from(16384));
     }
+
     #[test]
-    fn test_div() {
+    fn fixed_div() {
         assert_eq!(Fixed::from(4) / Fixed::from(2), Fixed::from(2));
         assert_eq!(Fixed::from(-6) / Fixed::from(2), Fixed::from(-3));
         assert_eq!(Fixed::from(2) / Fixed::from(0.5), Fixed::from(4));
@@ -199,32 +203,36 @@ mod test {
         assert_eq!(Fixed::from(37) / Fixed::from(3), Fixed::from(12.33333));
         assert_eq!(Fixed::from(16384) / Fixed::from(128), Fixed::from(128));
     }
+
     #[test]
-    fn test_shl() {
+    fn fixed_shl() {
         assert_eq!(Fixed::from(0) << 2, Fixed::from(0));
         assert_eq!(Fixed::from(1) << 1, Fixed::from(2));
         assert_eq!(Fixed::from(0.5) << 1, Fixed::from(1));
         assert_eq!(Fixed::from(0.25) << 2, Fixed::from(1));
         assert_eq!(Fixed::from(0.125) << 3, Fixed::from(1));
     }
+
     #[test]
-    fn test_shr() {
+    fn fixed_shr() {
         assert_eq!(Fixed::from(0) >> 2, Fixed::from(0));
         assert_eq!(Fixed::from(1) >> 1, Fixed::from(0.5));
         assert_eq!(Fixed::from(2) >> 1, Fixed::from(1));
         assert_eq!(Fixed::from(4) >> 2, Fixed::from(1));
         assert_eq!(Fixed::from(8) >> 3, Fixed::from(1));
     }
+
     #[test]
-    fn test_abs() {
+    fn fixed_abs() {
         assert_eq!(Fixed::from(1).abs(), Fixed::from(1));
         assert_eq!(Fixed::from(500).abs(), Fixed::from(500));
         assert_eq!(Fixed::from(-500).abs(), Fixed::from(500));
         assert_eq!(Fixed::from(-1.5).abs(), Fixed::from(1.5));
         assert_eq!(Fixed::from(-2.5).abs(), Fixed::from(2.5));
     }
+
     #[test]
-    fn test_floor() {
+    fn fixed_floor() {
         assert_eq!(Fixed::from(1).floor(), Fixed::from(1));
         assert_eq!(Fixed::from(500).floor(), Fixed::from(500));
         assert_eq!(Fixed::from(1.5).floor(), Fixed::from(1));
@@ -232,8 +240,9 @@ mod test {
         assert_eq!(Fixed::from(-0.0001).floor(), Fixed::from(-1));
         assert_eq!(Fixed::from(-2.5).floor(), Fixed::from(-3));
     }
+
     #[test]
-    fn test_ceil() {
+    fn fixed_ceil() {
         assert_eq!(Fixed::from(1).ceil(), Fixed::from(1));
         assert_eq!(Fixed::from(500).ceil(), Fixed::from(500));
         assert_eq!(Fixed::from(1.5).ceil(), Fixed::from(2));
@@ -241,8 +250,9 @@ mod test {
         assert_eq!(Fixed::from(-0.0001).ceil(), Fixed::from(0));
         assert_eq!(Fixed::from(-2.5).ceil(), Fixed::from(-2));
     }
+
     #[test]
-    fn test_round() {
+    fn fixed_round() {
         assert_eq!(Fixed::from(1).round(), Fixed::from(1));
         assert_eq!(Fixed::from(500).round(), Fixed::from(500));
         assert_eq!(Fixed::from(1.5).round(), Fixed::from(2));
@@ -252,8 +262,9 @@ mod test {
         assert_eq!(Fixed::from(-2.5).round(), Fixed::from(-2));
         assert_eq!(Fixed::from(-2.9).round(), Fixed::from(-3));
     }
+
     #[test]
-    fn test_trunc() {
+    fn fixed_trunc() {
         assert_eq!(Fixed::from(1).trunc(), Fixed::from(1));
         assert_eq!(Fixed::from(500).trunc(), Fixed::from(500));
         assert_eq!(Fixed::from(1.5).trunc(), Fixed::from(1));
@@ -263,24 +274,27 @@ mod test {
         assert_eq!(Fixed::from(-2.5).trunc(), Fixed::from(-2));
         assert_eq!(Fixed::from(-2.9).trunc(), Fixed::from(-2));
     }
+
     #[test]
-    fn test_fract() {
+    fn fixed_fract() {
         assert_eq!(Fixed::from(0).fract(), Fixed::from(0));
         assert_eq!(Fixed::from(0.1).fract(), Fixed::from(0.1));
         assert_eq!(Fixed::from(0.9).fract(), Fixed::from(0.9));
         assert_eq!(Fixed::from(1.5).fract(), Fixed::from(0.5));
         assert_eq!(Fixed::from(-2.5).fract(), Fixed::from(0.5));
     }
+
     #[test]
-    fn test_avg() {
+    fn fixed_avg() {
         assert_eq!(Fixed::from(1).avg(Fixed::from(2)), Fixed::from(1.5));
         assert_eq!(Fixed::from(1).avg(Fixed::from(1)), Fixed::from(1));
         assert_eq!(Fixed::from(5).avg(Fixed::from(-5)), Fixed::from(0));
         assert_eq!(Fixed::from(3).avg(Fixed::from(37)), Fixed::from(20));
         assert_eq!(Fixed::from(3).avg(Fixed::from(1.5)), Fixed::from(2.25));
     }
+
     #[test]
-    fn test_into() {
+    fn fixed_into() {
         let i: i32 = Fixed::from(37).into();
         assert_eq!(i, 37);
         let f: f32 = Fixed::from(2.5).into();
@@ -288,8 +302,9 @@ mod test {
         let a: i32 = Fixed::from(2.5).into();
         assert_eq!(a, 2);
     }
+
     #[test]
-    fn test_cmp() {
+    fn fixed_cmp() {
         assert!(Fixed::from(37) > Fixed::from(3));
         assert!(Fixed::from(3) < Fixed::from(37));
         assert!(Fixed::from(-4) < Fixed::from(4));
