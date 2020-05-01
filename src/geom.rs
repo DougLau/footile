@@ -23,7 +23,7 @@ pub struct WidePt(pub Pt, pub f32);
 /// ```
 /// use footile::Transform;
 /// const PI: f32 = std::f32::consts::PI;
-/// let t = Transform::new_translate(-50.0, -50.0)
+/// let t = Transform::with_translate(-50.0, -50.0)
 ///     .rotate(PI)
 ///     .translate(50.0, 50.0)
 ///     .scale(2.0, 2.0);
@@ -276,7 +276,7 @@ impl Transform {
     ///
     /// * `tx` Amount to translate X.
     /// * `ty` Amount to translate Y.
-    pub fn new_translate(tx: f32, ty: f32) -> Self {
+    pub fn with_translate(tx: f32, ty: f32) -> Self {
         Transform {
             e: [1.0, 0.0, tx, 0.0, 1.0, ty],
         }
@@ -286,7 +286,7 @@ impl Transform {
     ///
     /// * `sx` Scale factor for X dimension.
     /// * `sy` Scale factor for Y dimension.
-    pub fn new_scale(sx: f32, sy: f32) -> Self {
+    pub fn with_scale(sx: f32, sy: f32) -> Self {
         Transform {
             e: [sx, 0.0, 0.0, 0.0, sy, 0.0],
         }
@@ -295,7 +295,7 @@ impl Transform {
     /// Create a new rotation transform.
     ///
     /// * `th` Angle to rotate coordinates (radians).
-    pub fn new_rotate(th: f32) -> Self {
+    pub fn with_rotate(th: f32) -> Self {
         let sn = th.sin();
         let cs = th.cos();
         Transform {
@@ -307,7 +307,7 @@ impl Transform {
     ///
     /// * `ax` Angle to skew X-axis (radians).
     /// * `ay` Angle to skew Y-axis (radians).
-    pub fn new_skew(ax: f32, ay: f32) -> Self {
+    pub fn with_skew(ax: f32, ay: f32) -> Self {
         let tnx = ax.tan();
         let tny = ay.tan();
         Transform {
@@ -320,7 +320,7 @@ impl Transform {
     /// * `tx` Amount to translate X.
     /// * `ty` Amount to translate Y.
     pub fn translate(mut self, tx: f32, ty: f32) -> Self {
-        self *= Transform::new_translate(tx, ty);
+        self *= Transform::with_translate(tx, ty);
         self
     }
 
@@ -329,7 +329,7 @@ impl Transform {
     /// * `sx` Scale factor for X dimension.
     /// * `sy` Scale factor for Y dimension.
     pub fn scale(mut self, sx: f32, sy: f32) -> Self {
-        self *= Transform::new_scale(sx, sy);
+        self *= Transform::with_scale(sx, sy);
         self
     }
 
@@ -337,7 +337,7 @@ impl Transform {
     ///
     /// * `th` Angle to rotate coordinates (radians).
     pub fn rotate(mut self, th: f32) -> Self {
-        self *= Transform::new_rotate(th);
+        self *= Transform::with_rotate(th);
         self
     }
 
@@ -346,7 +346,7 @@ impl Transform {
     /// * `ax` Angle to skew X-axis (radians).
     /// * `ay` Angle to skew Y-axis (radians).
     pub fn skew(mut self, ax: f32, ay: f32) -> Self {
-        self *= Transform::new_skew(ax, ay);
+        self *= Transform::with_skew(ax, ay);
         self
     }
 }
@@ -396,7 +396,7 @@ mod test {
     #[test]
     fn test_translate() {
         assert_eq!(
-            Transform::new_translate(1.5, -1.5).e,
+            Transform::with_translate(1.5, -1.5).e,
             [1.0, 0.0, 1.5, 0.0, 1.0, -1.5]
         );
         assert_eq!(
@@ -412,7 +412,7 @@ mod test {
     #[test]
     fn test_scale() {
         assert_eq!(
-            Transform::new_scale(2.0, 4.0).e,
+            Transform::with_scale(2.0, 4.0).e,
             [2.0, 0.0, 0.0, 0.0, 4.0, 0.0]
         );
         assert_eq!(
@@ -429,7 +429,7 @@ mod test {
     fn test_rotate() {
         const PI: f32 = f32::consts::PI;
         const V: f32 = 0.00000008742278;
-        assert_eq!(Transform::new_rotate(PI).e, [-1.0, V, 0.0, -V, -1.0, 0.0]);
+        assert_eq!(Transform::with_rotate(PI).e, [-1.0, V, 0.0, -V, -1.0, 0.0]);
         assert_eq!(
             Transform::default().rotate(PI).e,
             [-1.0, V, 0.0, -V, -1.0, 0.0]
@@ -444,7 +444,7 @@ mod test {
     fn test_skew() {
         const PI: f32 = f32::consts::PI;
         assert_eq!(
-            Transform::new_skew(PI / 2.0, 0.0).e,
+            Transform::with_skew(PI / 2.0, 0.0).e,
             [1.0, -22877334.0, 0.0, 0.0, 1.0, 0.0]
         );
         assert_eq!(
@@ -452,7 +452,7 @@ mod test {
             [1.0, -22877334.0, 0.0, 0.0, 1.0, 0.0]
         );
         assert_eq!(
-            Transform::new_skew(0.0, PI / 4.0).e,
+            Transform::with_skew(0.0, PI / 4.0).e,
             [1.0, 0.0, 0.0, 1.0, 1.0, 0.0]
         );
         assert_eq!(
@@ -472,16 +472,16 @@ mod test {
     #[test]
     fn test_transform() {
         assert_eq!(
-            (Transform::new_translate(1.0, 2.0)
-                * Transform::new_scale(2.0, 2.0))
+            (Transform::with_translate(1.0, 2.0)
+                * Transform::with_scale(2.0, 2.0))
             .e,
             [2.0, 0.0, 2.0, 0.0, 2.0, 4.0]
         );
         assert_eq!(
-            Transform::new_translate(3.0, 5.0)
-                * Transform::new_scale(7.0, 11.0)
-                * Transform::new_rotate(f32::consts::PI / 2.0)
-                * Transform::new_skew(1.0, -2.0),
+            Transform::with_translate(3.0, 5.0)
+                * Transform::with_scale(7.0, 11.0)
+                * Transform::with_rotate(f32::consts::PI / 2.0)
+                * Transform::with_skew(1.0, -2.0),
             Transform::default()
                 .translate(3.0, 5.0)
                 .scale(7.0, 11.0)
