@@ -27,10 +27,14 @@ enum Dir {
 
 /// Sub-stroke struct
 struct SubStroke {
-    start: Vid,    // starting point
-    n_points: Vid, // number of points
-    joined: bool,  // joined ends flag
-    done: bool,    // done flag
+    /// Starting point
+    start: Vid,
+    /// Number of points
+    n_points: Vid,
+    /// Joined ends flag
+    joined: bool,
+    /// Done flag
+    done: bool,
 }
 
 /// Stroke struct
@@ -55,6 +59,7 @@ impl SubStroke {
             done: false,
         }
     }
+
     /// Get next vertex within a sub-stroke
     fn next(&self, vid: Vid, dir: Dir) -> Vid {
         match dir {
@@ -75,8 +80,9 @@ impl SubStroke {
             }
         }
     }
+
     /// Get count of points
-    fn count(&self) -> Vid {
+    fn len(&self) -> Vid {
         if self.joined {
             self.n_points + 1
         } else if self.n_points > Vid(0) {
@@ -93,7 +99,7 @@ impl fmt::Debug for Stroke {
             write!(f, "sub {:?}+{:?} ", sub.start, sub.n_points)?;
             let end = sub.start + sub.n_points;
             for v in usize::from(sub.start)..usize::from(end) {
-                write!(f, "{:?} ", self.get_point(Vid::from(v)))?;
+                write!(f, "{:?} ", self.point(Vid::from(v)))?;
             }
         }
         Ok(())
@@ -121,7 +127,7 @@ impl Stroke {
     }
 
     /// Get the count of sub-strokes
-    fn sub_count(&self) -> usize {
+    fn len(&self) -> usize {
         self.subs.len()
     }
 
@@ -143,7 +149,7 @@ impl Stroke {
 
     /// Get the number of points in a sub-stroke
     fn sub_points(&self, i: usize) -> Vid {
-        self.subs[i].count()
+        self.subs[i].len()
     }
 
     /// Get the current sub-stroke
@@ -185,7 +191,7 @@ impl Stroke {
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
-    fn get_point(&self, vid: Vid) -> WidePt {
+    fn point(&self, vid: Vid) -> WidePt {
         self.points[usize::from(vid)]
     }
 
@@ -205,6 +211,7 @@ impl Stroke {
             }
         }
     }
+
     /// Check if a point is coincident with previous point.
     fn coincident(&self, pt: WidePt) -> bool {
         if let Some(p) = self.points.last() {
@@ -213,6 +220,7 @@ impl Stroke {
             false
         }
     }
+
     /// Close the current sub-stroke.
     ///
     /// * `joined` If true, join ends of sub-stroke.
@@ -223,16 +231,18 @@ impl Stroke {
             sub.done = true;
         }
     }
+
     /// Create path ops of the stroke
     pub fn path_ops(&self) -> Vec<PathOp> {
         // FIXME: this should make a lazy iterator
         let mut ops = vec![];
-        let n_subs = self.sub_count();
+        let n_subs = self.len();
         for i in 0..n_subs {
             self.stroke_sub(&mut ops, i);
         }
         ops
     }
+
     /// Stroke one sub-figure.
     fn stroke_sub(&self, ops: &mut Vec<PathOp>, i: usize) {
         if self.sub_points(i) > Vid(0) {
@@ -247,6 +257,7 @@ impl Stroke {
             ops.push(PathOp::Close());
         }
     }
+
     /// Stroke one side of a sub-figure to another figure.
     fn stroke_side(
         &self,
@@ -260,8 +271,8 @@ impl Stroke {
         let mut v1 = self.next(v0, dir);
         let joined = self.sub_joined(i);
         for _ in 0..usize::from(self.sub_points(i)) {
-            let p0 = self.get_point(v0);
-            let p1 = self.get_point(v1);
+            let p0 = self.point(v0);
+            let p1 = self.point(v1);
             let bounds = self.stroke_offset(p0, p1);
             let (pr0, pr1) = bounds;
             if let Some((xr0, xr1)) = xr {
@@ -279,6 +290,7 @@ impl Stroke {
             }
         }
     }
+
     /// Offset segment by half stroke width.
     ///
     /// * `p0` First point.
@@ -318,6 +330,7 @@ impl Stroke {
             JoinStyle::Round => self.stroke_round(ops, p, a0, a1, b0, b1),
         }
     }
+
     /// Add a miter join.
     fn stroke_miter(
         &self,
@@ -345,11 +358,13 @@ impl Stroke {
         }
         self.stroke_bevel(ops, a1, b0);
     }
+
     /// Add a bevel join.
     fn stroke_bevel(&self, ops: &mut Vec<PathOp>, a1: Pt, b0: Pt) {
         self.stroke_point(ops, a1);
         self.stroke_point(ops, b0);
     }
+
     /// Add a round join.
     ///
     /// * `p` Join point (with stroke width).
@@ -372,6 +387,7 @@ impl Stroke {
             self.stroke_arc(ops, p, a1, b0);
         }
     }
+
     /// Add a stroke arc.
     fn stroke_arc(&self, ops: &mut Vec<PathOp>, p: WidePt, a: Pt, b: Pt) {
         let p2 = p.0;
