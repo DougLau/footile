@@ -1,6 +1,5 @@
 // fishy2.rs
 use footile::{FillRule, PathBuilder, Plotter};
-use pix::ops::SrcOver;
 use pix::rgb::{Rgba8p, SRgba8};
 use pix::Raster;
 
@@ -26,17 +25,12 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(-8.0, 8.0)
         .build();
     let v = vec![Rgba8p::new(0, 0, 0, 0); 128 * 128];
-    let mut p = Plotter::new(128, 128);
-    let mut r = Raster::<Rgba8p>::with_pixels(p.width(), p.height(), v);
-    let clr = Rgba8p::new(127, 96, 96, 255);
-    r.composite_matte((), p.fill(&fish, FillRule::NonZero), (), clr, SrcOver);
-    p.clear_matte();
-    let clr = Rgba8p::new(255, 208, 208, 255);
-    r.composite_matte((), p.stroke(&fish), (), clr, SrcOver);
-    p.clear_matte();
-    let clr = Rgba8p::new(0, 0, 0, 255);
-    r.composite_matte((), p.stroke(&eye), (), clr, SrcOver);
+    let r = Raster::<Rgba8p>::with_pixels(128, 128, v);
+    let mut p = Plotter::new(r);
+    p.fill(FillRule::NonZero, &fish, Rgba8p::new(127, 96, 96, 255));
+    p.stroke(&fish, Rgba8p::new(255, 208, 208, 255));
+    p.stroke(&eye, Rgba8p::new(0, 0, 0, 255));
 
-    let r = Raster::<SRgba8>::with_raster(&r);
+    let r = Raster::<SRgba8>::with_raster(&p.raster());
     png::write(&r, "./fishy2.png")
 }

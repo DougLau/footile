@@ -1,5 +1,7 @@
-// quad.rs     Example plotting a quadratic bézier spline.
+// quad.rs
 use footile::{PathBuilder, Plotter};
+use pix::matte::Matte8;
+use pix::Raster;
 
 mod png;
 
@@ -10,6 +12,7 @@ fn main() -> Result<(), std::io::Error> {
         .move_to(0.0, 16.0)
         .quad_to(100.0, 16.0, 0.0, 32.0)
         .build();
-    let mut p = Plotter::new(64, 64);
-    png::write_matte(p.stroke(&path), "./quad.png")
+    let r = Raster::with_clear(64, 64);
+    let mut p = Plotter::new(r);
+    png::write_matte(p.stroke(&path, Matte8::new(255)), "./quad.png")
 }

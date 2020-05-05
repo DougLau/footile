@@ -1,21 +1,21 @@
-use footile::{PathOp::*, Plotter};
+use footile::{FillRule, PathOp::*, Plotter, Pt};
+use pix::matte::Matte8;
+use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
     let path = vec![
-        Move(8.0, 4.0),
-        Line(8.0, 3.0),
-        Cubic(8.0, 3.0, 8.0, 3.0, 9.0, 3.75),
-        Line(8.0, 3.75),
-        Line(8.5, 3.75),
-        Line(8.5, 3.5),
+        Move(Pt(8.0, 4.0)),
+        Line(Pt(8.0, 3.0)),
+        Cubic(Pt(8.0, 3.0), Pt(8.0, 3.0), Pt(9.0, 3.75)),
+        Line(Pt(8.0, 3.75)),
+        Line(Pt(8.5, 3.75)),
+        Line(Pt(8.5, 3.5)),
         Close(),
     ];
-    let mut p = Plotter::new(64, 64);
-
-    png::write_matte(
-        p.fill(&path, footile::FillRule::NonZero),
-        "./overlapping.png",
-    )
+    let r = Raster::with_clear(64, 64);
+    let mut p = Plotter::new(r);
+    p.fill(FillRule::NonZero, &path, Matte8::new(255));
+    png::write_matte(&p.raster(), "./overlapping.png")
 }

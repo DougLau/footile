@@ -6,31 +6,39 @@ use crate::fig::Fig;
 use crate::geom::{float_lerp, Pt, Transform, WidePt};
 use crate::path::{FillRule, PathOp};
 use crate::stroker::{JoinStyle, Stroke};
-use pix::matte::Matte8;
+use pix::chan::{Ch8, Linear, Premultiplied};
+use pix::el::Pixel;
 use pix::Raster;
 use std::borrow::Borrow;
 
 /// Plotter for 2D vector paths.
 ///
 /// This is a software vector rasterizer featuring anti-aliasing.
-/// Paths can be created using [PathBuilder](struct.PathBuilder.html).
-/// The plotter contains a matte of the current plot, which is affected by fill
-/// and stroke calls.
+/// Paths can be created using [PathBuilder].  The plotter contains a raster,
+/// which is drawn by fill and stroke calls.
+///
+/// [PathBuilder]: struct.PathBuilder.html
 ///
 /// # Example
 /// ```
 /// use footile::{PathBuilder, Plotter};
+/// use pix::rgb::Rgba8p;
+/// use pix::Raster;
+///
 /// let path = PathBuilder::default().pen_width(3.0)
 ///     .move_to(50.0, 34.0)
 ///     .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
 ///     .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
 ///     .close().build();
-/// let mut p = Plotter::new(100, 100);
-/// p.stroke(&path);
+/// let mut p = Plotter::new(Raster::with_clear(100, 100));
+/// p.stroke(&path, Rgba8p::new(255, 128, 0, 255));
 /// ```
-pub struct Plotter {
-    /// Image matte
-    matte: Raster<Matte8>,
+pub struct Plotter<P>
+where
+    P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+{
+    /// Image raster
+    raster: Raster<P>,
     /// Signed area buffer
     sgn_area: Vec<i16>,
     /// Current pen position and width
@@ -76,25 +84,25 @@ impl PlotDest for Stroke {
     }
 }
 
-impl Plotter {
+impl<P> Plotter<P>
+where
+    P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+{
     /// Create a new plotter.
     ///
-    /// * `width` Width in pixels.
-    /// * `height` Height in pixels.
-    pub fn new(width: u32, height: u32) -> Plotter {
+    /// * `raster` Raster to draw.
+    pub fn new(raster: Raster<P>) -> Self {
         let tol = 0.3;
-        let w = if width > 0 { width } else { 100 };
-        let h = if height > 0 { height } else { 100 };
-        let len = w as usize;
+        let len = raster.width() as usize;
         // Capacity must be 8-element multiple (for SIMD)
         let cap = ((len + 7) >> 3) << 3;
-        let mut sgn_area = vec![0i16; cap];
+        let mut sgn_area = vec![0; cap];
         // Remove excess elements
         for _ in 0..cap - len {
             sgn_area.pop();
         }
         Plotter {
-            matte: Raster::with_clear(w, h),
+            raster,
             sgn_area,
             pen: WidePt::default(),
             transform: Transform::default(),
@@ -106,23 +114,17 @@ impl Plotter {
 
     /// Get width in pixels.
     pub fn width(&self) -> u32 {
-        self.matte.width()
+        self.raster.width()
     }
 
     /// Get height in pixels.
     pub fn height(&self) -> u32 {
-        self.matte.height()
+        self.raster.height()
     }
 
     /// Reset pen.
     fn reset(&mut self) {
         self.pen = WidePt(Pt::default(), self.s_width);
-    }
-
-    /// Clear the matte.
-    pub fn clear_matte(&mut self) -> &mut Self {
-        self.matte.clear();
-        self
     }
 
     /// Set tolerance threshold for curve decomposition.
@@ -184,11 +186,11 @@ impl Plotter {
     fn add_op<D: PlotDest>(&mut self, dst: &mut D, op: &PathOp) {
         match *op {
             PathOp::Close() => self.close(dst),
-            PathOp::Move(bx, by) => self.move_to(dst, bx, by),
-            PathOp::Line(bx, by) => self.line_to(dst, bx, by),
-            PathOp::Quad(bx, by, cx, cy) => self.quad_to(dst, bx, by, cx, cy),
-            PathOp::Cubic(bx, by, cx, cy, dx, dy) => {
-                self.cubic_to(dst, bx, by, cx, cy, dx, dy)
+            PathOp::Move(pb) => self.move_to(dst, pb),
+            PathOp::Line(pb) => self.line_to(dst, pb),
+            PathOp::Quad(pb, pc) => self.quad_to(dst, pb, pc),
+            PathOp::Cubic(pb, pc, pd) => {
+                self.cubic_to(dst, pb, pc, pd)
             }
             PathOp::PenWidth(w) => self.pen_width(w),
         };
@@ -202,10 +204,9 @@ impl Plotter {
 
     /// Move pen to a point.
     ///
-    /// * `bx` X-position of point.
-    /// * `by` Y-position of point.
-    fn move_to<D: PlotDest>(&mut self, dst: &mut D, bx: f32, by: f32) {
-        let p = WidePt(Pt(bx, by), self.s_width);
+    /// * `pb` New point.
+    fn move_to<D: PlotDest>(&mut self, dst: &mut D, pb: Pt) {
+        let p = WidePt(pb, self.s_width);
         dst.close(false);
         let b = self.transform_point(p);
         dst.add_point(b);
@@ -214,10 +215,9 @@ impl Plotter {
 
     /// Add a line from pen to a point.
     ///
-    /// * `bx` X-position of end point.
-    /// * `by` Y-position of end point.
-    fn line_to<D: PlotDest>(&mut self, dst: &mut D, bx: f32, by: f32) {
-        let p = WidePt(Pt(bx, by), self.s_width);
+    /// * `pb` End point.
+    fn line_to<D: PlotDest>(&mut self, dst: &mut D, pb: Pt) {
+        let p = WidePt(pb, self.s_width);
         let b = self.transform_point(p);
         dst.add_point(b);
         self.move_pen(p);
@@ -228,21 +228,17 @@ impl Plotter {
     /// The points are A (current pen position), B (control point), and C
     /// (spline end point).
     ///
-    /// * `bx` X-position of control point.
-    /// * `by` Y-position of control point.
-    /// * `cx` X-position of end point.
-    /// * `cy` Y-position of end point.
+    /// * `cp` Control point.
+    /// * `end` End point.
     fn quad_to<D: PlotDest>(
         &mut self,
         dst: &mut D,
-        bx: f32,
-        by: f32,
-        cx: f32,
-        cy: f32,
+        cp: Pt,
+        end: Pt,
     ) {
         let pen = self.pen;
-        let bb = WidePt(Pt(bx, by), (pen.w() + self.s_width) / 2.0);
-        let cc = WidePt(Pt(cx, cy), self.s_width);
+        let bb = WidePt(cp, (pen.w() + self.s_width) / 2.0);
+        let cc = WidePt(end, self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
         let c = self.transform_point(cc);
@@ -289,28 +285,22 @@ impl Plotter {
     /// The points are A (current pen position), B (first control point), C
     /// (second control point) and D (spline end point).
     ///
-    /// * `bx` X-position of first control point.
-    /// * `by` Y-position of first control point.
-    /// * `cx` X-position of second control point.
-    /// * `cy` Y-position of second control point.
-    /// * `dx` X-position of end point.
-    /// * `dy` Y-position of end point.
+    /// * `cp0` First control point.
+    /// * `cp1` Second control point.
+    /// * `end` End point.
     fn cubic_to<D: PlotDest>(
         &mut self,
         dst: &mut D,
-        bx: f32,
-        by: f32,
-        cx: f32,
-        cy: f32,
-        dx: f32,
-        dy: f32,
+        cp0: Pt,
+        cp1: Pt,
+        end: Pt,
     ) {
         let pen = self.pen;
-        let bw = float_lerp(pen.w(), self.s_width, 1.0 / 3.0);
-        let cw = float_lerp(pen.w(), self.s_width, 2.0 / 3.0);
-        let bb = WidePt(Pt(bx, by), bw);
-        let cc = WidePt(Pt(cx, cy), cw);
-        let dd = WidePt(Pt(dx, dy), self.s_width);
+        let w0 = float_lerp(pen.w(), self.s_width, 1.0 / 3.0);
+        let w1 = float_lerp(pen.w(), self.s_width, 2.0 / 3.0);
+        let bb = WidePt(cp0, w0);
+        let cc = WidePt(cp1, w1);
+        let dd = WidePt(end, self.s_width);
         let a = self.transform_point(pen);
         let b = self.transform_point(bb);
         let c = self.transform_point(cc);
@@ -326,31 +316,32 @@ impl Plotter {
     fn cubic_to_tran<D: PlotDest>(
         &self,
         dst: &mut D,
-        a: WidePt,
-        b: WidePt,
-        c: WidePt,
-        d: WidePt,
+        pa: WidePt,
+        pb: WidePt,
+        pc: WidePt,
+        pd: WidePt,
     ) {
-        let ab = a.midpoint(b);
-        let bc = b.midpoint(c);
-        let cd = c.midpoint(d);
+        let ab = pa.midpoint(pb);
+        let bc = pb.midpoint(pc);
+        let cd = pc.midpoint(pd);
         let ab_bc = ab.midpoint(bc);
         let bc_cd = bc.midpoint(cd);
-        let e = ab_bc.midpoint(bc_cd);
-        let ad = a.midpoint(d);
-        if self.is_within_tolerance(e, ad) {
-            dst.add_point(d);
+        let pe = ab_bc.midpoint(bc_cd);
+        let ad = pa.midpoint(pd);
+        if self.is_within_tolerance(pe, ad) {
+            dst.add_point(pd);
         } else {
-            self.cubic_to_tran(dst, a, ab, ab_bc, e);
-            self.cubic_to_tran(dst, e, bc_cd, cd, d);
+            self.cubic_to_tran(dst, pa, ab, ab_bc, pe);
+            self.cubic_to_tran(dst, pe, bc_cd, cd, pd);
         }
     }
 
-    /// Fill path onto the matte.
+    /// Fill path onto the raster.
     ///
-    /// * `ops` PathOp iterator.
     /// * `rule` Fill rule.
-    pub fn fill<T>(&mut self, ops: T, rule: FillRule) -> &mut Raster<Matte8>
+    /// * `ops` PathOp iterator.
+    /// * `clr` Color to fill.
+    pub fn fill<T>(&mut self, rule: FillRule, ops: T, clr: P) -> &mut Raster<P>
     where
         T: IntoIterator,
         T::Item: Borrow<PathOp>,
@@ -359,14 +350,15 @@ impl Plotter {
         self.add_ops(ops, &mut fig);
         // Closing figure required to handle coincident start/end points
         fig.close();
-        fig.fill(&mut self.matte, &mut self.sgn_area[..], rule);
-        &mut self.matte
+        fig.fill(rule, &mut self.raster, clr, &mut self.sgn_area[..]);
+        &mut self.raster
     }
 
-    /// Stroke path onto the matte.
+    /// Stroke path onto the raster.
     ///
     /// * `ops` PathOp iterator.
-    pub fn stroke<T>(&mut self, ops: T) -> &mut Raster<Matte8>
+    /// * `clr` Color to stroke.
+    pub fn stroke<T>(&mut self, ops: T, clr: P) -> &mut Raster<P>
     where
         T: IntoIterator,
         T::Item: Borrow<PathOp>,
@@ -374,11 +366,11 @@ impl Plotter {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
         self.add_ops(ops, &mut stroke);
         let ops = stroke.path_ops();
-        self.fill(ops.iter(), FillRule::NonZero)
+        self.fill(FillRule::NonZero, ops.iter(), clr)
     }
 
-    /// Get the matte.
-    pub fn matte(&mut self) -> &mut Raster<Matte8> {
-        &mut self.matte
+    /// Get the raster.
+    pub fn raster(self) -> Raster<P> {
+        self.raster
     }
 }

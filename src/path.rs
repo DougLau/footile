@@ -1,7 +1,8 @@
 // path.rs      2D vector paths.
 //
-// Copyright (c) 2017-2019  Douglas P Lau
+// Copyright (c) 2017-2020  Douglas P Lau
 //
+use crate::geom::Pt;
 
 /// Fill-rule for filling paths.
 #[derive(Clone, Copy, Debug)]
@@ -16,14 +17,14 @@ pub enum FillRule {
 pub enum PathOp {
     /// Close the path
     Close(),
-    /// Move to (x, y)
-    Move(f32, f32),
-    /// Straight line to (x, y)
-    Line(f32, f32),
-    /// Quadratic bézier curve (cx, cy, x, y)
-    Quad(f32, f32, f32, f32),
-    /// Cubic bézier curve (ax, ay, bx, by, x, y)
-    Cubic(f32, f32, f32, f32, f32, f32),
+    /// Move to a point
+    Move(Pt),
+    /// Straight line to end point
+    Line(Pt),
+    /// Quadratic bézier curve (control point and end point)
+    Quad(Pt, Pt),
+    /// Cubic bézier curve (two control points and end point)
+    Cubic(Pt, Pt, Pt),
     /// Set pen width (for stroking)
     PenWidth(f32),
 }
@@ -46,16 +47,19 @@ pub struct IterPath2D<'a> {
 /// # Example
 /// ```
 /// use footile::PathBuilder;
+///
 /// let path = PathBuilder::default()
 ///     .move_to(10.0, 10.0)
 ///     .line_to(90.0, 90.0)
 ///     .build();
 /// ```
 pub struct PathBuilder {
+    /// Vec of path operations
     ops: Vec<PathOp>,
+    /// Absolute vs relative coordinates
     absolute: bool,
-    pen_x: f32,
-    pen_y: f32,
+    /// Current pen position
+    pen: Pt,
 }
 
 impl Path2D {
@@ -91,8 +95,7 @@ impl Default for PathBuilder {
         PathBuilder {
             ops,
             absolute: false,
-            pen_x: 0.0,
-            pen_y: 0.0,
+            pen: Pt::default(),
         }
     }
 }
@@ -113,75 +116,66 @@ impl PathBuilder {
     }
 
     /// Get absolute point.
-    fn pt(&self, x: f32, y: f32) -> (f32, f32) {
+    fn pt(&self, x: f32, y: f32) -> Pt {
         if self.absolute {
-            (x, y)
+            Pt(x, y)
         } else {
-            (self.pen_x + x, self.pen_y + y)
+            Pt(self.pen.x() + x, self.pen.y() + y)
         }
     }
 
     /// Close current sub-path and move pen to origin.
     pub fn close(mut self) -> Self {
         self.ops.push(PathOp::Close());
-        self.pen_x = 0.0;
-        self.pen_y = 0.0;
+        self.pen = Pt::default();
         self
     }
 
-    /// Move pen to a point.
+    /// Move the pen to a point.
     ///
-    /// * `bx` X-position of point.
-    /// * `by` Y-position of point.
-    pub fn move_to(mut self, bx: f32, by: f32) -> Self {
-        let (abx, aby) = self.pt(bx, by);
-        self.ops.push(PathOp::Move(abx, aby));
-        self.pen_x = abx;
-        self.pen_y = aby;
+    /// * `x` X-position of point.
+    /// * `y` Y-position of point.
+    pub fn move_to(mut self, x: f32, y: f32) -> Self {
+        let pb = self.pt(x, y);
+        self.ops.push(PathOp::Move(pb));
+        self.pen = pb;
         self
     }
 
     /// Add a line from pen to a point.
     ///
-    /// * `bx` X-position of end point.
-    /// * `by` Y-position of end point.
-    pub fn line_to(mut self, bx: f32, by: f32) -> Self {
-        let (abx, aby) = self.pt(bx, by);
-        self.ops.push(PathOp::Line(abx, aby));
-        self.pen_x = abx;
-        self.pen_y = aby;
+    /// * `x` X-position of end point.
+    /// * `y` Y-position of end point.
+    pub fn line_to(mut self, x: f32, y: f32) -> Self {
+        let pb = self.pt(x, y);
+        self.ops.push(PathOp::Line(pb));
+        self.pen = pb;
         self
     }
 
     /// Add a quadratic bézier spline.
     ///
-    /// The points are A (current pen position), B (control point), and C
-    /// (spline end point).
+    /// The points are:
     ///
-    /// * `bx` X-position of control point.
-    /// * `by` Y-position of control point.
-    /// * `cx` X-position of end point.
-    /// * `cy` Y-position of end point.
+    /// * Current pen position: P<sub>a</sub>
+    /// * Control point: P<sub>b</sub> (`bx` / `by`)
+    /// * Spline end point: P<sub>c</sub> (`cx` / `cy`)
     pub fn quad_to(mut self, bx: f32, by: f32, cx: f32, cy: f32) -> Self {
-        let (abx, aby) = self.pt(bx, by);
-        let (acx, acy) = self.pt(cx, cy);
-        self.ops.push(PathOp::Quad(abx, aby, acx, acy));
-        self.pen_x = acx;
-        self.pen_y = acy;
+        let pb = self.pt(bx, by);
+        let pc = self.pt(cx, cy);
+        self.ops.push(PathOp::Quad(pb, pc));
+        self.pen = pc;
         self
     }
 
     /// Add a cubic bézier spline.
     ///
-    /// The points are A (current pen position), B (first control point), C
-    /// (second control point) and D (spline end point).
+    /// The points are:
     ///
-    /// * `bx` X-position of first control point.
-    /// * `by` Y-position of first control point.
-    /// * `cx` X-position of second control point.
-    /// * `cy` Y-position of second control point.
-    /// * `dx` X-position of end point.
-    /// * `dy` Y-position of end point.
+    /// * Current pen position: P<sub>a</sub>
+    /// * First control point: P<sub>b</sub> (`bx` / `by`)
+    /// * Second control point: P<sub>c</sub> (`cx` / `cy`)
+    /// * Spline end point: P<sub>d</sub> (`dx` / `dy`)
     pub fn cubic_to(
         mut self,
         bx: f32,
@@ -191,12 +185,11 @@ impl PathBuilder {
         dx: f32,
         dy: f32,
     ) -> Self {
-        let (abx, aby) = self.pt(bx, by);
-        let (acx, acy) = self.pt(cx, cy);
-        let (adx, ady) = self.pt(dx, dy);
-        self.ops.push(PathOp::Cubic(abx, aby, acx, acy, adx, ady));
-        self.pen_x = adx;
-        self.pen_y = ady;
+        let pb = self.pt(bx, by);
+        let pc = self.pt(cx, cy);
+        let pd = self.pt(dx, dy);
+        self.ops.push(PathOp::Cubic(pb, pc, pd));
+        self.pen = pd;
         self
     }
 

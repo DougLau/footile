@@ -1,5 +1,7 @@
 // drop.rs
 use footile::{PathBuilder, Plotter};
+use pix::matte::Matte8;
+use pix::Raster;
 
 mod png;
 
@@ -10,6 +12,7 @@ fn main() -> Result<(), std::io::Error> {
         .move_to(8.0, 16.0)
         .cubic_to(64.0, -16.0, 64.0, 48.0, 0.0, 32.0)
         .build();
-    let mut p = Plotter::new(64, 64);
-    png::write_matte(p.stroke(&path), "./cubic.png")
+    let r = Raster::with_clear(64, 64);
+    let mut p = Plotter::new(r);
+    png::write_matte(p.stroke(&path, Matte8::new(255)), "./cubic.png")
 }

@@ -1,5 +1,7 @@
 // stroke.rs
 use footile::{PathBuilder, Plotter};
+use pix::matte::Matte8;
+use pix::Raster;
 
 mod png;
 
@@ -12,6 +14,6 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(-16.0, -32.0)
         .close()
         .build();
-    let mut p = Plotter::new(64, 64);
-    png::write_matte(p.stroke(&path), "./stroke.png")
+    let mut p = Plotter::new(Raster::with_clear(64, 64));
+    png::write_matte(p.stroke(&path, Matte8::new(255)), "./stroke.png")
 }

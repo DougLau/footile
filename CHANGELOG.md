@@ -4,6 +4,7 @@
 * Replaced PathBuilder::new() with default() (Default impl)
 * Replaced Transform::new() with default() (Default implt)
 * Renamed Vec2/Vec2w to Pt/WidePt (to avoid confustion with Vec)
+* Simplify Plotter API -- allow plotting directly onto provided Raster
 
 ## [0.4.0] - 2020-04-24
 ### Changed

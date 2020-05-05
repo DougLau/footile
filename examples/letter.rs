@@ -1,5 +1,7 @@
 // letter.rs     Example plotting the letter C
 use footile::{FillRule, PathBuilder, Plotter};
+use pix::matte::Matte8;
+use pix::Raster;
 
 mod png;
 
@@ -26,6 +28,8 @@ fn main() -> Result<(), std::io::Error> {
         .quad_to(129.56644, 79.44055, 117.37063, 72.16783)
         .quad_to(105.28671, 64.895096, 88.61539, 64.895096)
         .build();
-    let mut p = Plotter::new(165, 256);
-    png::write_matte(p.fill(&path, FillRule::NonZero), "./letter.png")
+    let r = Raster::with_clear(165, 256);
+    let mut p = Plotter::new(r);
+    p.fill(FillRule::NonZero, &path, Matte8::new(255));
+    png::write_matte(&p.raster(), "./letter.png")
 }

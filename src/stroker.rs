@@ -304,10 +304,12 @@ impl Stroke {
         let pr1 = pp1 + vr * (p1.w() / 2.0);
         (pr0, pr1)
     }
+
     /// Add a point to stroke figure.
     fn stroke_point(&self, ops: &mut Vec<PathOp>, pt: Pt) {
-        ops.push(PathOp::Line(pt.x(), pt.y()));
+        ops.push(PathOp::Line(pt));
     }
+
     /// Add a stroke join.
     ///
     /// * `p` Join point (with stroke width).

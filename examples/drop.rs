@@ -1,7 +1,6 @@
 // drop.rs
 use footile::{FillRule, PathBuilder, Plotter};
 use pix::gray::{Graya8p, SGray8};
-use pix::ops::SrcOver;
 use pix::Raster;
 
 mod png;
@@ -15,18 +14,11 @@ fn main() -> Result<(), std::io::Error> {
         .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
         .close()
         .build();
-    let mut p = Plotter::new(100, 100);
-    let mut r = Raster::<Graya8p>::with_clear(p.width(), p.height());
-    r.composite_matte(
-        (),
-        p.fill(&path, FillRule::NonZero),
-        (),
-        Graya8p::new(128, 255),
-        SrcOver,
-    );
-    p.clear_matte();
-    r.composite_matte((), p.stroke(&path), (), Graya8p::new(255, 255), SrcOver);
-    let r = Raster::<SGray8>::with_raster(&r);
+    let r = Raster::<Graya8p>::with_clear(100, 100);
+    let mut p = Plotter::new(r);
+    p.fill(FillRule::NonZero, &path, Graya8p::new(128, 255));
+    p.stroke(&path, Graya8p::new(255, 255));
 
+    let r = Raster::<SGray8>::with_raster(&p.raster());
     png::write(&r, "./drop.png")
 }

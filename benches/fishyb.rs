@@ -3,6 +3,8 @@ extern crate criterion;
 
 use criterion::Criterion;
 use footile::*;
+use pix::matte::Matte8;
+use pix::Raster;
 
 fn fill_16(c: &mut Criterion) {
     c.bench_function("fill_16", |b| b.iter(|| fill(16)));
@@ -13,7 +15,7 @@ fn fill_256(c: &mut Criterion) {
 }
 
 fn fill(i: u32) {
-    make_plotter(i).fill(&make_fishy(), FillRule::NonZero);
+    make_plotter(i).fill(FillRule::NonZero, &make_fishy(), Matte8::new(255));
 }
 
 fn stroke_16(c: &mut Criterion) {
@@ -25,12 +27,13 @@ fn stroke_256(c: &mut Criterion) {
 }
 
 fn gray_stroke(i: u32) {
-    make_plotter(i).stroke(&make_fishy());
+    make_plotter(i).stroke(&make_fishy(), Matte8::new(255));
 }
 
-fn make_plotter(i: u32) -> Plotter {
-    let mut p = Plotter::new(i, i);
-    p.set_transform(Transform::new_scale(2.0, 2.0));
+fn make_plotter(i: u32) -> Plotter<Matte8> {
+    let r = Raster::with_clear(i, i);
+    let mut p = Plotter::new(r);
+    p.set_transform(Transform::with_scale(2.0, 2.0));
     p
 }
 

@@ -25,7 +25,7 @@ impl From<usize> for Vid {
 
 impl From<Vid> for usize {
     fn from(v: Vid) -> Self {
-        v.0 as usize
+        usize::from(v.0)
     }
 }
 

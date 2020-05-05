@@ -1,5 +1,7 @@
 // round.rs
 use footile::{JoinStyle, PathBuilder, Plotter};
+use pix::matte::Matte8;
+use pix::Raster;
 
 mod png;
 
@@ -11,7 +13,7 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(50.0, 0.0)
         .line_to(0.0, -50.0)
         .build();
-    let mut p = Plotter::new(100, 100);
+    let mut p = Plotter::new(Raster::with_clear(100, 100));
     p.set_join(JoinStyle::Round);
-    png::write_matte(p.stroke(&path), "./round.png")
+    png::write_matte(p.stroke(&path, Matte8::new(255)), "./round.png")
 }

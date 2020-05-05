@@ -11,11 +11,11 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
-pix = "0.12"
+pix = "0.13"
 
 [dev-dependencies]
 criterion = "0.3"
-png_pong = "0.4"
+png_pong = "0.5"
 
 [[bench]]
 name = "fishyb"

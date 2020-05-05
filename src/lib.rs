@@ -6,6 +6,9 @@
 //! paths.  These are created using typical vector drawing primitives such as
 //! lines and bézier splines.
 //!
+#![warn(missing_docs)]
+#![warn(missing_doc_code_examples)]
+
 mod fig;
 mod fixed;
 mod geom;
@@ -15,7 +18,7 @@ mod plotter;
 mod stroker;
 mod vid;
 
-pub use geom::Transform;
+pub use geom::{Pt, Transform};
 pub use path::{FillRule, Path2D, PathBuilder, PathOp};
 pub use plotter::Plotter;
 pub use stroker::JoinStyle;
