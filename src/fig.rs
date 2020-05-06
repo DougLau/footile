@@ -543,10 +543,8 @@ where
     /// Scan figure, rasterizing all rows above a vertex
     fn scan_to_y(&mut self, y_vtx: Fixed) {
         while self.y_now < y_vtx {
-            if self.is_row_bottom() {
-                if self.rasterize_row() {
-                    break;
-                }
+            if self.is_row_bottom() && self.rasterize_row() {
+                break;
             }
             self.y_prev = self.y_now;
             self.y_now = y_vtx.min(self.y_now.floor() + Fixed::ONE);
