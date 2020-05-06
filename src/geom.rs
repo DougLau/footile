@@ -387,10 +387,7 @@ mod test {
             (Transform::default() * Transform::default()).e,
             [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
         );
-        assert_eq!(
-            Transform::default() * Pt(1.0, 2.0),
-            Pt(1.0, 2.0)
-        );
+        assert_eq!(Transform::default() * Pt(1.0, 2.0), Pt(1.0, 2.0));
     }
 
     #[test]

@@ -473,8 +473,7 @@ impl Fig {
         raster: &mut Raster<P>,
         clr: P,
         sgn_area: &mut [i16],
-    )
-    where
+    ) where
         P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
     {
         assert!(raster.width() <= sgn_area.len() as u32);
@@ -543,7 +542,7 @@ where
 
     /// Scan figure, rasterizing all rows above a vertex
     fn scan_to_y(&mut self, y_vtx: Fixed) {
-        while self.y_now < y_vtx /*&& !self.is_complete()*/ {
+        while self.y_now < y_vtx {
             if self.is_row_bottom() {
                 if self.rasterize_row() {
                     break;
@@ -775,10 +774,10 @@ fn pixel_cov(fcov: Fixed) -> i16 {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use pix::matte::Matte8;
     use pix::rgb::Rgba8p;
     use pix::Raster;
-    use super::*;
 
     #[test]
     fn compare_fixed() {
@@ -800,6 +799,7 @@ mod test {
         f.add_point(Pt(2.0, 2.0));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
+        #[rustfmt::skip]
         let v = [
             Rgba8p::default(), Rgba8p::default(), Rgba8p::default(),
             Rgba8p::default(), Rgba8p::default(), Rgba8p::default(),

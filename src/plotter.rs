@@ -189,9 +189,7 @@ where
             PathOp::Move(pb) => self.move_to(dst, pb),
             PathOp::Line(pb) => self.line_to(dst, pb),
             PathOp::Quad(pb, pc) => self.quad_to(dst, pb, pc),
-            PathOp::Cubic(pb, pc, pd) => {
-                self.cubic_to(dst, pb, pc, pd)
-            }
+            PathOp::Cubic(pb, pc, pd) => self.cubic_to(dst, pb, pc, pd),
             PathOp::PenWidth(w) => self.pen_width(w),
         };
     }
@@ -230,12 +228,7 @@ where
     ///
     /// * `cp` Control point.
     /// * `end` End point.
-    fn quad_to<D: PlotDest>(
-        &mut self,
-        dst: &mut D,
-        cp: Pt,
-        end: Pt,
-    ) {
+    fn quad_to<D: PlotDest>(&mut self, dst: &mut D, cp: Pt, end: Pt) {
         let pen = self.pen;
         let bb = WidePt(cp, (pen.w() + self.s_width) / 2.0);
         let cc = WidePt(end, self.s_width);
