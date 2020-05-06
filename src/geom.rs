@@ -140,16 +140,6 @@ impl Pt {
         Pt(self.y(), -self.x())
     }
 
-    /// Calculate winding order for two points.
-    ///
-    /// The points should be initialized as edges pointing toward the same
-    /// vertex.
-    /// Returns true if the winding order is widdershins (counter-clockwise).
-    pub fn widdershins(self, rhs: Self) -> bool {
-        // Cross product (with Z zero) is used to determine the winding order.
-        (self.x() * rhs.y()) > (rhs.x() * self.y())
-    }
-
     /// Calculate linear interpolation of two points.
     ///
     /// * `t` Interpolation amount, from 0 to 1
@@ -372,9 +362,6 @@ mod test {
         assert_eq!(a.midpoint(b), Pt(2.5, 2.5));
         assert_eq!(a.left(), Pt(-1.0, 2.0));
         assert_eq!(a.right(), Pt(1.0, -2.0));
-        assert!(a.widdershins(b));
-        assert!(!b.widdershins(a));
-        assert!(b.widdershins(c));
         assert_eq!(a.angle_rel(b), -0.4636476);
         assert_eq!(c.angle_rel(Pt(1.0, 1.0)), 1.5707963);
         assert_eq!(Pt(-1.0, -1.0).angle_rel(c), 1.5707965);

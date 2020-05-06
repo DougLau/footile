@@ -16,9 +16,17 @@ use std::any::TypeId;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
+use std::ops::Sub;
+
+/// A 2D point with fixed-point values
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct FxPt {
+    x: Fixed,
+    y: Fixed,
+}
 
 /// Figure direction enum
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum FigDir {
     Forward,
     Reverse,
@@ -47,8 +55,8 @@ struct Edge {
     dir: FigDir,
     /// Change in cov per pix on current row
     step_pix: Fixed,
-    /// Inverse slope (dx / dy)
-    islope: Fixed,
+    /// Inverse slope (delta_x / delta_y)
+    inv_slope: Fixed,
     /// X at bottom of current row
     x_bot: Fixed,
     /// Minimum X on current row
@@ -60,7 +68,7 @@ struct Edge {
 /// A Fig is a series of 2D points which can be rendered to an image raster.
 pub struct Fig {
     /// All pionts
-    points: Vec<Pt>,
+    points: Vec<FxPt>,
     /// All sub-figures
     subs: Vec<SubFig>,
 }
@@ -90,9 +98,29 @@ where
     y_prev: Fixed,
 }
 
-/// Compare two f32 for fixed-point equality
-fn cmp_fixed(a: f32, b: f32) -> Ordering {
-    Fixed::from(a).cmp(&Fixed::from(b))
+impl Sub for FxPt {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        FxPt::new(self.x - rhs.x, self.y - rhs.y)
+    }
+}
+
+impl FxPt {
+    /// Create a new point.
+    fn new(x: Fixed, y: Fixed) -> Self {
+        FxPt { x, y }
+    }
+
+    /// Calculate winding order for two vectors.
+    ///
+    /// The vectors should be initialized as edges pointing toward the same
+    /// point.
+    /// Returns true if the winding order is widdershins (counter-clockwise).
+    fn widdershins(self, rhs: Self) -> bool {
+        // Cross product (with Z zero) is used to determine the winding order.
+        (self.x * rhs.y) > (rhs.x * self.y)
+    }
 }
 
 /// Get the row of a Y value
@@ -146,24 +174,30 @@ impl SubFig {
 
 impl Edge {
     /// Create a new edge
-    fn new(v0: Vid, v1: Vid, p0: Pt, p1: Pt, dir: FigDir) -> Edge {
+    ///
+    /// * `v0` Upper vertex.
+    /// * `v1` Lower vertex.
+    /// * `p0` Upper point.
+    /// * `p1` Lower point.
+    /// * `dir` Direction from upper to lower vertex.
+    fn new(v0: Vid, v1: Vid, p0: FxPt, p1: FxPt, dir: FigDir) -> Edge {
         debug_assert_ne!(v0, v1);
-        let dx = Fixed::from(p1.x() - p0.x()); // delta X
-        let dy = Fixed::from(p1.y() - p0.y()); // delta Y
-        debug_assert!(dy > Fixed::ZERO);
-        let step_pix = Edge::calculate_step(dx, dy);
-        let islope = dx / dy;
-        let y_upper = Fixed::from(p0.y());
-        let y_lower = Fixed::from(p1.y());
-        let fm = (y_upper.ceil() - y_upper) * islope;
-        let x_bot = fm + Fixed::from(p0.x());
+        let delta_x = p1.x - p0.x;
+        let delta_y = p1.y - p0.y;
+        debug_assert!(delta_y > Fixed::ZERO);
+        let step_pix = Edge::calculate_step(delta_x, delta_y);
+        let inv_slope = delta_x / delta_y;
+        let y_upper = p0.y;
+        let y_lower = p1.y;
+        let fm = (y_upper.ceil() - y_upper) * inv_slope;
+        let x_bot = fm + p0.x;
         Edge {
             v1,
             y_upper,
             y_lower,
             dir,
             step_pix,
-            islope,
+            inv_slope,
             x_bot,
             min_x: Fixed::ZERO,
             max_x: Fixed::ZERO,
@@ -171,9 +205,9 @@ impl Edge {
     }
 
     /// Calculate the step for each pixel on an edge
-    fn calculate_step(dx: Fixed, dy: Fixed) -> Fixed {
-        if dx != Fixed::ZERO {
-            (dy / dx).abs().min(Fixed::ONE)
+    fn calculate_step(delta_x: Fixed, delta_y: Fixed) -> Fixed {
+        if delta_x != Fixed::ZERO {
+            (delta_y / delta_x).abs().min(Fixed::ONE)
         } else {
             Fixed::ZERO
         }
@@ -189,14 +223,14 @@ impl Edge {
 
     /// Calculate X limits for a partial row.
     fn calculate_x_limits_partial(&mut self, ypb: Fixed, ynb: Fixed) {
-        let xt = self.x_bot - self.islope * ypb;
-        let xb = self.x_bot - self.islope * ynb;
+        let xt = self.x_bot - self.inv_slope * ypb;
+        let xb = self.x_bot - self.inv_slope * ynb;
         self.set_x_limits(xt, xb);
     }
 
     /// Calculate X limits for a full row.
     fn calculate_x_limits_full(&mut self) {
-        let xt = self.x_bot - self.islope;
+        let xt = self.x_bot - self.inv_slope;
         let xb = self.x_bot;
         self.set_x_limits(xt, xb);
     }
@@ -252,7 +286,7 @@ impl Edge {
         let mut x_cov = self.first_cov(full_cov); // total coverage at X
         let step_cov = self.step_cov(Fixed::ONE); // coverage change per step
         debug_assert!(step_cov > Fixed::ZERO);
-        let mut sum_pix = 0i16; // cumulative sum of pixel coverage
+        let mut sum_pix = 0; // cumulative sum of pixel coverage
         for x in self.min_pix()..area.len() as i32 {
             let x_pix = pixel_cov(x_cov).min(full_pix);
             let p = x_pix - sum_pix; // pixel coverage at X
@@ -343,54 +377,7 @@ impl Fig {
         self.sub_at(vid).next(vid, dir)
     }
 
-    /// Get the next vertex with a different Y.
-    fn next_y(&self, vid: Vid, dir: FigDir) -> Vid {
-        let py = self.get_y(vid);
-        let sub = self.sub_at(vid);
-        let mut v = sub.next(vid, dir);
-        while v != vid {
-            let y = self.get_y(v);
-            if cmp_fixed(py, y) != Equal {
-                return v;
-            }
-            v = sub.next(v, dir);
-        }
-        vid
-    }
-
-    /// Get the next vertex for an edge change.
-    fn next_edge(&self, vid: Vid, dir: FigDir) -> Vid {
-        let pp = self.point(vid);
-        let sub = self.sub_at(vid);
-        let mut v = sub.next(vid, dir);
-        while v != vid {
-            let p = self.point(v);
-            if p.x() < pp.x() || cmp_fixed(pp.y(), p.y()) != Equal {
-                return v;
-            }
-            v = sub.next(v, dir);
-        }
-        vid
-    }
-
-    /// Get the last vertex with the same Y
-    fn same_y(&self, vid: Vid, dir: FigDir) -> Vid {
-        let py = self.get_y(vid);
-        let sub = self.sub_at(vid);
-        let mut vp = vid;
-        let mut v = sub.next(vid, dir);
-        while v != vid {
-            let y = self.get_y(v);
-            if cmp_fixed(py, y) != Equal {
-                return vp;
-            }
-            vp = v;
-            v = sub.next(v, dir);
-        }
-        vid
-    }
-
-    /// Get direction from top vertex.
+    /// Get direction from top-left vertex.
     fn get_dir(&self, vid: Vid) -> FigDir {
         let p = self.point(vid);
         let p0 = self.point(self.next(vid, FigDir::Forward));
@@ -405,13 +392,13 @@ impl Fig {
     /// Get a point.
     ///
     /// * `vid` Vertex ID.
-    fn point(&self, vid: Vid) -> Pt {
+    fn point(&self, vid: Vid) -> FxPt {
         self.points[usize::from(vid)]
     }
 
     /// Get Y value at a vertex.
-    fn get_y(&self, vid: Vid) -> f32 {
-        self.point(vid).y()
+    fn get_y(&self, vid: Vid) -> Fixed {
+        self.point(vid).y
     }
 
     /// Add a point.
@@ -424,6 +411,7 @@ impl Fig {
             if done {
                 self.sub_add();
             }
+            let pt = FxPt::new(Fixed::from(pt.x()), Fixed::from(pt.y()));
             if done || !self.is_coincident(pt) {
                 self.points.push(pt);
                 self.sub_add_point();
@@ -432,7 +420,7 @@ impl Fig {
     }
 
     /// Check if a point is coincident with previous point.
-    fn is_coincident(&self, pt: Pt) -> bool {
+    fn is_coincident(&self, pt: FxPt) -> bool {
         if let Some(p) = self.points.last() {
             pt == *p
         } else {
@@ -454,10 +442,10 @@ impl Fig {
     fn compare_vids(&self, v0: Vid, v1: Vid) -> Ordering {
         let p0 = self.point(v0);
         let p1 = self.point(v1);
-        match cmp_fixed(p0.y(), p1.y()) {
+        match p0.y.cmp(&p1.y) {
             Less => Less,
             Greater => Greater,
-            Equal => p0.x().partial_cmp(&p1.x()).unwrap_or(Equal),
+            Equal => p0.x.cmp(&p1.x),
         }
     }
 
@@ -483,7 +471,7 @@ impl Fig {
             let mut vids: Vec<Vid> = (0..n_points).map(Vid::from).collect();
             vids.sort_by(|a, b| self.compare_vids(*a, *b));
             let dir = self.get_dir(vids[0]);
-            let top_row = row_of(self.point(vids[0]).y().into());
+            let top_row = row_of(self.point(vids[0]).y);
             let region = (0, top_row.max(0), raster.width(), raster.height());
             let rows = raster.rows_mut(region);
             let mut scan = Scanner::new(self, rule, dir, rows, clr, sgn_area);
@@ -499,7 +487,7 @@ impl<'a, P> Scanner<'a, P>
 where
     P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
 {
-    /// Create a new figure scanner struct
+    /// Create a new figure scanner.
     fn new(
         fig: &'a Fig,
         rule: FillRule,
@@ -532,11 +520,12 @@ where
             self.y_now = y_vtx;
             self.y_prev = y_vtx;
         }
-        self.update_edges(vid);
+        self.update_edges(vid, FigDir::Forward);
+        self.update_edges(vid, FigDir::Reverse);
     }
 
     /// Get Y value at a vertex.
-    fn get_y(&self, vid: Vid) -> f32 {
+    fn get_y(&self, vid: Vid) -> Fixed {
         self.fig.get_y(vid)
     }
 
@@ -575,7 +564,7 @@ where
     /// Advance all edges to the next row.
     fn advance_edges(&mut self) {
         for e in self.edges.iter_mut() {
-            e.x_bot = e.x_bot + e.islope;
+            e.x_bot = e.x_bot + e.inv_slope;
         }
     }
 
@@ -691,66 +680,43 @@ where
         }
     }
 
-    /// Update edges at a given vertex
-    fn update_edges(&mut self, vid: Vid) {
-        let vp = self.fig.next_edge(vid, FigDir::Reverse);
-        let vn = self.fig.next_edge(vid, FigDir::Forward);
-        if (vp != vid) && (vn != vid) {
+    /// Update edges at a given vertex.
+    fn update_edges(&mut self, vid: Vid, dir: FigDir) {
+        let v = self.fig.next(vid, dir);
+        if v != vid {
             let y = self.get_y(vid);
-            let cp = cmp_fixed(self.get_y(vp), y);
-            let cn = cmp_fixed(self.get_y(vn), y);
-            match (cp, cn) {
-                (Less, Less) => self.edge_merge(vid),
-                (Greater, Greater) => self.edge_split(vp, vn),
-                _ => self.edge_regular(vid),
+            match self.get_y(v).cmp(&y) {
+                Greater => self.add_edge(vid, v, dir),
+                Less => self.remove_edge(vid, dir.opposite()),
+                _ => (),
             }
         }
     }
 
-    /// Remove two edges at a merge vertex
-    fn edge_merge(&mut self, vid: Vid) {
+    /// Add an edge.
+    fn add_edge(&mut self, v0: Vid, v1: Vid, dir: FigDir) {
         let fig = &self.fig;
-        let mut i = self.edges.len();
-        while i > 0 {
-            i -= 1;
-            let v1 = self.edges[i].v1;
-            if (fig.same_y(v1, FigDir::Forward) == vid)
-                || (fig.same_y(v1, FigDir::Reverse) == vid)
-            {
-                self.edges.remove(i);
-            }
+        let p0 = fig.point(v0); // Upper point
+        let p1 = fig.point(v1); // Lower point
+        let e = Edge::new(v0, v1, p0, p1, dir);
+        self.edges.push(e);
+    }
+
+    /// Remove an edge.
+    fn remove_edge(&mut self, v1: Vid, dir: FigDir) {
+        if let Some(i) = self.find_edge(v1, dir) {
+            self.edges.swap_remove(i);
         }
     }
 
-    /// Add two edges at a split vertex
-    fn edge_split(&mut self, v0: Vid, v1: Vid) {
-        let fig = &self.fig;
-        let v0u = fig.next(v0, FigDir::Forward); // Find upper vtx of edge 0
-        let p0u = fig.point(v0u); // Upper point of edge 0
-        let p0 = fig.point(v0); // Lower point of edge 0
-        self.edges
-            .push(Edge::new(v0u, v0, p0u, p0, FigDir::Reverse));
-        let v1u = fig.next(v1, FigDir::Reverse); // Find upper vtx of edge 1
-        let p1u = fig.point(v1u); // Upper point of edge 1
-        let p1 = fig.point(v1); // Lower point of edge 1
-        self.edges
-            .push(Edge::new(v1u, v1, p1u, p1, FigDir::Forward));
-    }
-
-    /// Update one edge at a regular vertex
-    fn edge_regular(&mut self, vid: Vid) {
-        let fig = &self.fig;
-        for e in self.edges.iter_mut() {
-            if vid == e.v1 {
-                let dir = e.dir;
-                let vn = fig.next_y(vid, dir); // Find lower vertex
-                let v = fig.next_y(vn, dir.opposite()); // Find upper vertex
-                let p = fig.point(v);
-                let pn = fig.point(vn);
-                *e = Edge::new(v, vn, p, pn, dir);
-                break;
+    /// Find an active edge
+    fn find_edge(&self, v1: Vid, dir: FigDir) -> Option<usize> {
+        for (i, e) in self.edges.iter().enumerate() {
+            if v1 == e.v1 && dir == e.dir {
+                return Some(i);
             }
         }
+        None
     }
 }
 
@@ -778,11 +744,14 @@ mod test {
     use pix::Raster;
 
     #[test]
-    fn compare_fixed() {
-        assert_eq!(cmp_fixed(0.0, 0.0), Ordering::Equal);
-        assert_eq!(cmp_fixed(0.0, 0.00001), Ordering::Equal);
-        assert_eq!(cmp_fixed(0.0, 0.0001), Ordering::Less);
-        assert_eq!(cmp_fixed(0.0, -0.0001), Ordering::Greater);
+    fn fixed_pt() {
+        let a = FxPt::new(2.0.into(), 1.0.into());
+        let b = FxPt::new(3.0.into(), 4.0.into());
+        let c = FxPt::new(Fixed::from(-1.0), 1.0.into());
+        assert_eq!(b - a, FxPt::new(1.0.into(), 3.0.into()));
+        assert!(a.widdershins(b));
+        assert!(!b.widdershins(a));
+        assert!(b.widdershins(c));
     }
 
     #[test]
