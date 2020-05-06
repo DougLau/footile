@@ -25,7 +25,8 @@ use std::borrow::Borrow;
 /// use pix::rgb::Rgba8p;
 /// use pix::Raster;
 ///
-/// let path = PathBuilder::default().pen_width(3.0)
+/// let path = PathBuilder::default()
+///     .pen_width(3.0)
 ///     .move_to(50.0, 34.0)
 ///     .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
 ///     .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
@@ -365,5 +366,28 @@ where
     /// Get the raster.
     pub fn raster(self) -> Raster<P> {
         self.raster
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::*;
+    use pix::matte::Matte8;
+    use pix::Raster;
+
+    #[test]
+    fn overlapping() {
+        let path = PathBuilder::default()
+            .absolute()
+            .move_to(8.0, 4.0)
+            .line_to(8.0, 3.0)
+            .cubic_to(8.0, 3.0, 8.0, 3.0, 9.0, 3.75)
+            .line_to(8.0, 3.75)
+            .line_to(8.5, 3.75)
+            .line_to(8.5, 3.5)
+            .build();
+        let r = Raster::with_clear(16, 16);
+        let mut p = Plotter::new(r);
+        p.fill(FillRule::NonZero, &path, Matte8::new(255));
     }
 }
