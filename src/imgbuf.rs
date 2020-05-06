@@ -2,18 +2,40 @@
 //
 // Copyright (c) 2017-2020  Douglas P Lau
 //
+use pix::chan::{Ch8, Linear, Premultiplied};
+use pix::el::Pixel;
+use pix::matte::Matte8;
+use std::any::TypeId;
+use std::slice::from_raw_parts_mut;
 
 #[cfg(all(target_arch = "x86", feature = "simd"))]
 use std::arch::x86::*;
 #[cfg(all(target_arch = "x86_64", feature = "simd"))]
 use std::arch::x86_64::*;
 
+/// Blend to a Matte8 using a signed area with non-zero fill rule.
+/// Source buffer is zeroed upon return.
+///
+/// * `dst` Destination buffer.
+/// * `sgn_area` Signed area.
+#[inline]
+pub fn matte_src_over_non_zero<P>(dst: &mut [P], sgn_area: &mut [i16])
+where
+    P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+{
+    debug_assert_eq!(TypeId::of::<P>(), TypeId::of::<Matte8>());
+    let n_bytes = dst.len() * std::mem::size_of::<Matte8>();
+    let ptr = dst.as_mut_ptr() as *mut u8;
+    let dst = unsafe { from_raw_parts_mut(ptr, n_bytes) };
+    accumulate_non_zero(dst, sgn_area);
+}
+
 /// Accumulate signed area with non-zero fill rule.
 /// Source buffer is zeroed upon return.
 ///
 /// * `dst` Destination buffer.
 /// * `src` Source buffer.
-pub fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
+fn accumulate_non_zero(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
     #[cfg(all(
         any(target_arch = "x86", target_arch = "x86_64"),
@@ -90,12 +112,29 @@ unsafe fn accumulate_i16x8_x86(mut a: __m128i) -> __m128i {
     _mm_add_epi16(a, _mm_slli_si128(a, 2))
 }
 
+/// Blend to a Matte8 using a signed area with even-odd fill rule.
+/// Source buffer is zeroed upon return.
+///
+/// * `dst` Destination buffer.
+/// * `sgn_area` Signed area.
+#[inline]
+pub fn matte_src_over_even_odd<P>(dst: &mut [P], sgn_area: &mut [i16])
+where
+    P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+{
+    debug_assert_eq!(TypeId::of::<P>(), TypeId::of::<Matte8>());
+    let n_bytes = dst.len() * std::mem::size_of::<P>();
+    let ptr = dst.as_mut_ptr() as *mut u8;
+    let dst = unsafe { std::slice::from_raw_parts_mut(ptr, n_bytes) };
+    accumulate_even_odd(dst, sgn_area);
+}
+
 /// Accumulate signed area with even-odd fill rule.
 /// Source buffer is zeroed upon return.
 ///
 /// * `dst` Destination buffer.
 /// * `src` Source buffer.
-pub fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
+fn accumulate_even_odd(dst: &mut [u8], src: &mut [i16]) {
     assert!(dst.len() <= src.len());
     #[cfg(all(
         any(target_arch = "x86", target_arch = "x86_64"),
@@ -103,15 +142,15 @@ pub fn accumulate_odd(dst: &mut [u8], src: &mut [i16]) {
     ))]
     {
         if is_x86_feature_detected!("ssse3") {
-            unsafe { accumulate_odd_x86(dst, src) }
+            unsafe { accumulate_even_odd_x86(dst, src) }
             return;
         }
     }
-    accumulate_odd_fallback(dst, src)
+    accumulate_even_odd_fallback(dst, src)
 }
 
 /// Accumulate signed area with even-odd fill rule.
-fn accumulate_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
+fn accumulate_even_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
     let mut sum = 0;
     for (d, s) in dst.iter_mut().zip(src.iter_mut()) {
         sum += *s;
@@ -126,7 +165,7 @@ fn accumulate_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
 /// Accumulate signed area with even-odd fill rule.
 #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), feature = "simd"))]
 #[target_feature(enable = "ssse3")]
-unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
+unsafe fn accumulate_even_odd_x86(dst: &mut [u8], src: &mut [i16]) {
     let zero = _mm_setzero_si128();
     let mut sum = zero;
     for (d, s) in dst.chunks_mut(8).zip(src.chunks_mut(8)) {
@@ -155,30 +194,32 @@ unsafe fn accumulate_odd_x86(dst: &mut [u8], src: &mut [i16]) {
 
 #[cfg(test)]
 mod test {
-    use super::{accumulate_non_zero, accumulate_odd};
+    use super::*;
+
     #[test]
     fn non_zero() {
-        let mut a = [0u8; 3000];
-        let mut b = [0i16; 3000];
-        b[0] = 200i16;
+        let mut a = [0; 3000];
+        let mut b = [0; 3000];
+        b[0] = 200;
         accumulate_non_zero(&mut a, &mut b);
         for ai in a.iter() {
             assert_eq!(*ai, 200);
         }
-        let mut c = [0u8; 5000];
-        let mut d = [0i16; 5000];
-        d[0] = 300i16;
+        let mut c = [0; 5000];
+        let mut d = [0; 5000];
+        d[0] = 300;
         accumulate_non_zero(&mut c, &mut d);
         for ci in c.iter() {
             assert_eq!(*ci, 255);
         }
     }
+
     #[test]
-    fn odd() {
+    fn even_odd() {
         let mut a = [0; 3000];
         let mut b = [0; 3000];
         b[0] = 300;
-        accumulate_odd(&mut a, &mut b);
+        accumulate_even_odd(&mut a, &mut b);
         for ai in a.iter() {
             assert_eq!(*ai, 212);
         }

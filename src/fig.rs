@@ -4,7 +4,7 @@
 //
 use crate::fixed::Fixed;
 use crate::geom::Pt;
-use crate::imgbuf::{accumulate_non_zero, accumulate_odd};
+use crate::imgbuf::{matte_src_over_non_zero, matte_src_over_even_odd};
 use crate::path::FillRule;
 use crate::vid::Vid;
 use pix::chan::{Ch8, Linear, Premultiplied};
@@ -626,10 +626,7 @@ where
         let sgn_area = &mut self.sgn_area;
         if TypeId::of::<P>() == TypeId::of::<Matte8>() {
             // FIXME: only if clr is Matte8::new(255)
-            let n_bytes = dst.len() * std::mem::size_of::<P>();
-            let ptr = dst.as_mut_ptr() as *mut u8;
-            let dst = unsafe { std::slice::from_raw_parts_mut(ptr, n_bytes) };
-            accumulate_non_zero(dst, sgn_area);
+            matte_src_over_non_zero(dst, sgn_area);
             return;
         }
         let mut sum = 0;
@@ -647,10 +644,7 @@ where
         let sgn_area = &mut self.sgn_area;
         if TypeId::of::<P>() == TypeId::of::<Matte8>() {
             // FIXME: only if clr is Matte8::new(255)
-            let n_bytes = dst.len() * std::mem::size_of::<P>();
-            let ptr = dst.as_mut_ptr() as *mut u8;
-            let dst = unsafe { std::slice::from_raw_parts_mut(ptr, n_bytes) };
-            accumulate_odd(dst, sgn_area);
+            matte_src_over_even_odd(dst, sgn_area);
             return;
         }
         let mut sum = 0;
