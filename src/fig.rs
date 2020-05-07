@@ -4,7 +4,7 @@
 //
 use crate::fixed::Fixed;
 use crate::geom::Pt;
-use crate::imgbuf::{matte_src_over_non_zero, matte_src_over_even_odd};
+use crate::imgbuf::{matte_src_over_even_odd, matte_src_over_non_zero};
 use crate::path::FillRule;
 use crate::vid::Vid;
 use pix::chan::{Ch8, Linear, Premultiplied};
@@ -92,10 +92,6 @@ where
     sgn_area: &'a mut [i16],
     /// Active edges
     edges: Vec<Edge>,
-    /// Current scan Y
-    y_now: Fixed,
-    /// Previous scan Y
-    y_prev: Fixed,
 }
 
 impl Sub for FxPt {
@@ -121,11 +117,6 @@ impl FxPt {
         // Cross product (with Z zero) is used to determine the winding order.
         (self.x * rhs.y) > (rhs.x * self.y)
     }
-}
-
-/// Get the row of a Y value
-fn row_of(y: Fixed) -> i32 {
-    (y - Fixed::EPSILON).into()
 }
 
 impl FigDir {
@@ -172,6 +163,11 @@ impl SubFig {
     }
 }
 
+/// Get the row of a Y value
+fn row_of(y: Fixed) -> i32 {
+    y.into()
+}
+
 impl Edge {
     /// Create a new edge
     ///
@@ -189,8 +185,8 @@ impl Edge {
         let inv_slope = delta_x / delta_y;
         let y_upper = p0.y;
         let y_lower = p1.y;
-        let fm = (y_upper.ceil() - y_upper) * inv_slope;
-        let x_bot = fm + p0.x;
+        let y_bot = (y_upper + Fixed::ONE).floor() - y_upper;
+        let x_bot = p0.x + inv_slope * y_bot;
         Edge {
             v1,
             y_upper,
@@ -213,34 +209,6 @@ impl Edge {
         }
     }
 
-    /// Check if edge is partial at a given row.
-    fn is_partial(&self, row: i32) -> bool {
-        let f0 = self.y_upper.fract();
-        let f1 = self.y_lower.fract();
-        (f0 > Fixed::ZERO && row == i32::from(self.y_upper)) ||
-        (f1 > Fixed::ZERO && row == i32::from(self.y_lower))
-    }
-
-    /// Calculate X limits for a partial row.
-    fn calculate_x_limits_partial(&mut self, ypb: Fixed, ynb: Fixed) {
-        let xt = self.x_bot - self.inv_slope * ypb;
-        let xb = self.x_bot - self.inv_slope * ynb;
-        self.set_x_limits(xt, xb);
-    }
-
-    /// Calculate X limits for a full row.
-    fn calculate_x_limits_full(&mut self) {
-        let xt = self.x_bot - self.inv_slope;
-        let xb = self.x_bot;
-        self.set_x_limits(xt, xb);
-    }
-
-    /// Set X limits
-    fn set_x_limits(&mut self, xt: Fixed, xb: Fixed) {
-        self.min_x = xt.min(xb);
-        self.max_x = xt.max(xb);
-    }
-
     /// Get the minimum X pixel
     fn min_pix(&self) -> i32 {
         self.min_x.into()
@@ -251,10 +219,92 @@ impl Edge {
         self.max_x.into()
     }
 
+    /// Get the X midpoint for the current row.
+    fn mid_x(&self) -> Fixed {
+        self.max_x.avg(self.min_x)
+    }
+
+    /// Check for the edge starting row.
+    fn is_starting(&self, y_row: i32) -> bool {
+        row_of(self.y_upper) == y_row
+    }
+
+    /// Check for the edge ending row.
+    fn is_ending(&self, y_row: i32) -> bool {
+        row_of(self.y_lower) == y_row
+    }
+
+    /// Get pixel coverage of starting row.
+    fn starting_cov(&self) -> i16 {
+        let y_row = row_of(self.y_upper);
+        self.continuing_cov(y_row) - pixel_cov(self.y_upper.fract())
+    }
+
+    /// Calculate X limits for the starting row.
+    fn calculate_x_limits_starting(&mut self) {
+        let y_row = row_of(self.y_upper);
+        let y0 = Fixed::ONE - self.y_upper.fract();
+        let x0 = self.x_bot - self.inv_slope * y0;
+        self.set_x_limits(x0, y_row);
+    }
+
+    /// Get pixel coverage of continuing row.
+    fn continuing_cov(&self, y_row: i32) -> i16 {
+        debug_assert!(y_row <= row_of(self.y_lower));
+        if self.is_ending(y_row) {
+            pixel_cov(self.y_lower.fract())
+        } else {
+            256
+        }
+    }
+
+    /// Calculate X limits for a continuing row.
+    fn calculate_x_limits_continuing(&mut self, y_row: i32) {
+        debug_assert!(!self.is_starting(y_row));
+        let x0 = self.x_bot - self.inv_slope;
+        self.set_x_limits(x0, y_row);
+    }
+
+    /// Set X limits
+    fn set_x_limits(&mut self, x0: Fixed, y_row: i32) {
+        let x1 = if self.is_ending(y_row) {
+            let y1 = self.y_lower.ceil() - self.y_lower;
+            self.x_bot - self.inv_slope * y1
+        } else {
+            self.x_bot
+        };
+        self.min_x = x0.min(x1);
+        self.max_x = x0.max(x1);
+    }
+
+    /// Scan signed area of current row.
+    ///
+    /// * `dir` Direction of edge.
+    /// * `cov` Pixel coverage of current row (1 - 256).
+    /// * `area` Signed area buffer.
+    fn scan_area(&self, dir: FigDir, cov: i16, area: &mut [i16]) {
+        let ed = if self.dir == dir { 1 } else { -1 };
+        let full_cov = Fixed::from(cov as f32 / 256.0);
+        let mut x_cov = self.first_cov(full_cov); // total coverage at X
+        let step_cov = self.step_cov(Fixed::ONE); // coverage change per step
+        debug_assert!(step_cov > Fixed::ZERO);
+        let mut sum_pix = 0; // cumulative sum of pixel coverage
+        for x in self.min_pix()..area.len() as i32 {
+            let x_pix = pixel_cov(x_cov).min(cov);
+            let p = x_pix - sum_pix; // pixel coverage at X
+            area[x.max(0) as usize] += p * ed;
+            sum_pix += p;
+            if sum_pix >= cov {
+                break;
+            }
+            x_cov = (x_cov + step_cov).min(Fixed::ONE);
+        }
+    }
+
     /// Get coverage of first pixel on edge.
     fn first_cov(&self, full_cov: Fixed) -> Fixed {
         let r = if self.min_pix() == self.max_pix() {
-            (Fixed::ONE - self.x_mid().fract()) * full_cov
+            (Fixed::ONE - self.mid_x().fract()) * full_cov
         } else {
             (Fixed::ONE - self.min_x.fract()) * Fixed::HALF
         };
@@ -267,35 +317,6 @@ impl Edge {
             r * self.step_pix
         } else {
             r
-        }
-    }
-
-    /// Get the X midpoint for the current row.
-    fn x_mid(&self) -> Fixed {
-        self.max_x.avg(self.min_x)
-    }
-
-    /// Scan signed area of current row.
-    ///
-    /// * `dir` Direction of edge.
-    /// * `full_pix` Pixel coverage of current row (1 - 256).
-    /// * `area` Signed area buffer.
-    fn scan_area(&self, dir: FigDir, full_pix: i16, area: &mut [i16]) {
-        let ed = if self.dir == dir { 1 } else { -1 };
-        let full_cov = Fixed::from(full_pix as f32 / 256.0);
-        let mut x_cov = self.first_cov(full_cov); // total coverage at X
-        let step_cov = self.step_cov(Fixed::ONE); // coverage change per step
-        debug_assert!(step_cov > Fixed::ZERO);
-        let mut sum_pix = 0; // cumulative sum of pixel coverage
-        for x in self.min_pix()..area.len() as i32 {
-            let x_pix = pixel_cov(x_cov).min(full_pix);
-            let p = x_pix - sum_pix; // pixel coverage at X
-            area[x.max(0) as usize] += p * ed;
-            sum_pix += p;
-            if sum_pix >= full_pix {
-                break;
-            }
-            x_cov = (x_cov + step_cov).min(Fixed::ONE);
         }
     }
 }
@@ -475,10 +496,7 @@ impl Fig {
             let region = (0, top_row.max(0), raster.width(), raster.height());
             let rows = raster.rows_mut(region);
             let mut scan = Scanner::new(self, rule, dir, rows, clr, sgn_area);
-            for vid in vids {
-                scan.scan_vertex(vid);
-            }
-            scan.rasterize_row();
+            scan.scan_vertices(vids, top_row);
         }
     }
 }
@@ -505,23 +523,7 @@ where
             clr,
             sgn_area,
             edges,
-            y_now: Fixed::ZERO,
-            y_prev: Fixed::ZERO,
         }
-    }
-
-    /// Scan figure to a given vertex
-    fn scan_vertex(&mut self, vid: Vid) {
-        let y_vtx = Fixed::from(self.get_y(vid));
-        if !self.edges.is_empty() {
-            self.scan_to_y(y_vtx);
-        } else {
-            self.rasterize_row();
-            self.y_now = y_vtx;
-            self.y_prev = y_vtx;
-        }
-        self.update_edges(vid, FigDir::Forward);
-        self.update_edges(vid, FigDir::Reverse);
     }
 
     /// Get Y value at a vertex.
@@ -529,36 +531,37 @@ where
         self.fig.get_y(vid)
     }
 
-    /// Scan figure, rasterizing all rows above a vertex
-    fn scan_to_y(&mut self, y_vtx: Fixed) {
-        while self.y_now < y_vtx {
-            if self.is_row_bottom() && self.rasterize_row() {
-                break;
-            }
-            self.y_prev = self.y_now;
-            self.y_now = y_vtx.min(self.y_now.floor() + Fixed::ONE);
-            if self.is_next_row() {
-                self.advance_edges();
-            }
-            if self.y_now > Fixed::ZERO {
-                if self.is_partial() {
-                    self.scan_partial();
+    /// Scan all vertices in order.
+    fn scan_vertices(&mut self, vids: Vec<Vid>, top_row: i32) {
+        let mut vids = vids.iter().peekable();
+        let mut y_row = top_row;
+        while let Some(row_buf) = self.rows.next() {
+            self.scan_continuing_edges(y_row);
+            while let Some(vid) = vids.peek() {
+                let y_vtx = self.get_y(**vid);
+                if row_of(y_vtx) > y_row {
+                    break;
                 }
-                if self.is_row_bottom() {
-                    self.scan_full();
-                }
+                let vid = *vids.next().unwrap();
+                self.update_edges(vid, FigDir::Forward);
+                self.update_edges(vid, FigDir::Reverse);
             }
+            self.rasterize_row(row_buf);
+            self.advance_edges();
+            y_row += 1;
         }
     }
 
-    /// Check if scan is at bottom of row.
-    fn is_row_bottom(&self) -> bool {
-        self.y_now.fract() == Fixed::ZERO
-    }
-
-    /// Check if scan has advanced to the next row.
-    fn is_next_row(&self) -> bool {
-        row_of(self.y_now) > row_of(self.y_prev)
+    /// Scan edges continuing on this row.
+    fn scan_continuing_edges(&mut self, y_row: i32) {
+        let mut area = &mut self.sgn_area;
+        for e in self.edges.iter_mut() {
+            let cov = e.continuing_cov(y_row);
+            if cov > 0 {
+                e.calculate_x_limits_continuing(y_row);
+                e.scan_area(self.dir, cov, &mut area);
+            }
+        }
     }
 
     /// Advance all edges to the next row.
@@ -568,56 +571,57 @@ where
         }
     }
 
-    /// Check if current row is partial.
-    fn is_partial(&self) -> bool {
-        (self.y_now - self.y_prev) < Fixed::ONE
-    }
-
-    /// Scan partial edges.
-    fn scan_partial(&mut self) {
-        let full_pix = self.scan_cov_partial();
-        debug_assert!(full_pix <= 256);
-        if full_pix > 0 {
-            let row = row_of(self.y_now);
-            let y_bot = self.y_now.ceil();
-            let ypb = y_bot - self.y_prev;
-            let ynb = y_bot - self.y_now;
-            let mut area = &mut self.sgn_area;
-            for e in self.edges.iter_mut() {
-                if e.is_partial(row) {
-                    e.calculate_x_limits_partial(ypb, ynb);
-                    e.scan_area(self.dir, full_pix, &mut area);
-                }
+    /// Update edges at a given vertex.
+    fn update_edges(&mut self, vid: Vid, dir: FigDir) {
+        let v = self.fig.next(vid, dir);
+        if v != vid {
+            let y = self.get_y(vid);
+            match self.get_y(v).cmp(&y) {
+                Greater => self.add_edge(vid, v, dir),
+                Less => self.remove_edge(vid, dir.opposite()),
+                _ => (),
             }
         }
     }
 
-    /// Scan full edges.
-    fn scan_full(&mut self) {
-        let row = row_of(self.y_now);
-        let mut area = &mut self.sgn_area;
-        for e in self.edges.iter_mut() {
-            if !e.is_partial(row) {
-                e.calculate_x_limits_full();
-                e.scan_area(self.dir, 256, &mut area);
+    /// Add an edge.
+    fn add_edge(&mut self, v0: Vid, v1: Vid, dir: FigDir) {
+        let fig = &self.fig;
+        let p0 = fig.point(v0); // Upper point
+        let p1 = fig.point(v1); // Lower point
+        let mut e = Edge::new(v0, v1, p0, p1, dir);
+        let cov = e.starting_cov();
+        if cov > 0 {
+            e.calculate_x_limits_starting();
+            e.scan_area(self.dir, cov, &mut self.sgn_area);
+        }
+        self.edges.push(e);
+    }
+
+    /// Remove an edge.
+    fn remove_edge(&mut self, v1: Vid, dir: FigDir) {
+        if let Some(i) = self.find_edge(v1, dir) {
+            self.edges.swap_remove(i);
+        }
+    }
+
+    /// Find an active edge
+    fn find_edge(&self, v1: Vid, dir: FigDir) -> Option<usize> {
+        for (i, e) in self.edges.iter().enumerate() {
+            if v1 == e.v1 && dir == e.dir {
+                return Some(i);
             }
         }
+        None
     }
 
     /// Rasterize the current row.
     /// Signed area is zeroed upon return.
-    fn rasterize_row(&mut self) -> bool {
-        if self.y_now > Fixed::ZERO {
-            if let Some(row_buf) = self.rows.next() {
-                match self.rule {
-                    FillRule::NonZero => self.scan_non_zero(row_buf),
-                    FillRule::EvenOdd => self.scan_even_odd(row_buf),
-                }
-            } else {
-                return true;
-            }
+    fn rasterize_row(&mut self, row_buf: &mut [P]) {
+        match self.rule {
+            FillRule::NonZero => self.scan_non_zero(row_buf),
+            FillRule::EvenOdd => self.scan_even_odd(row_buf),
         }
-        false
     }
 
     /// Accumulate scan area with non-zero fill rule.
@@ -657,60 +661,6 @@ where
             let alpha = Ch8::from(saturating_cast_i16_u8(c));
             d.composite_channels_alpha(&clr, SrcOver, &alpha);
         }
-    }
-
-    /// Get scan coverage for partial row.
-    fn scan_cov_partial(&self) -> i16 {
-        debug_assert!(self.y_now > self.y_prev);
-        debug_assert!(self.y_now <= self.y_prev + Fixed::ONE);
-        let scan_now = pixel_cov(self.y_now.fract());
-        let scan_prev = pixel_cov(self.y_prev.fract());
-        if scan_now == scan_prev && self.y_now.fract() > Fixed::ZERO {
-            0
-        } else if scan_now > scan_prev {
-            scan_now - scan_prev
-        } else {
-            256 + scan_now - scan_prev
-        }
-    }
-
-    /// Update edges at a given vertex.
-    fn update_edges(&mut self, vid: Vid, dir: FigDir) {
-        let v = self.fig.next(vid, dir);
-        if v != vid {
-            let y = self.get_y(vid);
-            match self.get_y(v).cmp(&y) {
-                Greater => self.add_edge(vid, v, dir),
-                Less => self.remove_edge(vid, dir.opposite()),
-                _ => (),
-            }
-        }
-    }
-
-    /// Add an edge.
-    fn add_edge(&mut self, v0: Vid, v1: Vid, dir: FigDir) {
-        let fig = &self.fig;
-        let p0 = fig.point(v0); // Upper point
-        let p1 = fig.point(v1); // Lower point
-        let e = Edge::new(v0, v1, p0, p1, dir);
-        self.edges.push(e);
-    }
-
-    /// Remove an edge.
-    fn remove_edge(&mut self, v1: Vid, dir: FigDir) {
-        if let Some(i) = self.find_edge(v1, dir) {
-            self.edges.swap_remove(i);
-        }
-    }
-
-    /// Find an active edge
-    fn find_edge(&self, v1: Vid, dir: FigDir) -> Option<usize> {
-        for (i, e) in self.edges.iter().enumerate() {
-            if v1 == e.v1 && dir == e.dir {
-                return Some(i);
-            }
-        }
-        None
     }
 }
 
@@ -834,9 +784,9 @@ mod test {
         let mut m = Raster::<Matte8>::with_clear(9, 1);
         let mut s = vec![0; 16];
         let mut f = Fig::new();
+        f.add_point(Pt(0.0, 0.0));
         f.add_point(Pt(0.0, 0.3));
         f.add_point(Pt(9.0, 0.0));
-        f.add_point(Pt(0.0, 0.0));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
         assert_eq!([73, 64, 56, 47, 39, 30, 22, 13, 4], m.as_u8_slice());
