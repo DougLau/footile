@@ -17,7 +17,7 @@ const FRACT_MASK: i32 = (1 << FRACT_BITS) - 1;
 
 impl fmt::Debug for Fixed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", f32::from(*self))
+        write!(f, "{:?}", f32::from(*self))
     }
 }
 
