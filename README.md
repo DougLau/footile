@@ -139,44 +139,54 @@ instead of adding:
           -->
 ```
 
-For anti-aliasing, the trick is to use fractional numbers where an edge crosses
-through a pixel.  Let's look at a triangle crossing two pixels:
+### Scanning Rows
+
+When scanning a row, the signed area is sampled for each pixel.  The direction
+of each edge from top to bottom determines whether it adds to or subtracts from
+the area.  In the normal winding order, it adds to the area; otherwise, it
+subtracts.
+
+This row is 4 pixels wide:
 
 ```bob
-    (0, 0)    (1, 0)
-    +  -  -  -
-    |\        |
-    | \
-    |  \      |
-    |   \
-    | -  \  -  (1, 1)
-    |     \   |
-    |      \
-    |       \ |
-    |        \
-    +---------+ (1, 2)
+      -  -  - | -  -  -   -  -  - | -  -  -
+    |         |         |         |         |
+              | +1                | -1
+    |         |         |         |         |
+              |                   |      
+    | -  -  - | -  -  - | -  -  - | -  -  - |
+          0         1         1         0
 ```
 
-Ideally, the top pixel would be 25% filled and the bottom would be 75%.  As we
-rasterize one row at a time, we keep a cumulative sum of values from left to
-right.
+The *cumulative sum* of these values is the signed area of each pixel.
+
+#### Anti-Aliasing
+
+Sometimes edges don't fall on pixel boundaries.  In this case, the trick is to
+use fractional numbers for anti-aliasing.
 
 ```bob
-      -  -  - +  -  -  -  -  -  -
-    |         |\        |         |
-              | \ -0.75
-    |    0    |  \      |  -0.25  |
-              |+1 \
-      -  -  - | -  \  -   -  -  -
-    |         |     \-0.25        |
-              |      \
-    |    0    |  +1   \ |  -0.75  |
+      -  -  - | -  |  -   -  -  -   -  -  -
+    |         |    |    |         |         |
+              | +1 | -½   -½
+    |         |    |    |         |         |
+              |    |                     
+    | -  -  - | -  |  - | -  -  - | -  -  - |
+          0         ½         0         0
+```
+
+Notice how the remainder of the second edge coverage is added to the pixel to
+the right (third pixel).  This is necessary to keep the cumulative sum correct.
+
+```bob
+      -  -  - | -  \  -   -  -  -   -  -  -
+    |         |     \   |         |         |
+              | +1   \-¼  -¾
+    |         |       \ |         |         |
               |        \
-      -  -  - +---------+ -  -  -
+    | -  -  - | -  -  - \ -  -  - | -  -  - |
+          0         ¾         0         0
 ```
-
-Notice how the remainder of the edge coverage is added to the pixel to the
-right?  This ensures that the cumulative sum at that pixel returns to zero.
 
 ### Compositing
 
