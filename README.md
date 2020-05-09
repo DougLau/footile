@@ -22,7 +22,7 @@ let mut p = Plotter::new(128, 128);
 let raster = p.fill(&fish, FillRule::NonZero);
 ```
 
-## Code Walkthrough
+## Rasterizing: Bird's Eye View
 
 There is nothing novel here — this is merely a guide to the code.
 
@@ -31,7 +31,7 @@ to make a high-quality raster image out of it.  But how?
 
 ### Modules
 
-* `path`: Defines `Path` struct to store 2D paths
+* `path`: Defines struct to store 2D `Path`s
 * `geom`: Points (`Pt`) and transforms used by `plotter` and `stroker`
 * `plotter`: Defines `Plotter` struct and flattens curves
 * `stroker`: Creates *stroked* paths for plotter
@@ -41,9 +41,12 @@ to make a high-quality raster image out of it.  But how?
 ### Curve Flattening
 
 Here, *flattening* refers to approximating a curve with a series of line
-segments, and has no relation to pandemic response.  Currently we use a basic
-algorithm described by De Casteljau.  There might be opportunities for
-optimization here if we ever determine this is a bottleneck.
+segments, and has no relation to pandemic response.
+
+Currently we use the recursive algorithm described by De Casteljau.  There might
+be opportunities for optimization here if we ever determine this is a
+bottleneck.  One other thing to note: this method could cause a stack overflow
+with the wrong input data.
 
 Once complete, we have a series of line segments forming one or more closed
 polygons.
@@ -58,17 +61,40 @@ sometimes called *counter-* or *anti-clockwise*.  Let's avoid that debate by
 calling it *widdershins*, since clocks rarely go backwards.
 
 The first vertex must be on the outside of the path, so we can check the angle
-to its neighbors to determine the winding order.
+between its neighbors to determine the winding order.
 
 ### Active Edges
 
-Processing the rows in order, edges are added and removed from the *active edge*
-list.  If an edge crosses the current row, it is added to the list, otherwise,
-it is removed.  Once we reach a vertex with Y greater than the current row, the
-row can be scanned.
+As rows are scanned from top to bottom, we keep track of a list of *active
+edges*.  If an edge crosses the current row, it is added to the list, otherwise,
+it is removed.  Since horizontal edges cannot *cross* a row, they can safely be
+ignored.
 
-As rows are scanned, the active edge list is updated by considering the vertices
-in the sorted list.
+For each row, vertices from the list are compared to its top and bottom.  If
+the new vertex is above the bottom, one or more edges are *added*.  When the
+new vertex is above the top, existing edges are *removed*.
+
+```bob
+           v0
+           /\
+          /  \ (a)
+         /    \      v2
+    (b) /      +-----+
+       /      v1      \
+      /                \ (c)
+     /                  \
+    +--------------------+
+     v3                  v4
+```
+
+Example:
+* Starting with `v0`, add edges `(a)` and `(b)`
+* Scan until the bottom of the current row is below `v1` / `v2`
+* Add edge `(c)`
+* Scan until the row top is below `v1`
+* Remove edge `(a)`
+* Scan until the row top is below `v3` / `v4`
+* Remove edges `(b)` and `(c)`
 
 ### Signed Area
 
@@ -120,12 +146,12 @@ through a pixel.  Let's look at a triangle crossing two pixels:
     (0, 0)    (1, 0)
     +  -  -  -
     |\        |
-    | \        
+    | \
     |  \      |
-    |   \     
+    |   \
     | -  \  -  (1, 1)
     |     \   |
-    |      \  
+    |      \
     |       \ |
     |        \
     +---------+ (1, 2)
@@ -136,17 +162,17 @@ rasterize one row at a time, we keep a cumulative sum of values from left to
 right.
 
 ```bob
-      -  -  - +  -  -  -  -  -  -  
+      -  -  - +  -  -  -  -  -  -
     |         |\        |         |
-              | \ -0.75           
+              | \ -0.75
     |    0    |  \      |  -0.25  |
-              |+1 \                
-      -  -  - | -  \  -   -  -  -  
+              |+1 \
+      -  -  - | -  \  -   -  -  -
     |         |     \-0.25        |
-              |      \                
+              |      \
     |    0    |  +1   \ |  -0.75  |
-              |        \           
-      -  -  - +---------+ -  -  -  
+              |        \
+      -  -  - +---------+ -  -  -
 ```
 
 Notice how the remainder of the edge coverage is added to the pixel to the
