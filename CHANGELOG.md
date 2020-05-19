@@ -1,5 +1,6 @@
 ## [Unreleased]
 
+## [0.5.0] - 2020-05-19
 ### Changed
 * Replaced PathBuilder::new() with default() (Default impl)
 * Replaced Transform::new() with default() (Default implt)
@@ -14,7 +15,7 @@
 
 ## [0.3.1] - 2019-03-07
 ### Added
-* Support target_arch = "wasm32"
+* Support `target_arch` = "wasm32"
 * New use-simd feature
 
 ## [0.3.0] - 2019-01-21
@@ -30,10 +31,10 @@
 ### Added
 * PixFmt, Rgba8, Gray8 pixel formats.
 * Raster now has a pixel format type parameter.
-* Raster::width(), height() and as_*_slice methods.
+* Raster::width(), height() and `as_*_slice` methods.
 * RasterB (for borrowed pixels).
 ### Removed
-* Plotter::over, raster and write_png methods.
+* Plotter::over, raster and `write_png` methods.
 * Plotter no longer has an associated Raster
 ### Changed
 * Plotter::fill and stroke now return Mask reference.
@@ -48,12 +49,12 @@
 
 ## [0.1.0] - 2018-11-11
 ### Added
-* Plotter::raster, Plotter::write_png
+* Plotter::raster, `Plotter::write_png`
 ### Removed
-* Plotter::add_path, Plotter::reset
+* `Plotter::add_path`, Plotter::reset
 ### Changed
 * Plotter::fill/stroke now take a PathOp iterator.
-* Plotter: renamed clear to clear_mask.
+* Plotter: renamed clear to `clear_mask`.
 * Converted SIMD code from C to rust.
 * Converted benchmarks to use criterion-rs.
 * Moved stroker into its own module.
@@ -70,16 +71,16 @@
 ## [0.0.9] - 2017-10-20
 ### Added
 * Transform struct
-* Plotter::set_transform
+* `Plotter::set_transform`
 ### Removed
-* Plotter::{scale,translate,rotate,skew_x,skew_y}
+* Plotter::{scale,translate,rotate,`skew_x`,`skew_y`}
 ### Changed
 * Implemented more accurate rendering algorithm (cumulative sum).
 * Cleaned up example programs.
 
 ## [0.0.8] - 2017-10-11
 ### Added
-* Plotter::{scale,translate,rotate,skew_x,skew_y}
+* Plotter::{scale,translate,rotate,`skew_x`,`skew_y`}
 
 ## [0.0.7] - 2017-10-10
 ### Fixed
@@ -88,7 +89,7 @@
 * Added C SIMD code for rendering mask.
 * Added plotting benchmarks.
 ### Removed
-* Plotter::write_png
+* `Plotter::write_png`
 ### Changed
 * Use type alias for vertex IDs.
 * Moved test code into separate modules.
