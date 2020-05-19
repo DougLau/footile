@@ -7,6 +7,8 @@ A 2D vector graphics library written in Rust.
 ## Example
 ```rust
 use footile::{FillRule, PathBuilder, Plotter};
+use pix::matte::Matte8;
+use pix::Raster;
 
 let fish = PathBuilder::new()
     .relative()
@@ -18,8 +20,9 @@ let fish = PathBuilder::new()
     .line_to(-16.0, -40.0)
     .close()
     .build();
+let raster = Raster::with_clear(128, 128);
 let mut p = Plotter::new(128, 128);
-let raster = p.fill(&fish, FillRule::NonZero);
+p.fill(FillRule::NonZero, &fish, Matte8::new(255));
 ```
 
 ## Rasterizing: Bird's Eye View
