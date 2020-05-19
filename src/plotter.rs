@@ -11,26 +11,26 @@ use pix::el::Pixel;
 use pix::Raster;
 use std::borrow::Borrow;
 
-/// Plotter for 2D vector paths.
+/// Plotter for 2D vector [path]s.
 ///
-/// This is a software vector rasterizer featuring anti-aliasing.
-/// Paths can be created using [PathBuilder].  The plotter contains a raster,
-/// which is drawn by fill and stroke calls.
+/// This is a software vector rasterizer featuring anti-aliasing.  The plotter
+/// contains a raster, which is drawn by fill and stroke calls.
 ///
-/// [PathBuilder]: struct.PathBuilder.html
+/// [path]: struct.Path.html
 ///
 /// # Example
 /// ```
-/// use footile::{PathBuilder, Plotter};
+/// use footile::{Path, Plotter};
 /// use pix::rgb::Rgba8p;
 /// use pix::Raster;
 ///
-/// let path = PathBuilder::default()
+/// let path = Path::default()
 ///     .pen_width(3.0)
 ///     .move_to(50.0, 34.0)
 ///     .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
 ///     .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
-///     .close().build();
+///     .close()
+///     .finish();
 /// let mut p = Plotter::new(Raster::with_clear(100, 100));
 /// p.stroke(&path, Rgba8p::new(255, 128, 0, 255));
 /// ```
@@ -377,7 +377,7 @@ mod test {
 
     #[test]
     fn overlapping() {
-        let path = PathBuilder::default()
+        let path = Path::default()
             .absolute()
             .move_to(8.0, 4.0)
             .line_to(8.0, 3.0)
@@ -385,7 +385,7 @@ mod test {
             .line_to(8.0, 3.75)
             .line_to(8.5, 3.75)
             .line_to(8.5, 3.5)
-            .build();
+            .finish();
         let r = Raster::with_clear(16, 16);
         let mut p = Plotter::new(r);
         p.fill(FillRule::NonZero, &path, Matte8::new(255));

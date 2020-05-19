@@ -1,19 +1,19 @@
 // drop.rs
-use footile::{FillRule, PathBuilder, Plotter};
+use footile::{FillRule, Path, Plotter};
 use pix::gray::{Graya8p, SGray8};
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = PathBuilder::default()
+    let path = Path::default()
         .relative()
         .pen_width(3.0)
         .move_to(50.0, 34.0)
         .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
         .cubic_to(-16.0, -4.0, -4.0, -16.0, 0.0, -32.0)
         .close()
-        .build();
+        .finish();
     let r = Raster::<Graya8p>::with_clear(100, 100);
     let mut p = Plotter::new(r);
     p.fill(FillRule::NonZero, &path, Graya8p::new(128, 255));

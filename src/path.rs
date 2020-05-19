@@ -29,18 +29,18 @@ pub enum PathOp {
     PenWidth(f32),
 }
 
-/// Path Builder.
+/// Path builder.
 ///
 /// # Example
 /// ```
-/// use footile::PathBuilder;
+/// use footile::Path;
 ///
-/// let path = PathBuilder::default()
+/// let path = Path::default()
 ///     .move_to(10.0, 10.0)
 ///     .line_to(90.0, 90.0)
-///     .build();
+///     .finish();
 /// ```
-pub struct PathBuilder {
+pub struct Path {
     /// Vec of path operations
     ops: Vec<PathOp>,
     /// Absolute vs relative coordinates
@@ -49,11 +49,11 @@ pub struct PathBuilder {
     pen: Pt,
 }
 
-impl Default for PathBuilder {
-    /// Create a new PathBuilder.
-    fn default() -> PathBuilder {
+impl Default for Path {
+    /// Create a new Path.
+    fn default() -> Path {
         let ops = Vec::with_capacity(32);
-        PathBuilder {
+        Path {
             ops,
             absolute: false,
             pen: Pt::default(),
@@ -61,7 +61,7 @@ impl Default for PathBuilder {
     }
 }
 
-impl PathBuilder {
+impl Path {
     /// Use absolute coordinates for subsequent operations.
     pub fn absolute(mut self) -> Self {
         self.absolute = true;
@@ -165,8 +165,8 @@ impl PathBuilder {
         self
     }
 
-    /// Build path from specified operations.
-    pub fn build(self) -> Vec<PathOp> {
+    /// Finish path with specified operations.
+    pub fn finish(self) -> Vec<PathOp> {
         self.ops
     }
 }

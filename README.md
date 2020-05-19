@@ -6,11 +6,11 @@ A 2D vector graphics library written in Rust.
 
 ## Example
 ```rust
-use footile::{FillRule, PathBuilder, Plotter};
+use footile::{FillRule, Path, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
-let fish = PathBuilder::new()
+let fish = Path::default()
     .relative()
     .pen_width(3.0)
     .move_to(112.0, 24.0)
@@ -19,7 +19,7 @@ let fish = PathBuilder::new()
     .line_to(32.0, 24.0)
     .line_to(-16.0, -40.0)
     .close()
-    .build();
+    .finish();
 let raster = Raster::with_clear(128, 128);
 let mut p = Plotter::new(128, 128);
 p.fill(FillRule::NonZero, &fish, Matte8::new(255));

@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+### Changed
+* Renamed PathBuilder to Path
 ### Removed
 * Path2D (just use `Vec<PathOp>` instead)
 

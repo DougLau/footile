@@ -1,5 +1,5 @@
 // heptagram.rs
-use footile::{FillRule, PathBuilder, Plotter, Transform};
+use footile::{FillRule, Path, Plotter, Transform};
 use pix::matte::Matte8;
 use pix::Raster;
 
@@ -13,13 +13,13 @@ fn main() -> Result<(), std::io::Error> {
     let h = (p.width() / 2) as f32;
     let q = h / 2.0;
     p.set_transform(Transform::with_scale(h, h).translate(q, q));
-    let mut pb = PathBuilder::default();
+    let mut pb = Path::default();
     pb = pb.move_to(0f32.cos(), 0f32.sin());
     for n in 1..7 {
         let th = PI * 4.0 * (n as f32) / 7.0;
         pb = pb.line_to(th.cos(), th.sin());
     }
-    let path = pb.close().build();
+    let path = pb.close().finish();
     p.fill(FillRule::EvenOdd, &path, Matte8::new(255));
     png::write_matte(&p.raster(), "./heptagram.png")
 }

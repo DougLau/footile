@@ -1,18 +1,18 @@
 // curve.rs
-use footile::{PathBuilder, Plotter};
+use footile::{Path, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = PathBuilder::default()
+    let path = Path::default()
         .relative()
         .pen_width(0.0)
         .move_to(64.0, 48.0)
         .pen_width(18.0)
         .cubic_to(-64.0, -48.0, -64.0, 80.0, 0.0, 32.0)
-        .build();
+        .finish();
     let r = Raster::with_clear(128, 128);
     let mut p = Plotter::new(r);
     png::write_matte(p.stroke(&path, Matte8::new(255)), "./curve.png")

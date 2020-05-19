@@ -1,12 +1,12 @@
 // stroke2.rs
-use footile::{PathBuilder, Plotter};
+use footile::{Path, Plotter};
 use pix::rgb::{Rgba8p, SRgba8};
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = PathBuilder::default()
+    let path = Path::default()
         .relative()
         .pen_width(6.0)
         .move_to(16.0, 15.0)
@@ -16,7 +16,7 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(-32.0, 15.0)
         .line_to(32.0, 1.0)
         .line_to(-32.0, 1.0)
-        .build();
+        .finish();
     let clr = Rgba8p::new(64, 128, 64, 255);
     let mut p = Plotter::new(Raster::with_color(64, 64, clr));
     p.stroke(&path, Rgba8p::new(255, 255, 0, 255));

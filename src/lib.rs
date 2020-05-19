@@ -19,6 +19,6 @@ mod stroker;
 mod vid;
 
 pub use geom::{Pt, Transform};
-pub use path::{FillRule, PathBuilder, PathOp};
+pub use path::{FillRule, Path, PathOp};
 pub use plotter::Plotter;
 pub use stroker::JoinStyle;

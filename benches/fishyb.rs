@@ -38,7 +38,7 @@ fn make_plotter(i: u32) -> Plotter<Matte8> {
 }
 
 fn make_fishy() -> Vec<PathOp> {
-    PathBuilder::default()
+    Path::default()
         .relative()
         .move_to(112.0, 16.0)
         .line_to(-48.0, 32.0)
@@ -46,7 +46,7 @@ fn make_fishy() -> Vec<PathOp> {
         .line_to(48.0, 32.0)
         .line_to(-32.0, -48.0)
         .close()
-        .build()
+        .finish()
 }
 
 criterion_group!(benches, fill_16, fill_256, stroke_16, stroke_256);
