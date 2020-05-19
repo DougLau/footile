@@ -1,11 +1,11 @@
-use footile::{Path, Plotter};
+use footile::{Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = Path::default()
+    let path = Path2D::default()
         .relative()
         .move_to(0.0, 8.0)
         .line_to(8.0, 8.0)

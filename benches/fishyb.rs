@@ -38,7 +38,7 @@ fn make_plotter(i: u32) -> Plotter<Matte8> {
 }
 
 fn make_fishy() -> Vec<PathOp> {
-    Path::default()
+    Path2D::default()
         .relative()
         .move_to(112.0, 16.0)
         .line_to(-48.0, 32.0)

@@ -1,13 +1,13 @@
 // letter.rs     Example plotting the letter C
-use footile::{FillRule, Path, Plotter};
+use footile::{FillRule, Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let pb = Path::default().absolute();
-    let path = pb
+    let path = Path2D::default()
+        .absolute()
         .move_to(88.61539, 64.895096)
         .quad_to(62.433567, 64.895096, 47.88811, 81.79021)
         .quad_to(33.342655, 98.57342, 33.342655, 127.88811)

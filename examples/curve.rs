@@ -1,12 +1,12 @@
 // curve.rs
-use footile::{Path, Plotter};
+use footile::{Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = Path::default()
+    let path = Path2D::default()
         .relative()
         .pen_width(0.0)
         .move_to(64.0, 48.0)

@@ -1,9 +1,9 @@
 ## [Unreleased]
 
 ### Changed
-* Renamed PathBuilder to Path
+* Renamed PathBuilder to Path2D
 ### Removed
-* Path2D (just use `Vec<PathOp>` instead)
+* Old Path2D (just use `Vec<PathOp>` instead)
 
 ## [0.5.0] - 2020-05-19
 ### Changed

@@ -16,15 +16,15 @@ use std::borrow::Borrow;
 /// This is a software vector rasterizer featuring anti-aliasing.  The plotter
 /// contains a raster, which is drawn by fill and stroke calls.
 ///
-/// [path]: struct.Path.html
+/// [path]: struct.Path2D.html
 ///
 /// # Example
 /// ```
-/// use footile::{Path, Plotter};
+/// use footile::{Path2D, Plotter};
 /// use pix::rgb::Rgba8p;
 /// use pix::Raster;
 ///
-/// let path = Path::default()
+/// let path = Path2D::default()
 ///     .pen_width(3.0)
 ///     .move_to(50.0, 34.0)
 ///     .cubic_to(4.0, 16.0, 16.0, 28.0, 0.0, 32.0)
@@ -377,7 +377,7 @@ mod test {
 
     #[test]
     fn overlapping() {
-        let path = Path::default()
+        let path = Path2D::default()
             .absolute()
             .move_to(8.0, 4.0)
             .line_to(8.0, 3.0)

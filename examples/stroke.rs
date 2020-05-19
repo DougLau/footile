@@ -1,12 +1,12 @@
 // stroke.rs
-use footile::{Path, Plotter};
+use footile::{Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = Path::default()
+    let path = Path2D::default()
         .relative()
         .pen_width(5.0)
         .move_to(16.0, 48.0)

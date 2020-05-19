@@ -1,12 +1,12 @@
 // round.rs
-use footile::{JoinStyle, Path, Plotter};
+use footile::{JoinStyle, Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = Path::default()
+    let path = Path2D::default()
         .relative()
         .pen_width(40.0)
         .move_to(10.0, 60.0)

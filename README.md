@@ -6,11 +6,11 @@ A 2D vector graphics library written in Rust.
 
 ## Example
 ```rust
-use footile::{FillRule, Path, Plotter};
+use footile::{FillRule, Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
-let fish = Path::default()
+let fish = Path2D::default()
     .relative()
     .pen_width(3.0)
     .move_to(112.0, 24.0)
@@ -34,7 +34,7 @@ to make a high-quality raster image out of it.  But how?
 
 ### Modules
 
-* `path`: Defines struct to store 2D `Path`s
+* `path`: Defines path operations and `Path2D`s
 * `geom`: Points (`Pt`) and transforms used by `plotter` and `stroker`
 * `plotter`: Defines `Plotter` struct and flattens curves
 * `stroker`: Creates *stroked* paths for plotter

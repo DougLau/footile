@@ -1,12 +1,12 @@
 // drop.rs
-use footile::{Path, Plotter};
+use footile::{Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = Path::default()
+    let path = Path2D::default()
         .relative()
         .pen_width(2.0)
         .move_to(8.0, 16.0)

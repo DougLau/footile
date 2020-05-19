@@ -1,12 +1,12 @@
 // figure.rs
-use footile::{FillRule, Path, Plotter};
+use footile::{FillRule, Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let path = Path::default()
+    let path = Path2D::default()
         .relative()
         .move_to(4.0, 4.0)
         .line_to(28.0, 12.0)

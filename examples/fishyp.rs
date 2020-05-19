@@ -1,12 +1,12 @@
 // fishyp.rs
-use footile::{FillRule, Path, Plotter};
+use footile::{FillRule, Path2D, Plotter};
 use pix::rgb::{Rgba8p, SRgba8};
 use pix::Raster;
 
 mod png;
 
 fn main() -> Result<(), std::io::Error> {
-    let fish = Path::default()
+    let fish = Path2D::default()
         .relative()
         .pen_width(3.0)
         .move_to(112.0, 24.0)
@@ -16,7 +16,7 @@ fn main() -> Result<(), std::io::Error> {
         .line_to(-16.0, -40.0)
         .close()
         .finish();
-    let eye = Path::default()
+    let eye = Path2D::default()
         .relative()
         .pen_width(2.0)
         .move_to(24.0, 48.0)
