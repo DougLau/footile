@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+* Path2D (just use `Vec<PathOp>` instead)
+
 ## [0.5.0] - 2020-05-19
 ### Changed
 * Replaced PathBuilder::new() with default() (Default impl)
