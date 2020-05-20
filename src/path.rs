@@ -5,7 +5,7 @@
 use crate::geom::Pt;
 
 /// Fill-rule for filling paths.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FillRule {
     /// All points within bounds are filled
     NonZero,
@@ -14,6 +14,7 @@ pub enum FillRule {
 }
 
 /// Path operation.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PathOp {
     /// Close the path
     Close(),
@@ -29,7 +30,7 @@ pub enum PathOp {
     PenWidth(f32),
 }
 
-/// Path2D builder.
+/// Path builder.
 ///
 /// # Example
 /// ```

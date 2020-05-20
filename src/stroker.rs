@@ -8,7 +8,7 @@ use crate::vid::Vid;
 use std::fmt;
 
 /// Style for stroke joins.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum JoinStyle {
     /// Mitered join with limit (miter length to stroke width ratio)
     Miter(f32),
@@ -19,13 +19,14 @@ pub enum JoinStyle {
 }
 
 /// Stroke direction enum
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Dir {
     Forward,
     Reverse,
 }
 
 /// Sub-stroke struct
+#[derive(Clone)]
 struct SubStroke {
     /// Starting point
     start: Vid,
@@ -38,6 +39,7 @@ struct SubStroke {
 }
 
 /// Stroke struct
+#[derive(Clone)]
 pub struct Stroke {
     /// Join style
     join_style: JoinStyle,
