@@ -363,8 +363,18 @@ where
         self.fill(FillRule::NonZero, ops.iter(), clr)
     }
 
-    /// Get the raster.
-    pub fn raster(self) -> Raster<P> {
+    /// Get a reference to the raster.
+    pub fn raster(&self) -> &Raster<P> {
+        &self.raster
+    }
+
+    /// Get a mutable reference to the raster.
+    pub fn raster_mut(&mut self) -> &mut Raster<P> {
+        &mut self.raster
+    }
+
+    /// Consume the plotter and get the raster.
+    pub fn into_raster(self) -> Raster<P> {
         self.raster
     }
 }

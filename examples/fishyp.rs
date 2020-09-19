@@ -43,7 +43,7 @@ fn main() -> Result<(), std::io::Error> {
     p.stroke(&fish, Rgba8p::new(255, 208, 208, 255));
     p.stroke(&eye, Rgba8p::new(0, 0, 0, 255));
 
-    let r = p.raster();
+    let r = p.into_raster();
     let out = Raster::<SRgba8>::with_raster(&r);
     png::write(&out, "./fishyp.png")?;
 

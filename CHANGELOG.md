@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Added
+* `Plotter.raster()` and `raster_mut()` (returning reference)
+### Changed
+* Old `Plotter.raster()` to `Plotter.into_raster()`
+
 ## [0.6.0] - 2020-09-19
 ### Added
 * PathOp, FillRule, JoinStyle, etc. now implement Debug
