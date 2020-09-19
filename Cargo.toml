@@ -15,7 +15,7 @@ pix = "0.13"
 
 [dev-dependencies]
 criterion = "0.3"
-png_pong = "0.5"
+png_pong = "0.7"
 
 [[bench]]
 name = "fishyb"
