@@ -117,7 +117,6 @@ impl Pt {
     }
 
     /// Calculate the distance between two points
-    #[allow(dead_code)]
     pub fn dist(self, rhs: Self) -> f32 {
         self.dist_sq(rhs).sqrt()
     }
@@ -135,7 +134,6 @@ impl Pt {
     }
 
     /// Create a right-hand perpendicular vector
-    #[allow(dead_code)]
     pub fn right(self) -> Self {
         Pt(self.y(), -self.x())
     }
@@ -143,7 +141,6 @@ impl Pt {
     /// Calculate linear interpolation of two points.
     ///
     /// * `t` Interpolation amount, from 0 to 1
-    #[allow(dead_code)]
     pub fn lerp(self, rhs: Self, t: f32) -> Self {
         let x = float_lerp(self.x(), rhs.x(), t);
         let y = float_lerp(self.y(), rhs.y(), t);
