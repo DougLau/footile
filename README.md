@@ -1,8 +1,12 @@
 # footile
-A 2D vector graphics library written in Rust.
 
-## Documentation
-[https://docs.rs/footile](https://docs.rs/footile)
+A 2D vector graphics library written in Rust.  It uses [pix] for the underlying
+raster images.
+
+See the [documentation] for examples and API usage.
+
+[documentation]: https://docs.rs/footile
+[pix]: https://docs.rs/pix
 
 ## Rasterizing: Bird's Eye View
 

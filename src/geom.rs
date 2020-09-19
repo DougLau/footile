@@ -6,6 +6,12 @@ use std::f32;
 use std::ops::{Add, Div, Mul, MulAssign, Neg, Sub};
 
 /// 2-dimensional vector / point.
+///
+/// ```rust
+/// use footile::Pt;
+///
+/// let pt = Pt(10.0, 15.0);
+/// ```
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Pt(pub f32, pub f32);
 
