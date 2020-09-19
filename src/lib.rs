@@ -6,6 +6,25 @@
 //! paths.  These are created using typical vector drawing primitives such as
 //! lines and bézier splines.
 //!
+//! ## Example
+//! ```rust
+//! use footile::{FillRule, Path2D, Plotter};
+//! use pix::{matte::Matte8, Raster};
+//!
+//! let fish = Path2D::default()
+//!     .relative()
+//!     .pen_width(3.0)
+//!     .move_to(112.0, 24.0)
+//!     .line_to(-32.0, 24.0)
+//!     .cubic_to(-96.0, -48.0, -96.0, 80.0, 0.0, 32.0)
+//!     .line_to(32.0, 24.0)
+//!     .line_to(-16.0, -40.0)
+//!     .close()
+//!     .finish();
+//! let raster = Raster::with_clear(128, 128);
+//! let mut p = Plotter::new(raster);
+//! p.fill(FillRule::NonZero, &fish, Matte8::new(255));
+//! ```
 #![warn(missing_docs)]
 #![warn(missing_doc_code_examples)]
 
