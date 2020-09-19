@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+## [0.6.0] - 2020-09-19
+### Added
+* PathOp, FillRule, JoinStyle, etc. now implement Debug
 ### Changed
 * Renamed PathBuilder to Path2D
 ### Removed
