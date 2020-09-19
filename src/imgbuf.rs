@@ -179,12 +179,12 @@ unsafe fn accumulate_even_odd_x86(dst: &mut [u8], src: &mut [i16]) {
         a = accumulate_i16x8_x86(a);
         // add in previous sum
         a = _mm_add_epi16(a, sum);
-        let mut v = _mm_and_si128(a, _mm_set1_epi16(0xFF));
+        let mut val = _mm_and_si128(a, _mm_set1_epi16(0xFF));
         let odd = _mm_and_si128(a, _mm_set1_epi16(0x100));
-        v = _mm_sub_epi16(v, odd);
-        v = _mm_abs_epi16(v);
+        val = _mm_sub_epi16(val, odd);
+        val = _mm_abs_epi16(val);
         // pack to u8 using saturation
-        let b = _mm_packus_epi16(v, v);
+        let b = _mm_packus_epi16(val, val);
         // store result to dest
         _mm_storel_epi64(d, b);
         // shuffle sum into all 16-bit lanes
