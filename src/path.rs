@@ -30,7 +30,7 @@ pub enum PathOp {
     PenWidth(f32),
 }
 
-/// Path builder.
+/// A `Path2D` is a builder for `Vec<PathOp>`.
 ///
 /// # Example
 /// ```
