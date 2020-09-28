@@ -2,9 +2,10 @@
 //
 // Copyright (c) 2017-2020  Douglas P Lau
 //
-use crate::geom::{intersection, Pt, WidePt};
+use crate::geom::{intersection, WidePt};
 use crate::path::PathOp;
 use crate::vid::Vid;
+use pointy::Pt;
 use std::fmt;
 
 /// Style for stroke joins.

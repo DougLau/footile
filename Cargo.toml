@@ -12,6 +12,7 @@ edition = "2018"
 
 [dependencies]
 pix = "0.13"
+pointy = "0.1"
 
 [dev-dependencies]
 criterion = "0.3"

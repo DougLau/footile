@@ -37,7 +37,6 @@ mod plotter;
 mod stroker;
 mod vid;
 
-pub use geom::{Pt, Transform};
 pub use path::{FillRule, Path2D, PathOp};
 pub use plotter::Plotter;
 pub use stroker::JoinStyle;

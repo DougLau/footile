@@ -3,7 +3,6 @@
 // Copyright (c) 2017-2020  Douglas P Lau
 //
 use crate::fixed::Fixed;
-use crate::geom::Pt;
 use crate::imgbuf::{matte_src_over_even_odd, matte_src_over_non_zero};
 use crate::path::FillRule;
 use crate::vid::Vid;
@@ -12,6 +11,7 @@ use pix::el::Pixel;
 use pix::matte::Matte8;
 use pix::ops::SrcOver;
 use pix::{Raster, RowsMut};
+use pointy::Pt;
 use std::any::TypeId;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;

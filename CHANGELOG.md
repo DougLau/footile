@@ -4,6 +4,7 @@
 * `Plotter.raster()` and `raster_mut()` (returning reference)
 ### Changed
 * Old `Plotter.raster()` to `Plotter.into_raster()`
+* Use `pointy` crate for 2D geometry
 
 ## [0.6.0] - 2020-09-19
 ### Added

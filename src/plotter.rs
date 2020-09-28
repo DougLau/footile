@@ -3,12 +3,13 @@
 // Copyright (c) 2017-2020  Douglas P Lau
 //
 use crate::fig::Fig;
-use crate::geom::{float_lerp, Pt, Transform, WidePt};
+use crate::geom::{float_lerp, WidePt};
 use crate::path::{FillRule, PathOp};
 use crate::stroker::{JoinStyle, Stroke};
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
 use pix::Raster;
+use pointy::{Pt, Transform};
 use std::borrow::Borrow;
 
 /// Plotter for 2D vector [path]s.

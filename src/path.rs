@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2017-2020  Douglas P Lau
 //
-use crate::geom::Pt;
+use pointy::Pt;
 
 /// Fill-rule for filling paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
