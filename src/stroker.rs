@@ -5,7 +5,7 @@
 use crate::geom::{intersection, WidePt};
 use crate::path::PathOp;
 use crate::vid::Vid;
-use pointy::Pt;
+use pointy::Pt32;
 use std::fmt;
 
 /// Style for stroke joins.
@@ -124,7 +124,7 @@ impl Stroke {
     }
 
     /// Check if two points are within tolerance threshold.
-    fn is_within_tolerance2(&self, a: Pt, b: Pt) -> bool {
+    fn is_within_tolerance2(&self, a: Pt32, b: Pt32) -> bool {
         assert!(self.tol_sq > 0.0);
         a.dist_sq(b) <= self.tol_sq
     }
@@ -269,7 +269,7 @@ impl Stroke {
         start: Vid,
         dir: Dir,
     ) {
-        let mut xr: Option<(Pt, Pt)> = None;
+        let mut xr: Option<(Pt32, Pt32)> = None;
         let mut v0 = start;
         let mut v1 = self.next(v0, dir);
         let joined = self.sub_joined(i);
@@ -298,7 +298,7 @@ impl Stroke {
     ///
     /// * `p0` First point.
     /// * `p1` Second point.
-    fn stroke_offset(&self, p0: WidePt, p1: WidePt) -> (Pt, Pt) {
+    fn stroke_offset(&self, p0: WidePt, p1: WidePt) -> (Pt32, Pt32) {
         // FIXME: scale offset to allow user units as well as pixel units
         let pp0 = p0.0;
         let pp1 = p1.0;
@@ -309,7 +309,7 @@ impl Stroke {
     }
 
     /// Add a point to stroke figure.
-    fn stroke_point(&self, ops: &mut Vec<PathOp>, pt: Pt) {
+    fn stroke_point(&self, ops: &mut Vec<PathOp>, pt: Pt32) {
         ops.push(PathOp::Line(pt));
     }
 
@@ -324,10 +324,10 @@ impl Stroke {
         &self,
         ops: &mut Vec<PathOp>,
         p: WidePt,
-        a0: Pt,
-        a1: Pt,
-        b0: Pt,
-        b1: Pt,
+        a0: Pt32,
+        a1: Pt32,
+        b0: Pt32,
+        b1: Pt32,
     ) {
         match self.join_style {
             JoinStyle::Miter(ml) => self.stroke_miter(ops, a0, a1, b0, b1, ml),
@@ -340,10 +340,10 @@ impl Stroke {
     fn stroke_miter(
         &self,
         ops: &mut Vec<PathOp>,
-        a0: Pt,
-        a1: Pt,
-        b0: Pt,
-        b1: Pt,
+        a0: Pt32,
+        a1: Pt32,
+        b0: Pt32,
+        b1: Pt32,
         ml: f32,
     ) {
         // formula: miter_length / stroke_width = 1 / sin ( theta / 2 )
@@ -365,7 +365,7 @@ impl Stroke {
     }
 
     /// Add a bevel join.
-    fn stroke_bevel(&self, ops: &mut Vec<PathOp>, a1: Pt, b0: Pt) {
+    fn stroke_bevel(&self, ops: &mut Vec<PathOp>, a1: Pt32, b0: Pt32) {
         self.stroke_point(ops, a1);
         self.stroke_point(ops, b0);
     }
@@ -379,10 +379,10 @@ impl Stroke {
         &self,
         ops: &mut Vec<PathOp>,
         p: WidePt,
-        a0: Pt,
-        a1: Pt,
-        b0: Pt,
-        b1: Pt,
+        a0: Pt32,
+        a1: Pt32,
+        b0: Pt32,
+        b1: Pt32,
     ) {
         let th = (a1 - a0).angle_rel(b0 - b1);
         if th <= 0.0 {
@@ -394,7 +394,7 @@ impl Stroke {
     }
 
     /// Add a stroke arc.
-    fn stroke_arc(&self, ops: &mut Vec<PathOp>, p: WidePt, a: Pt, b: Pt) {
+    fn stroke_arc(&self, ops: &mut Vec<PathOp>, p: WidePt, a: Pt32, b: Pt32) {
         let p2 = p.0;
         let vr = (b - a).right().normalize();
         let c = p2 + vr * (p.w() / 2.0);

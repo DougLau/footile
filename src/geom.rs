@@ -2,11 +2,11 @@
 //
 // Copyright (c) 2017-2020  Douglas P Lau
 //
-use pointy::Pt;
+use pointy::Pt32;
 
 /// 2-dimensional vector / point with associated width.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct WidePt(pub Pt, pub f32);
+pub struct WidePt(pub Pt32, pub f32);
 
 /// Calculate linear interpolation of two values
 ///
@@ -22,7 +22,7 @@ pub fn float_lerp(a: f32, b: f32, t: f32) -> f32 {
 /// * `b0` First point on line b.
 /// * `b1` Second point on line b.
 /// Returns None if the lines are colinear.
-pub fn intersection(a0: Pt, a1: Pt, b0: Pt, b1: Pt) -> Option<Pt> {
+pub fn intersection(a0: Pt32, a1: Pt32, b0: Pt32, b1: Pt32) -> Option<Pt32> {
     let av = a0 - a1;
     let bv = b0 - b1;
     let den = av * bv;
@@ -31,7 +31,7 @@ pub fn intersection(a0: Pt, a1: Pt, b0: Pt, b1: Pt) -> Option<Pt> {
         let cb = b0 * b1;
         let xn = bv.x() * ca - av.x() * cb;
         let yn = bv.y() * ca - av.y() * cb;
-        Some(Pt(xn / den, yn / den))
+        Some(Pt32(xn / den, yn / den))
     } else {
         None
     }
@@ -39,7 +39,7 @@ pub fn intersection(a0: Pt, a1: Pt, b0: Pt, b1: Pt) -> Option<Pt> {
 
 impl Default for WidePt {
     fn default() -> Self {
-        WidePt(Pt::default(), 1.0)
+        WidePt(Pt32::default(), 1.0)
     }
 }
 

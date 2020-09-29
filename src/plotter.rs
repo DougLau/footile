@@ -9,7 +9,7 @@ use crate::stroker::{JoinStyle, Stroke};
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
 use pix::Raster;
-use pointy::{Pt, Transform};
+use pointy::{Pt32, Transform32};
 use std::borrow::Borrow;
 
 /// Plotter for 2D vector [path]s.
@@ -46,7 +46,7 @@ where
     /// Current pen position and width
     pen: WidePt,
     /// User to pixel affine transform
-    transform: Transform,
+    transform: Transform32,
     /// Curve decomposition tolerance squared
     tol_sq: f32,
     /// Current stroke width
@@ -107,7 +107,7 @@ where
             raster,
             sgn_area,
             pen: WidePt::default(),
-            transform: Transform::default(),
+            transform: Transform32::default(),
             tol_sq: tol * tol,
             s_width: 1.0,
             join_style: JoinStyle::Miter(4.0),
@@ -126,7 +126,7 @@ where
 
     /// Reset pen.
     fn reset(&mut self) {
-        self.pen = WidePt(Pt::default(), self.s_width);
+        self.pen = WidePt(Pt32::default(), self.s_width);
     }
 
     /// Set tolerance threshold for curve decomposition.
@@ -137,7 +137,7 @@ where
     }
 
     /// Set the transform.
-    pub fn set_transform(&mut self, t: Transform) -> &mut Self {
+    pub fn set_transform(&mut self, t: Transform32) -> &mut Self {
         self.transform = t;
         self
     }
@@ -205,7 +205,7 @@ where
     /// Move pen to a point.
     ///
     /// * `pb` New point.
-    fn move_to<D: PlotDest>(&mut self, dst: &mut D, pb: Pt) {
+    fn move_to<D: PlotDest>(&mut self, dst: &mut D, pb: Pt32) {
         let p = WidePt(pb, self.s_width);
         dst.close(false);
         let b = self.transform_point(p);
@@ -216,7 +216,7 @@ where
     /// Add a line from pen to a point.
     ///
     /// * `pb` End point.
-    fn line_to<D: PlotDest>(&mut self, dst: &mut D, pb: Pt) {
+    fn line_to<D: PlotDest>(&mut self, dst: &mut D, pb: Pt32) {
         let p = WidePt(pb, self.s_width);
         let b = self.transform_point(p);
         dst.add_point(b);
@@ -230,7 +230,7 @@ where
     ///
     /// * `cp` Control point.
     /// * `end` End point.
-    fn quad_to<D: PlotDest>(&mut self, dst: &mut D, cp: Pt, end: Pt) {
+    fn quad_to<D: PlotDest>(&mut self, dst: &mut D, cp: Pt32, end: Pt32) {
         let pen = self.pen;
         let bb = WidePt(cp, (pen.w() + self.s_width) / 2.0);
         let cc = WidePt(end, self.s_width);
@@ -270,7 +270,7 @@ where
     }
 
     /// Check if two points are within tolerance threshold.
-    fn is_within_tolerance2(&self, a: Pt, b: Pt) -> bool {
+    fn is_within_tolerance2(&self, a: Pt32, b: Pt32) -> bool {
         assert!(self.tol_sq > 0.0);
         a.dist_sq(b) <= self.tol_sq
     }
@@ -286,9 +286,9 @@ where
     fn cubic_to<D: PlotDest>(
         &mut self,
         dst: &mut D,
-        cp0: Pt,
-        cp1: Pt,
-        end: Pt,
+        cp0: Pt32,
+        cp1: Pt32,
+        end: Pt32,
     ) {
         let pen = self.pen;
         let w0 = float_lerp(pen.w(), self.s_width, 1.0 / 3.0);

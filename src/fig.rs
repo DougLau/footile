@@ -11,7 +11,7 @@ use pix::el::Pixel;
 use pix::matte::Matte8;
 use pix::ops::SrcOver;
 use pix::{Raster, RowsMut};
-use pointy::Pt;
+use pointy::Pt32;
 use std::any::TypeId;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
@@ -425,13 +425,14 @@ impl Fig {
     /// Add a point.
     ///
     /// * `pt` Point to add.
-    pub fn add_point(&mut self, pt: Pt) {
+    pub fn add_point<P: Into<Pt32>>(&mut self, pt: P) {
         let n_pts = self.points.len();
         if n_pts < usize::from(Vid::MAX) {
             let done = self.sub_is_done();
             if done {
                 self.sub_add();
             }
+            let pt = pt.into();
             let pt = FxPt::new(Fixed::from(pt.x()), Fixed::from(pt.y()));
             if done || !self.is_coincident(pt) {
                 self.points.push(pt);
@@ -704,10 +705,10 @@ mod test {
         let mut m = Raster::with_clear(3, 3);
         let mut s = vec![0; 3];
         let mut f = Fig::new();
-        f.add_point(Pt(1.0, 2.0));
-        f.add_point(Pt(1.0, 3.0));
-        f.add_point(Pt(2.0, 3.0));
-        f.add_point(Pt(2.0, 2.0));
+        f.add_point((1.0, 2.0));
+        f.add_point((1.0, 3.0));
+        f.add_point((2.0, 3.0));
+        f.add_point((2.0, 2.0));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
         #[rustfmt::skip]
@@ -725,9 +726,9 @@ mod test {
         let mut m = Raster::<Matte8>::with_clear(9, 1);
         let mut s = vec![0; 16];
         let mut f = Fig::new();
-        f.add_point(Pt(0.0, 0.0));
-        f.add_point(Pt(9.0, 1.0));
-        f.add_point(Pt(0.0, 1.0));
+        f.add_point((0.0, 0.0));
+        f.add_point((9.0, 1.0));
+        f.add_point((0.0, 1.0));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
         assert_eq!([242, 213, 185, 156, 128, 100, 71, 43, 14], m.as_u8_slice());
@@ -739,9 +740,9 @@ mod test {
         let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 4];
         let mut f = Fig::new();
-        f.add_point(Pt(-1.0, 0.0));
-        f.add_point(Pt(-1.0, 3.0));
-        f.add_point(Pt(3.0, 1.5));
+        f.add_point((-1.0, 0.0));
+        f.add_point((-1.0, 3.0));
+        f.add_point((3.0, 1.5));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
         assert_eq!([112, 16, 0, 255, 224, 32, 112, 16, 0], m.as_u8_slice());
@@ -753,10 +754,10 @@ mod test {
         let mut m = Raster::<Matte8>::with_clear(1, 3);
         let mut s = vec![0; 4];
         let mut f = Fig::new();
-        f.add_point(Pt(0.5, 0.0));
-        f.add_point(Pt(0.5, 1.5));
-        f.add_point(Pt(1.0, 3.0));
-        f.add_point(Pt(1.0, 0.0));
+        f.add_point((0.5, 0.0));
+        f.add_point((0.5, 1.5));
+        f.add_point((1.0, 3.0));
+        f.add_point((1.0, 0.0));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
         assert_eq!([128, 117, 43], m.as_u8_slice());
@@ -768,11 +769,11 @@ mod test {
         let mut m = Raster::<Matte8>::with_clear(3, 3);
         let mut s = vec![0; 3];
         let mut f = Fig::new();
-        f.add_point(Pt(1.5, 0.0));
-        f.add_point(Pt(1.5, 1.5));
-        f.add_point(Pt(2.0, 3.0));
-        f.add_point(Pt(3.0, 3.0));
-        f.add_point(Pt(3.0, 0.0));
+        f.add_point((1.5, 0.0));
+        f.add_point((1.5, 1.5));
+        f.add_point((2.0, 3.0));
+        f.add_point((3.0, 3.0));
+        f.add_point((3.0, 0.0));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
         assert_eq!([0, 128, 255, 0, 117, 255, 0, 43, 255], m.as_u8_slice());
@@ -784,9 +785,9 @@ mod test {
         let mut m = Raster::<Matte8>::with_clear(9, 1);
         let mut s = vec![0; 16];
         let mut f = Fig::new();
-        f.add_point(Pt(0.0, 0.0));
-        f.add_point(Pt(0.0, 0.3));
-        f.add_point(Pt(9.0, 0.0));
+        f.add_point((0.0, 0.0));
+        f.add_point((0.0, 0.3));
+        f.add_point((9.0, 0.0));
         f.close();
         f.fill(FillRule::NonZero, &mut m, clr, &mut s);
         assert_eq!([73, 64, 56, 47, 39, 30, 22, 13, 4], m.as_u8_slice());
