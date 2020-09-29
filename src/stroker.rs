@@ -2,10 +2,10 @@
 //
 // Copyright (c) 2017-2020  Douglas P Lau
 //
-use crate::geom::{intersection, WidePt};
+use crate::geom::WidePt;
 use crate::path::PathOp;
 use crate::vid::Vid;
-use pointy::Pt32;
+use pointy::{Line32, Pt32};
 use std::fmt;
 
 /// Style for stroke joins.
@@ -354,8 +354,10 @@ impl Stroke {
             let th = (a1 - a0).angle_rel(b0 - b1);
             let sm = (th / 2.0).sin().abs();
             if sm >= sm_min && sm < 1.0 {
+                let lna = Line32::new(a0, a1);
+                let lnb = Line32::new(b0, b1);
                 // Calculate miter point
-                if let Some(xp) = intersection(a0, a1, b0, b1) {
+                if let Some(xp) = lna.intersection(lnb) {
                     self.stroke_point(ops, xp);
                     return;
                 }

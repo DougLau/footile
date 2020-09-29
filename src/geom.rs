@@ -15,28 +15,6 @@ pub fn float_lerp(a: f32, b: f32, t: f32) -> f32 {
     b + (a - b) * t
 }
 
-/// Calculate intersection point of two lines.
-///
-/// * `a0` First point on line a.
-/// * `a1` Second point on line a.
-/// * `b0` First point on line b.
-/// * `b1` Second point on line b.
-/// Returns None if the lines are colinear.
-pub fn intersection(a0: Pt32, a1: Pt32, b0: Pt32, b1: Pt32) -> Option<Pt32> {
-    let av = a0 - a1;
-    let bv = b0 - b1;
-    let den = av * bv;
-    if den != 0.0 {
-        let ca = a0 * a1;
-        let cb = b0 * b1;
-        let xn = bv.x() * ca - av.x() * cb;
-        let yn = bv.y() * ca - av.y() * cb;
-        Some(Pt32(xn / den, yn / den))
-    } else {
-        None
-    }
-}
-
 impl Default for WidePt {
     fn default() -> Self {
         WidePt(Pt32::default(), 1.0)
