@@ -1,8 +1,8 @@
 // path.rs      2D vector paths.
 //
-// Copyright (c) 2017-2020  Douglas P Lau
+// Copyright (c) 2017-2021  Douglas P Lau
 //
-use pointy::Pt32;
+use pointy::Pt;
 
 /// Fill-rule for filling paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -19,13 +19,13 @@ pub enum PathOp {
     /// Close the path
     Close(),
     /// Move to a point
-    Move(Pt32),
+    Move(Pt<f32>),
     /// Straight line to end point
-    Line(Pt32),
+    Line(Pt<f32>),
     /// Quadratic bézier curve (control point and end point)
-    Quad(Pt32, Pt32),
+    Quad(Pt<f32>, Pt<f32>),
     /// Cubic bézier curve (two control points and end point)
-    Cubic(Pt32, Pt32, Pt32),
+    Cubic(Pt<f32>, Pt<f32>, Pt<f32>),
     /// Set pen width (for stroking)
     PenWidth(f32),
 }
@@ -47,7 +47,7 @@ pub struct Path2D {
     /// Absolute vs relative coordinates
     absolute: bool,
     /// Current pen position
-    pen: Pt32,
+    pen: Pt<f32>,
 }
 
 impl Default for Path2D {
@@ -56,7 +56,7 @@ impl Default for Path2D {
         Path2D {
             ops,
             absolute: false,
-            pen: Pt32::default(),
+            pen: Pt::default(),
         }
     }
 }
@@ -77,18 +77,18 @@ impl Path2D {
     }
 
     /// Get absolute point.
-    fn pt(&self, x: f32, y: f32) -> Pt32 {
+    fn pt(&self, x: f32, y: f32) -> Pt<f32> {
         if self.absolute {
-            Pt32(x, y)
+            Pt::new(x, y)
         } else {
-            Pt32(self.pen.x() + x, self.pen.y() + y)
+            Pt::new(self.pen.x() + x, self.pen.y() + y)
         }
     }
 
     /// Close current sub-path and move pen to origin.
     pub fn close(mut self) -> Self {
         self.ops.push(PathOp::Close());
-        self.pen = Pt32::default();
+        self.pen = Pt::default();
         self
     }
 

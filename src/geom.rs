@@ -1,12 +1,12 @@
 // geom.rs    Simple geometry stuff.
 //
-// Copyright (c) 2017-2020  Douglas P Lau
+// Copyright (c) 2017-2021  Douglas P Lau
 //
-use pointy::Pt32;
+use pointy::Pt;
 
 /// 2-dimensional vector / point with associated width.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct WidePt(pub Pt32, pub f32);
+pub struct WidePt(pub Pt<f32>, pub f32);
 
 /// Calculate linear interpolation of two values
 ///
@@ -17,7 +17,7 @@ pub fn float_lerp(a: f32, b: f32, t: f32) -> f32 {
 
 impl Default for WidePt {
     fn default() -> Self {
-        WidePt(Pt32::default(), 1.0)
+        WidePt(Pt::default(), 1.0)
     }
 }
 

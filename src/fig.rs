@@ -11,7 +11,7 @@ use pix::el::Pixel;
 use pix::matte::Matte8;
 use pix::ops::SrcOver;
 use pix::{Raster, RowsMut};
-use pointy::Pt32;
+use pointy::Pt;
 use std::any::TypeId;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
@@ -425,7 +425,7 @@ impl Fig {
     /// Add a point.
     ///
     /// * `pt` Point to add.
-    pub fn add_point<P: Into<Pt32>>(&mut self, pt: P) {
+    pub fn add_point<P: Into<Pt<f32>>>(&mut self, pt: P) {
         let n_pts = self.points.len();
         if n_pts < usize::from(Vid::MAX) {
             let done = self.sub_is_done();
