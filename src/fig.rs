@@ -1,6 +1,6 @@
 // fig.rs    A 2D rasterizer.
 //
-// Copyright (c) 2017-2020  Douglas P Lau
+// Copyright (c) 2017-2021  Douglas P Lau
 //
 use crate::fixed::Fixed;
 use crate::imgbuf::{matte_src_over_even_odd, matte_src_over_non_zero};
@@ -555,12 +555,12 @@ where
 
     /// Scan edges continuing on this row.
     fn scan_continuing_edges(&mut self, y_row: i32) {
-        let mut area = &mut self.sgn_area;
+        let area = &mut self.sgn_area;
         for e in self.edges.iter_mut() {
             let cov = e.continuing_cov(y_row);
             if cov > 0 {
                 e.calculate_x_limits_continuing(y_row);
-                e.scan_area(self.dir, cov, &mut area);
+                e.scan_area(self.dir, cov, area);
             }
         }
     }
@@ -594,7 +594,7 @@ where
         let cov = e.starting_cov();
         if cov > 0 {
             e.calculate_x_limits_starting();
-            e.scan_area(self.dir, cov, &mut self.sgn_area);
+            e.scan_area(self.dir, cov, self.sgn_area);
         }
         self.edges.push(e);
     }
