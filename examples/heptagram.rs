@@ -2,7 +2,7 @@
 use footile::{FillRule, Path2D, Plotter};
 use pix::matte::Matte8;
 use pix::Raster;
-use pointy::Transform32;
+use pointy::Transform;
 
 mod png;
 
@@ -13,7 +13,7 @@ fn main() -> Result<(), std::io::Error> {
     let mut p = Plotter::new(r);
     let h = (p.width() / 2) as f32;
     let q = h / 2.0;
-    p.set_transform(Transform32::with_scale(h, h).translate(q, q));
+    p.set_transform(Transform::with_scale(h, h).translate(q, q));
     let mut pb = Path2D::default();
     pb = pb.move_to(0f32.cos(), 0f32.sin());
     for n in 1..7 {

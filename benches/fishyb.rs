@@ -5,6 +5,7 @@ use criterion::Criterion;
 use footile::*;
 use pix::matte::Matte8;
 use pix::Raster;
+use pointy::Transform;
 
 fn fill_16(c: &mut Criterion) {
     c.bench_function("fill_16", |b| b.iter(|| fill(16)));
