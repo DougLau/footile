@@ -7,7 +7,7 @@ documentation = "https://docs.rs/footile"
 homepage = "https://github.com/DougLau/footile"
 repository = "https://github.com/DougLau/footile"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 pix = "0.13"
@@ -15,7 +15,7 @@ pointy = "0.3"
 
 [dev-dependencies]
 criterion = "0.3"
-png_pong = "0.7"
+png_pong = "0.8"
 
 [[bench]]
 name = "fishyb"
