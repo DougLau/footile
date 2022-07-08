@@ -1,3 +1,4 @@
+use crate::Printer;
 // plotter.rs      Vector path plotter.
 //
 // Copyright (c) 2017-2021  Douglas P Lau
@@ -5,6 +6,7 @@
 use crate::fig::Fig;
 use crate::geom::{float_lerp, WidePt};
 use crate::path::{FillRule, PathOp};
+use crate::printer::ColorPrinter;
 use crate::stroker::{JoinStyle, Stroke};
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
@@ -341,11 +343,30 @@ where
         T: IntoIterator,
         T::Item: Borrow<PathOp>,
     {
+        self.fill_with(rule, ops, ColorPrinter { clr })
+    }
+
+    /// Fill the figure to an image raster.
+    ///
+    /// * `rule` Fill rule.
+    /// * `ops` PathOp iterator.
+    /// * `printer` Determines how to fill row pixels.
+    pub fn fill_with<T, R>(
+        &mut self,
+        rule: FillRule,
+        ops: T,
+        printer: R,
+    ) -> &mut Raster<P>
+    where
+        R: Printer<P>,
+        T: IntoIterator,
+        T::Item: Borrow<PathOp>,
+    {
         let mut fig = Fig::new();
         self.add_ops(ops, &mut fig);
         // Closing figure required to handle coincident start/end points
         fig.close();
-        fig.fill(rule, &mut self.raster, clr, &mut self.sgn_area[..]);
+        fig.fill_with(rule, &mut self.raster, printer, &mut self.sgn_area[..]);
         &mut self.raster
     }
 
@@ -358,10 +379,23 @@ where
         T: IntoIterator,
         T::Item: Borrow<PathOp>,
     {
+        self.stroke_with(ops, ColorPrinter { clr })
+    }
+
+    /// Stroke path onto the raster.
+    ///
+    /// * `ops` PathOp iterator.
+    /// * `clr` Color to stroke.
+    pub fn stroke_with<T, R>(&mut self, ops: T, printer: R) -> &mut Raster<P>
+    where
+        T: IntoIterator,
+        T::Item: Borrow<PathOp>,
+        R: Printer<P>,
+    {
         let mut stroke = Stroke::new(self.join_style, self.tol_sq);
         self.add_ops(ops, &mut stroke);
         let ops = stroke.path_ops();
-        self.fill(FillRule::NonZero, ops.iter(), clr)
+        self.fill_with(FillRule::NonZero, ops.iter(), printer)
     }
 
     /// Get a reference to the raster.

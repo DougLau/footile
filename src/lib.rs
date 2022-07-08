@@ -36,7 +36,9 @@ mod path;
 mod plotter;
 mod stroker;
 mod vid;
+mod printer;
 
 pub use path::{FillRule, Path2D, PathOp};
 pub use plotter::Plotter;
 pub use stroker::JoinStyle;
+pub use printer::Printer;
