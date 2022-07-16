@@ -28,6 +28,23 @@ pub enum PathOp {
     Cubic(Pt<f32>, Pt<f32>, Pt<f32>),
     /// Set pen width (for stroking)
     PenWidth(f32),
+    /// Set transformation
+    Transform(TransformOp),
+}
+
+/// Path transform operation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TransformOp {
+    /// Translate is user points
+    Translate(f32, f32),
+    /// Scale
+    Scale(f32, f32),
+    /// Rotate in radians
+    Rotate(f32),
+    /// Skew in user points
+    Skew(f32, f32),
+    /// Reset transformations
+    None
 }
 
 /// A `Path2D` is a builder for `Vec<PathOp>`.
@@ -164,6 +181,18 @@ impl Path2D {
         self.ops.push(PathOp::PenWidth(width));
         self
     }
+
+    /// Set transformation
+    /// 
+    /// All subsequent path points will be affected, until the transform
+    /// is changed again.
+    /// * `transform` Optional transformation
+    pub fn transform(mut self, transform: TransformOp) -> Self {
+        self.ops.push(PathOp::Transform(transform));
+        self
+    }
+    
+
 
     /// Finish path with specified operations.
     pub fn finish(self) -> Vec<PathOp> {
