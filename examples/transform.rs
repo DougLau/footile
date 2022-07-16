@@ -19,21 +19,26 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 fn render(n: usize, r: Raster<Rgba8p>, c: Rgba8p) -> Raster<Rgba8p> {
-    let mut path = Path2D::default().absolute().pen_width(7.0 / n as f32);
+    let mut path = Path2D::default().absolute().pen_width(14.0 / n as f32);
     for i in 0..n {
-        path = path
-            .transform(TransformOp::None)
-            .move_to(10.0, 10.0)
-            .transform(TransformOp::Translate(-10.0, -10.0))
-            .transform(TransformOp::Rotate(
-                (-2.0 as f32).to_radians() * i as f32,
-            ))
-            .transform(TransformOp::Scale(
-                0.1 * i as f32 + 1.0,
-                0.1 * i as f32 + 1.0,
-            ))
-            .transform(TransformOp::Translate(10.0, 10.0))
-            .cubic_to(30.0, 10.0, 50.0, 50.0, 10.0, 50.0)
+        path = path.transform(TransformOp::None).move_to(10.0, 10.0);
+        if i > 0 {
+            path = path
+                .transform(TransformOp::Translate(-10.0, -10.0))
+                .transform(TransformOp::Rotate(
+                    (-2.0 as f32).to_radians() * i as f32,
+                ))
+                .transform(TransformOp::Scale(
+                    0.1 * i as f32 + 1.0,
+                    0.1 * i as f32 + 1.0,
+                ))
+                .transform(TransformOp::Translate(10.0, 10.0))
+                .transform(TransformOp::Skew(
+                    0.0,
+                    (10.0 as f32).to_radians(),
+                ))
+        }
+        path = path.cubic_to(30.0, 10.0, 50.0, 50.0, 10.0, 50.0)
     }
     let ops = path.finish();
     let mut p = Plotter::new(r);

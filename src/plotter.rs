@@ -172,7 +172,7 @@ where
     fn transform_point(&self, p: WidePt) -> WidePt {
         let pt = if let Some(t) = self.u_transform {
             t * (self.transform * p.0)
-        } else { 
+        } else {
             self.transform * p.0
         };
         WidePt(pt, p.w())
@@ -340,7 +340,7 @@ where
     }
 
     /// Apply cumulative transformation to subsequent drawing
-    /// 
+    ///
     /// Plotter transform reapplied to user points
     /// Transformations are composed together
     fn user_transform(&mut self, t: TransformOp) {
@@ -352,11 +352,7 @@ where
                 let (px, py) = (pp.x(), pp.y());
                 Some(tt.translate(px, py))
             }
-            TransformOp::Skew(ax, ay) => {
-                let pp = self.transform * Pt::new(ax, ay);
-                let (px, py) = (pp.x(), pp.y());
-                Some(tt.skew(px, py))
-            }
+            TransformOp::Skew(ax, ay) => Some(tt.skew(ax, ay)),
             TransformOp::Scale(sx, sy) => Some(tt.scale(sx, sy)),
             TransformOp::Rotate(r) => Some(tt.rotate(r)),
         };

@@ -41,7 +41,7 @@ pub enum TransformOp {
     Scale(f32, f32),
     /// Rotate in radians
     Rotate(f32),
-    /// Skew in user points
+    /// Skew radians
     Skew(f32, f32),
     /// Reset transformations
     None
