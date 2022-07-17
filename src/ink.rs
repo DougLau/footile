@@ -11,6 +11,7 @@ use std::any::TypeId;
 ///
 /// structs implementing the trait could be used with plotter
 /// providing static or dynamic color
+/// * P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>
 pub trait Ink<P>
 where
     P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
