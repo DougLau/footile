@@ -1,11 +1,10 @@
-use crate::Printer;
 // fig.rs    A 2D rasterizer.
 //
 // Copyright (c) 2017-2021  Douglas P Lau
 //
 use crate::fixed::Fixed;
+use crate::ink::{ColorInk, Ink};
 use crate::path::FillRule;
-use crate::printer::ColorPrinter;
 use crate::vid::Vid;
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
@@ -15,7 +14,6 @@ use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
 use std::ops::Sub;
-
 /// A 2D point with fixed-point values
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct FxPt {
@@ -75,7 +73,7 @@ pub struct Fig {
 struct Scanner<'a, P, R>
 where
     P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
-    R: Printer<P>,
+    R: Ink<P>,
 {
     /// The figure
     fig: &'a Fig,
@@ -86,13 +84,12 @@ where
     /// Destination raster rows
     rows: RowsMut<'a, P>,
     /// Color or method to fill
-    printer: R,
+    ink: R,
     /// Signed area buffer
     sgn_area: &'a mut [i16],
     /// Active edges
     edges: Vec<Edge>,
 }
-
 
 impl Sub for FxPt {
     type Output = Self;
@@ -487,24 +484,24 @@ impl Fig {
     ) where
         P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
     {
-        self.fill_with(rule, raster, ColorPrinter{clr}, sgn_area)
+        self.fill_with(rule, raster, ColorInk { clr }, sgn_area)
     }
 
     /// Fill the figure to an image raster.
     ///
     /// * `rule` Fill rule.
     /// * `raster` Output raster.
-    /// * `printer` Determines how to fill row pixels.
+    /// * `ink` Determines how to fill row pixels.
     /// * `sgn_area` Signed area buffer.
     pub fn fill_with<P, R>(
         &self,
         rule: FillRule,
         raster: &mut Raster<P>,
-        printer: R,
+        ink: R,
         sgn_area: &mut [i16],
     ) where
         P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
-        R: Printer<P>,
+        R: Ink<P>,
     {
         assert!(raster.width() <= sgn_area.len() as u32);
         let n_points = self.points.len();
@@ -516,7 +513,7 @@ impl Fig {
             let top_row = row_of(self.point(vids[0]).y);
             let region = (0, top_row.max(0), raster.width(), raster.height());
             let rows = raster.rows_mut(region);
-            let mut scan = Scanner::new(self, rule, dir, rows, printer, sgn_area);
+            let mut scan = Scanner::new(self, rule, dir, rows, ink, sgn_area);
             scan.scan_vertices(vids, top_row);
         }
     }
@@ -525,7 +522,7 @@ impl Fig {
 impl<'a, P, R> Scanner<'a, P, R>
 where
     P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
-    R: Printer<P>,
+    R: Ink<P>,
 {
     /// Create a new figure scanner.
     fn new(
@@ -533,7 +530,7 @@ where
         rule: FillRule,
         dir: FigDir,
         rows: RowsMut<'a, P>,
-        printer: R,
+        ink: R,
         sgn_area: &'a mut [i16],
     ) -> Scanner<'a, P, R> {
         let edges = Vec::with_capacity(16);
@@ -542,7 +539,7 @@ where
             rule,
             dir,
             rows,
-            printer,
+            ink,
             sgn_area,
             edges,
         }
@@ -643,16 +640,14 @@ where
         let mut sgn_area = self.sgn_area.as_mut();
         match self.rule {
             FillRule::NonZero => {
-                self.printer.scan_non_zero(&mut sgn_area, row_buf, y_row)
+                self.ink.scan_non_zero(row_buf, &mut sgn_area, y_row)
             }
             FillRule::EvenOdd => {
-                self.printer.scan_even_odd(&mut sgn_area, row_buf, y_row)
+                self.ink.scan_even_odd(row_buf, &mut sgn_area, y_row)
             }
         }
     }
-    
 }
-
 
 /// Calculate pixel coverage
 ///
