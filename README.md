@@ -12,13 +12,12 @@ See the [documentation] for examples and API usage.
 
 There is nothing novel here — this is merely a guide to the code.
 
-So we have a 2D *path* made up of lines, bézier splines, arcs, etc., and we want
-to make a high-quality raster image out of it.  But how?
+We have a 2D *path* made up of lines, bézier splines, arcs, etc., and we want to
+make a high-quality raster image out of it.  But how?
 
 ### Modules
 
 * `path`: Defines path operations and `Path2D`s
-* `geom`: Points (`Pt`) and transforms used by `plotter` and `stroker`
 * `plotter`: Defines `Plotter` struct and flattens curves
 * `stroker`: Creates *stroked* paths for plotter
 * `fixed`: Defines `Fixed` struct used by `fig` module
@@ -26,13 +25,12 @@ to make a high-quality raster image out of it.  But how?
 
 ### Curve Flattening
 
-Here, *flattening* refers to approximating a curve with a series of line
-segments, and has no relation to pandemic response.
+*Flattening* refers to approximating a curve with a series of line segments.
 
-Currently we use the recursive algorithm described by De Casteljau.  There might
-be opportunities for optimization here if we ever determine this is a
-bottleneck.  One other thing to note: this method could cause a stack overflow
-with the wrong input data.
+We use the recursive algorithm described by De Casteljau.  There might be
+opportunities for optimization here if we ever determine this is a bottleneck.
+One other thing to note: this method could cause a stack overflow with the wrong
+input data.
 
 Once complete, we have a series of line segments forming one or more closed
 polygons.
@@ -43,7 +41,7 @@ For the next step, we create a sorted list of the vertices in (Y, X) order.
 This is needed because we will *scan* the polygon onto a grid one row at a time.
 
 Every path has a **winding order**: either *clockwise* or the other direction,
-sometimes called *counter-* or *anti-clockwise*.  Let's avoid that debate by
+typically called *counter-* or *anti-clockwise*.  Let's avoid that debate by
 calling it *widdershins*, since clocks rarely go backwards.
 
 The first vertex must be on the outside of the path, so we can check the angle
