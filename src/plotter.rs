@@ -4,7 +4,7 @@
 //
 use crate::fig::Fig;
 use crate::geom::{float_lerp, WidePt};
-use crate::path::{FillRule, PathOp};
+use crate::path::{FillRule, PathOp, TransformOp};
 use crate::stroker::{JoinStyle, Stroke};
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
@@ -47,6 +47,8 @@ where
     pen: WidePt,
     /// User to pixel affine transform
     transform: Transform<f32>,
+    /// User affine transform
+    u_transform: Option<Transform<f32>>,
     /// Curve decomposition tolerance squared
     tol_sq: f32,
     /// Current stroke width
@@ -108,6 +110,7 @@ where
             sgn_area,
             pen: WidePt::default(),
             transform: Transform::default(),
+            u_transform: None,
             tol_sq: tol * tol,
             s_width: 1.0,
             join_style: JoinStyle::Miter(4.0),
@@ -167,7 +170,11 @@ where
 
     /// Transform a point.
     fn transform_point(&self, p: WidePt) -> WidePt {
-        let pt = self.transform * p.0;
+        let pt = if let Some(t) = self.u_transform {
+            t * (self.transform * p.0)
+        } else {
+            self.transform * p.0
+        };
         WidePt(pt, p.w())
     }
 
@@ -193,6 +200,7 @@ where
             PathOp::Quad(pb, pc) => self.quad_to(dst, pb, pc),
             PathOp::Cubic(pb, pc, pd) => self.cubic_to(dst, pb, pc, pd),
             PathOp::PenWidth(w) => self.pen_width(w),
+            PathOp::Transform(t) => self.user_transform(t),
         };
     }
 
@@ -329,6 +337,25 @@ where
             self.cubic_to_tran(dst, pa, ab, ab_bc, pe);
             self.cubic_to_tran(dst, pe, bc_cd, cd, pd);
         }
+    }
+
+    /// Apply cumulative transformation to subsequent drawing
+    ///
+    /// Plotter transform reapplied to user points
+    /// Transformations are composed together
+    fn user_transform(&mut self, t: TransformOp) {
+        let tt = self.u_transform.unwrap_or_default();
+        self.u_transform = match t {
+            TransformOp::None => None,
+            TransformOp::Translate(x, y) => {
+                let pp = self.transform * Pt::new(x, y);
+                let (px, py) = (pp.x(), pp.y());
+                Some(tt.translate(px, py))
+            }
+            TransformOp::Skew(ax, ay) => Some(tt.skew(ax, ay)),
+            TransformOp::Scale(sx, sy) => Some(tt.scale(sx, sy)),
+            TransformOp::Rotate(r) => Some(tt.rotate(r)),
+        };
     }
 
     /// Fill path onto the raster.
