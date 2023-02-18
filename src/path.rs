@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2017-2021  Douglas P Lau
 //
-use pointy::Pt;
+use pointy::{Pt, Transform};
 
 /// Fill-rule for filling paths.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -26,6 +26,8 @@ pub enum PathOp {
     Quad(Pt<f32>, Pt<f32>),
     /// Cubic bézier curve (two control points and end point)
     Cubic(Pt<f32>, Pt<f32>, Pt<f32>),
+    /// Arc (center, sweep radians)
+    Arc(Pt<f32>, f32),
     /// Set pen width (for stroking)
     PenWidth(f32),
 }
@@ -150,6 +152,25 @@ impl Path2D {
         let pc = self.pt(cx, cy);
         let pd = self.pt(dx, dy);
         self.ops.push(PathOp::Cubic(pb, pc, pd));
+        self.pen = pd;
+        self
+    }
+
+
+    /// Add an arc spline.
+    ///
+    /// The arguments are:
+    ///
+    /// * Current pen position: P<sub>a</sub>
+    /// * Center point: P<sub>c</sub> (`cx` / `cy`)
+    /// * Sweep radian: f32
+    pub fn arc_sweep(mut self, cx: f32, cy: f32, sweep: f32) -> Self {
+        let pc = self.pt(cx, cy);
+        let pd = {
+            let t = Transform::with_translate(-cx, -cy).rotate(sweep).translate(cx, cy);
+            self.pen * t
+        };
+        self.ops.push(PathOp::Arc(pc, sweep));
         self.pen = pd;
         self
     }
