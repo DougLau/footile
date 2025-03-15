@@ -26,7 +26,6 @@
 //! p.fill(FillRule::NonZero, &fish, Matte8::new(255));
 //! ```
 #![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
 
 mod fig;
 mod fixed;

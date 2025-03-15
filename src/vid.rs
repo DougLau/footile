@@ -1,12 +1,12 @@
 // vid.rs    Vertex ID
 //
-// Copyright (c) 2020  Douglas P Lau
+// Copyright (c) 2020-2025  Douglas P Lau
 //
 use std::convert::TryFrom;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// Vertex ID
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, PartialOrd)]
 pub struct Vid(pub u16);
 
 impl Vid {
