@@ -1,6 +1,6 @@
 // plotter.rs      Vector path plotter.
 //
-// Copyright (c) 2017-2021  Douglas P Lau
+// Copyright (c) 2017-2025  Douglas P Lau
 //
 use crate::fig::Fig;
 use crate::geom::{float_lerp, WidePt};
@@ -272,7 +272,7 @@ where
     /// Check if two points are within tolerance threshold.
     fn is_within_tolerance2(&self, a: Pt<f32>, b: Pt<f32>) -> bool {
         assert!(self.tol_sq > 0.0);
-        a.dist_sq(b) <= self.tol_sq
+        a.distance_sq(b) <= self.tol_sq
     }
 
     /// Add a cubic bézier spline.

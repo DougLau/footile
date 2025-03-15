@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+* Updated `pointy` to v0.7
+
 ## [0.7.0] - 2022-06-01
 ### Added
 * `Plotter.raster()` and `raster_mut()` (returning reference)

@@ -1,6 +1,6 @@
 // path.rs      2D vector paths.
 //
-// Copyright (c) 2017-2021  Douglas P Lau
+// Copyright (c) 2017-2025  Douglas P Lau
 //
 use pointy::Pt;
 
@@ -81,7 +81,7 @@ impl Path2D {
         if self.absolute {
             Pt::new(x, y)
         } else {
-            Pt::new(self.pen.x() + x, self.pen.y() + y)
+            Pt::new(self.pen.x + x, self.pen.y + y)
         }
     }
 

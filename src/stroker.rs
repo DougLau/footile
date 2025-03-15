@@ -1,6 +1,6 @@
 // stroker.rs   A path stroker.
 //
-// Copyright (c) 2017-2021  Douglas P Lau
+// Copyright (c) 2017-2025  Douglas P Lau
 //
 use crate::geom::WidePt;
 use crate::path::PathOp;
@@ -126,7 +126,7 @@ impl Stroke {
     /// Check if two points are within tolerance threshold.
     fn is_within_tolerance2(&self, a: Pt<f32>, b: Pt<f32>) -> bool {
         assert!(self.tol_sq > 0.0);
-        a.dist_sq(b) <= self.tol_sq
+        a.distance_sq(b) <= self.tol_sq
     }
 
     /// Get the count of sub-strokes

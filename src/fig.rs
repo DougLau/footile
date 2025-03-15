@@ -1,6 +1,6 @@
 // fig.rs    A 2D rasterizer.
 //
-// Copyright (c) 2017-2021  Douglas P Lau
+// Copyright (c) 2017-2025  Douglas P Lau
 //
 use crate::fixed::Fixed;
 use crate::imgbuf::{matte_src_over_even_odd, matte_src_over_non_zero};
@@ -433,7 +433,7 @@ impl Fig {
                 self.sub_add();
             }
             let pt = pt.into();
-            let pt = FxPt::new(Fixed::from(pt.x()), Fixed::from(pt.y()));
+            let pt = FxPt::new(Fixed::from(pt.x), Fixed::from(pt.y));
             if done || !self.is_coincident(pt) {
                 self.points.push(pt);
                 self.sub_add_point();

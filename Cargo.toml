@@ -11,7 +11,7 @@ edition = "2021"
 
 [dependencies]
 pix = "0.13"
-pointy = "0.3"
+pointy = "0.7"
 
 [dev-dependencies]
 criterion = "0.3"
