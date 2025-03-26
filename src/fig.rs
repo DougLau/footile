@@ -3,21 +3,17 @@
 // Copyright (c) 2017-2025  Douglas P Lau
 //
 use crate::fixed::Fixed;
-use crate::imgbuf::{matte_src_over_even_odd, matte_src_over_non_zero};
+use crate::ink::{ColorInk, Ink};
 use crate::path::FillRule;
 use crate::vid::Vid;
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
-use pix::matte::Matte8;
-use pix::ops::SrcOver;
 use pix::{Raster, RowsMut};
 use pointy::Pt;
-use std::any::TypeId;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::fmt;
 use std::ops::Sub;
-
 /// A 2D point with fixed-point values
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct FxPt {
@@ -74,9 +70,10 @@ pub struct Fig {
 }
 
 /// Figure scanner structure
-struct Scanner<'a, P>
+struct Scanner<'a, P, R>
 where
     P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+    R: Ink<P>,
 {
     /// The figure
     fig: &'a Fig,
@@ -86,8 +83,8 @@ where
     dir: FigDir,
     /// Destination raster rows
     rows: RowsMut<'a, P>,
-    /// Color to fill
-    clr: P,
+    /// Color or method to fill
+    ink: R,
     /// Signed area buffer
     sgn_area: &'a mut [i16],
     /// Active edges
@@ -477,6 +474,7 @@ impl Fig {
     /// * `raster` Output raster.
     /// * `clr` Color to fill.
     /// * `sgn_area` Signed area buffer.
+    #[allow(dead_code)]
     pub fn fill<P>(
         &self,
         rule: FillRule,
@@ -485,6 +483,25 @@ impl Fig {
         sgn_area: &mut [i16],
     ) where
         P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+    {
+        self.fill_with(rule, raster, ColorInk { clr }, sgn_area)
+    }
+
+    /// Fill the figure to an image raster.
+    ///
+    /// * `rule` Fill rule.
+    /// * `raster` Output raster.
+    /// * `ink` Determines how to fill row pixels.
+    /// * `sgn_area` Signed area buffer.
+    pub fn fill_with<P, R>(
+        &self,
+        rule: FillRule,
+        raster: &mut Raster<P>,
+        ink: R,
+        sgn_area: &mut [i16],
+    ) where
+        P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+        R: Ink<P>,
     {
         assert!(raster.width() <= sgn_area.len() as u32);
         let n_points = self.points.len();
@@ -496,15 +513,16 @@ impl Fig {
             let top_row = row_of(self.point(vids[0]).y);
             let region = (0, top_row.max(0), raster.width(), raster.height());
             let rows = raster.rows_mut(region);
-            let mut scan = Scanner::new(self, rule, dir, rows, clr, sgn_area);
+            let mut scan = Scanner::new(self, rule, dir, rows, ink, sgn_area);
             scan.scan_vertices(vids, top_row);
         }
     }
 }
 
-impl<'a, P> Scanner<'a, P>
+impl<'a, P, R> Scanner<'a, P, R>
 where
     P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
+    R: Ink<P>,
 {
     /// Create a new figure scanner.
     fn new(
@@ -512,16 +530,16 @@ where
         rule: FillRule,
         dir: FigDir,
         rows: RowsMut<'a, P>,
-        clr: P,
+        ink: R,
         sgn_area: &'a mut [i16],
-    ) -> Scanner<'a, P> {
+    ) -> Scanner<'a, P, R> {
         let edges = Vec::with_capacity(16);
         Scanner {
             fig,
             rule,
             dir,
             rows,
-            clr,
+            ink,
             sgn_area,
             edges,
         }
@@ -547,7 +565,7 @@ where
                 self.update_edges(vid, FigDir::Forward);
                 self.update_edges(vid, FigDir::Reverse);
             }
-            self.rasterize_row(row_buf);
+            self.rasterize_row(row_buf, y_row);
             self.advance_edges();
             y_row += 1;
         }
@@ -618,56 +636,17 @@ where
 
     /// Rasterize the current row.
     /// Signed area is zeroed upon return.
-    fn rasterize_row(&mut self, row_buf: &mut [P]) {
+    fn rasterize_row(&mut self, row_buf: &mut [P], y_row: i32) {
+        let mut sgn_area = self.sgn_area.as_mut();
         match self.rule {
-            FillRule::NonZero => self.scan_non_zero(row_buf),
-            FillRule::EvenOdd => self.scan_even_odd(row_buf),
+            FillRule::NonZero => {
+                self.ink.scan_non_zero(row_buf, &mut sgn_area, y_row)
+            }
+            FillRule::EvenOdd => {
+                self.ink.scan_even_odd(row_buf, &mut sgn_area, y_row)
+            }
         }
     }
-
-    /// Accumulate scan area with non-zero fill rule.
-    fn scan_non_zero(&mut self, dst: &mut [P]) {
-        let clr = self.clr;
-        let sgn_area = &mut self.sgn_area;
-        if TypeId::of::<P>() == TypeId::of::<Matte8>() {
-            // FIXME: only if clr is Matte8::new(255)
-            matte_src_over_non_zero(dst, sgn_area);
-            return;
-        }
-        let mut sum = 0;
-        for (d, s) in dst.iter_mut().zip(sgn_area.iter_mut()) {
-            sum += *s;
-            *s = 0;
-            let alpha = Ch8::from(saturating_cast_i16_u8(sum));
-            d.composite_channels_alpha(&clr, SrcOver, &alpha);
-        }
-    }
-
-    /// Accumulate scan area with even-odd fill rule.
-    fn scan_even_odd(&mut self, dst: &mut [P]) {
-        let clr = self.clr;
-        let sgn_area = &mut self.sgn_area;
-        if TypeId::of::<P>() == TypeId::of::<Matte8>() {
-            // FIXME: only if clr is Matte8::new(255)
-            matte_src_over_even_odd(dst, sgn_area);
-            return;
-        }
-        let mut sum = 0;
-        for (d, s) in dst.iter_mut().zip(sgn_area.iter_mut()) {
-            sum += *s;
-            *s = 0;
-            let v = sum & 0xFF;
-            let odd = sum & 0x100;
-            let c = (v - odd).abs();
-            let alpha = Ch8::from(saturating_cast_i16_u8(c));
-            d.composite_channels_alpha(&clr, SrcOver, &alpha);
-        }
-    }
-}
-
-/// Cast an i16 to a u8 with saturation
-fn saturating_cast_i16_u8(v: i16) -> u8 {
-    v.max(0).min(255) as u8
 }
 
 /// Calculate pixel coverage
