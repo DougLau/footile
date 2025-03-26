@@ -192,6 +192,7 @@ where
             PathOp::Line(pb) => self.line_to(dst, pb),
             PathOp::Quad(pb, pc) => self.quad_to(dst, pb, pc),
             PathOp::Cubic(pb, pc, pd) => self.cubic_to(dst, pb, pc, pd),
+            PathOp::Arc(cp, sweep) => self.arc_sweep(dst, cp, sweep),
             PathOp::PenWidth(w) => self.pen_width(w),
         };
     }
@@ -329,6 +330,58 @@ where
             self.cubic_to_tran(dst, pa, ab, ab_bc, pe);
             self.cubic_to_tran(dst, pe, bc_cd, cd, pd);
         }
+    }
+
+    /// Draw arc from point with sweep rad
+    ///
+    /// * `pc` Center point
+    /// * `sweep` Sweep radians
+    fn arc_sweep<D: PlotDest>(&mut self, dst: &mut D, pc: Pt<f32>, sweep: f32) {
+        let cc = self.transform_point(WidePt(pc, self.pen.w()));
+
+        let r = self.pen.0.dist(pc);
+        let p1 = cc.0;
+        let p2 = Transform::with_translate(
+            -r * (cc.0.x() - self.pen.0.x()).signum(),
+            0.0,
+        ) * cc.0;
+        let p3 = self.pen.0;
+        let sa = f32::atan2(p3.y() - p1.y(), p3.x() - p1.x())
+            - f32::atan2(p2.y() - p1.y(), p2.x() - p1.x());
+        let end = self.arc_tran(dst, self.pen, sa, sa + sweep, cc);
+        self.move_pen(end);
+    }
+
+    /// Add an arc spline.
+    ///
+    /// The spline is decomposed into a series of lines using the DeCastlejau-ish
+    /// method.
+    fn arc_tran<D: PlotDest>(
+        &self,
+        dst: &mut D,
+        pa: WidePt,
+        sa: f32,
+        ea: f32,
+        cc: WidePt,
+    ) -> WidePt {
+        let diff = ea - sa;
+        let cx = cc.0.x();
+        let cy = cc.0.y();
+        let td = Transform::with_translate(-cx, -cy)
+            .rotate(diff / 2.0)
+            .translate(cx, cy);
+        let mut pd = WidePt(pa.0 * td * td, cc.w());
+        let pc1 = WidePt(pa.0 * td, cc.w());
+        let ad = pd.midpoint(pa);
+
+        if self.is_within_tolerance(ad, pc1) {
+            dst.add_point(pd);
+        } else {
+            let pi = self.arc_tran(dst, pa, sa, ea - diff / 2.0, cc);
+            pd = self.arc_tran(dst, pi, ea - diff / 2.0, ea, cc)
+        }
+
+        pd
     }
 
     /// Fill path onto the raster.
