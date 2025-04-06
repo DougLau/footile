@@ -2,6 +2,7 @@
 
 ### Changed
 * Updated `pointy` to v0.7
+* Update to Rust 2024 edition
 
 ## [0.7.0] - 2022-06-01
 ### Added
