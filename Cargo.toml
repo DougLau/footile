@@ -7,6 +7,8 @@ documentation = "https://docs.rs/footile"
 homepage = "https://github.com/DougLau/footile"
 repository = "https://github.com/DougLau/footile"
 readme = "README.md"
+categories = ["multimedia::images", "rendering::graphics-api"]
+keywords = ["vector-graphics"]
 edition = "2024"
 
 [dependencies]
