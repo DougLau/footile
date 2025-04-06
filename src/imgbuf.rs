@@ -62,7 +62,7 @@ fn accumulate_non_zero_fallback(dst: &mut [u8], src: &mut [i16]) {
 
 /// Cast an i16 to a u8 with saturation
 fn saturating_cast_i16_u8(v: i16) -> u8 {
-    v.max(0).min(255) as u8
+    v.clamp(0, 255) as u8
 }
 
 /// Accumulate signed area with non-zero fill rule.
@@ -127,7 +127,7 @@ where
     P: Pixel<Chan = Ch8, Alpha = Premultiplied, Gamma = Linear>,
 {
     debug_assert_eq!(TypeId::of::<P>(), TypeId::of::<Matte8>());
-    let n_bytes = dst.len() * std::mem::size_of::<P>();
+    let n_bytes = std::mem::size_of_val(dst);
     let ptr = dst.as_mut_ptr() as *mut u8;
     let dst = unsafe { std::slice::from_raw_parts_mut(ptr, n_bytes) };
     accumulate_even_odd(dst, sgn_area);

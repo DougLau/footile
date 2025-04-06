@@ -667,7 +667,7 @@ where
 
 /// Cast an i16 to a u8 with saturation
 fn saturating_cast_i16_u8(v: i16) -> u8 {
-    v.max(0).min(255) as u8
+    v.clamp(0, 255) as u8
 }
 
 /// Calculate pixel coverage
