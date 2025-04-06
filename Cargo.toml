@@ -2,20 +2,20 @@
 name = "footile"
 version = "0.7.0"
 description = "A 2D vector graphics library"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/footile"
 homepage = "https://github.com/DougLau/footile"
 repository = "https://github.com/DougLau/footile"
 readme = "README.md"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-pix = "0.13"
+pix = "0.14"
 pointy = "0.7"
 
 [dev-dependencies]
-criterion = "0.3"
-png_pong = "0.8"
+criterion = "0.5"
+png_pong = "0.9"
 
 [[bench]]
 name = "fishyb"

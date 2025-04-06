@@ -684,9 +684,9 @@ fn pixel_cov(fcov: Fixed) -> i16 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pix::Raster;
     use pix::matte::Matte8;
     use pix::rgb::Rgba8p;
-    use pix::Raster;
 
     #[test]
     fn fixed_pt() {

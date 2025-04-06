@@ -1,7 +1,7 @@
 // fishy.rs
 use footile::{FillRule, Path2D, Plotter};
-use pix::rgb::{Rgba8p, SRgba8};
 use pix::Raster;
+use pix::rgb::{Rgba8p, SRgba8};
 
 mod png;
 

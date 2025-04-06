@@ -3,12 +3,12 @@
 // Copyright (c) 2017-2025  Douglas P Lau
 //
 use crate::fig::Fig;
-use crate::geom::{float_lerp, WidePt};
+use crate::geom::{WidePt, float_lerp};
 use crate::path::{FillRule, PathOp};
 use crate::stroker::{JoinStyle, Stroke};
+use pix::Raster;
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
-use pix::Raster;
 use pointy::{Pt, Transform};
 use std::borrow::Borrow;
 
@@ -383,8 +383,8 @@ where
 #[cfg(test)]
 mod test {
     use crate::*;
-    use pix::matte::Matte8;
     use pix::Raster;
+    use pix::matte::Matte8;
 
     #[test]
     fn overlapping() {

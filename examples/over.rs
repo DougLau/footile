@@ -1,7 +1,7 @@
 // over.rs
 use footile::{Path2D, Plotter};
-use pix::matte::Matte8;
 use pix::Raster;
+use pix::matte::Matte8;
 
 mod png;
 

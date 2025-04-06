@@ -1,7 +1,7 @@
 // heptagram.rs
 use footile::{FillRule, Path2D, Plotter};
-use pix::matte::Matte8;
 use pix::Raster;
+use pix::matte::Matte8;
 use pointy::Transform;
 
 mod png;

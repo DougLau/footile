@@ -1,9 +1,9 @@
 #![allow(unused)]
 
+use pix::Raster;
 use pix::el::Pixel;
 use pix::gray::SGray8;
 use pix::matte::Matte8;
-use pix::Raster;
 use png_pong::Encoder;
 use std::fs::File;
 use std::io;

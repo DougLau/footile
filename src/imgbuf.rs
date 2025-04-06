@@ -1,6 +1,6 @@
 // imgbuf.rs        Functions for blending image buffers.
 //
-// Copyright (c) 2017-2020  Douglas P Lau
+// Copyright (c) 2017-2025  Douglas P Lau
 //
 use pix::chan::{Ch8, Linear, Premultiplied};
 use pix::el::Pixel;
@@ -69,29 +69,31 @@ fn saturating_cast_i16_u8(v: i16) -> u8 {
 #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), feature = "simd"))]
 #[target_feature(enable = "ssse3")]
 unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
-    let zero = _mm_setzero_si128();
-    let mut sum = zero;
-    let len = dst.len().min(src.len());
-    let dst = dst.as_mut_ptr();
-    let src = src.as_mut_ptr();
-    for i in (0..len).step_by(8) {
-        let off = i as isize;
-        let d = dst.offset(off) as *mut __m128i;
-        let s = src.offset(off) as *mut __m128i;
-        // get 8 values from src
-        let mut a = _mm_loadu_si128(s);
-        // zeroing now is faster than memset later
-        _mm_storeu_si128(s, zero);
-        // accumulate sum thru 8 pixels
-        a = accumulate_i16x8_x86(a);
-        // add in previous sum
-        a = _mm_add_epi16(a, sum);
-        // pack to u8 using saturation
-        let b = _mm_packus_epi16(a, a);
-        // store result to dest
-        _mm_storel_epi64(d, b);
-        // shuffle sum into all 16-bit lanes
-        sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
+    unsafe {
+        let zero = _mm_setzero_si128();
+        let mut sum = zero;
+        let len = dst.len().min(src.len());
+        let dst = dst.as_mut_ptr();
+        let src = src.as_mut_ptr();
+        for i in (0..len).step_by(8) {
+            let off = i as isize;
+            let d = dst.offset(off) as *mut __m128i;
+            let s = src.offset(off) as *mut __m128i;
+            // get 8 values from src
+            let mut a = _mm_loadu_si128(s);
+            // zeroing now is faster than memset later
+            _mm_storeu_si128(s, zero);
+            // accumulate sum thru 8 pixels
+            a = accumulate_i16x8_x86(a);
+            // add in previous sum
+            a = _mm_add_epi16(a, sum);
+            // pack to u8 using saturation
+            let b = _mm_packus_epi16(a, a);
+            // store result to dest
+            _mm_storel_epi64(d, b);
+            // shuffle sum into all 16-bit lanes
+            sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
+        }
     }
 }
 
@@ -99,17 +101,19 @@ unsafe fn accumulate_non_zero_x86(dst: &mut [u8], src: &mut [i16]) {
 #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), feature = "simd"))]
 #[target_feature(enable = "ssse3")]
 unsafe fn accumulate_i16x8_x86(mut a: __m128i) -> __m128i {
-    //   a7 a6 a5 a4 a3 a2 a1 a0
-    // + a3 a2 a1 a0 __ __ __ __
-    a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
-    // + a5 a4 a3 a2 a1 a0 __ __
-    // + a1 a0 __ __ __ __ __ __
-    a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
-    // + a6 a5 a4 a3 a2 a1 a0 __
-    // + a2 a1 a0 __ __ __ __ __
-    // + a4 a3 a2 a1 a0 __ __ __
-    // + a0 __ __ __ __ __ __ __
-    _mm_add_epi16(a, _mm_slli_si128(a, 2))
+    unsafe {
+        //   a7 a6 a5 a4 a3 a2 a1 a0
+        // + a3 a2 a1 a0 __ __ __ __
+        a = _mm_add_epi16(a, _mm_slli_si128(a, 8));
+        // + a5 a4 a3 a2 a1 a0 __ __
+        // + a1 a0 __ __ __ __ __ __
+        a = _mm_add_epi16(a, _mm_slli_si128(a, 4));
+        // + a6 a5 a4 a3 a2 a1 a0 __
+        // + a2 a1 a0 __ __ __ __ __
+        // + a4 a3 a2 a1 a0 __ __ __
+        // + a0 __ __ __ __ __ __ __
+        _mm_add_epi16(a, _mm_slli_si128(a, 2))
+    }
 }
 
 /// Blend to a Matte8 using a signed area with even-odd fill rule.
@@ -166,29 +170,31 @@ fn accumulate_even_odd_fallback(dst: &mut [u8], src: &mut [i16]) {
 #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), feature = "simd"))]
 #[target_feature(enable = "ssse3")]
 unsafe fn accumulate_even_odd_x86(dst: &mut [u8], src: &mut [i16]) {
-    let zero = _mm_setzero_si128();
-    let mut sum = zero;
-    for (d, s) in dst.chunks_mut(8).zip(src.chunks_mut(8)) {
-        let d = d.as_mut_ptr() as *mut __m128i;
-        let s = s.as_mut_ptr() as *mut __m128i;
-        // get 8 values from src
-        let mut a = _mm_loadu_si128(s);
-        // zeroing now is faster than memset later
-        _mm_storeu_si128(s, zero);
-        // accumulate sum thru 8 pixels
-        a = accumulate_i16x8_x86(a);
-        // add in previous sum
-        a = _mm_add_epi16(a, sum);
-        let mut val = _mm_and_si128(a, _mm_set1_epi16(0xFF));
-        let odd = _mm_and_si128(a, _mm_set1_epi16(0x100));
-        val = _mm_sub_epi16(val, odd);
-        val = _mm_abs_epi16(val);
-        // pack to u8 using saturation
-        let b = _mm_packus_epi16(val, val);
-        // store result to dest
-        _mm_storel_epi64(d, b);
-        // shuffle sum into all 16-bit lanes
-        sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
+    unsafe {
+        let zero = _mm_setzero_si128();
+        let mut sum = zero;
+        for (d, s) in dst.chunks_mut(8).zip(src.chunks_mut(8)) {
+            let d = d.as_mut_ptr() as *mut __m128i;
+            let s = s.as_mut_ptr() as *mut __m128i;
+            // get 8 values from src
+            let mut a = _mm_loadu_si128(s);
+            // zeroing now is faster than memset later
+            _mm_storeu_si128(s, zero);
+            // accumulate sum thru 8 pixels
+            a = accumulate_i16x8_x86(a);
+            // add in previous sum
+            a = _mm_add_epi16(a, sum);
+            let mut val = _mm_and_si128(a, _mm_set1_epi16(0xFF));
+            let odd = _mm_and_si128(a, _mm_set1_epi16(0x100));
+            val = _mm_sub_epi16(val, odd);
+            val = _mm_abs_epi16(val);
+            // pack to u8 using saturation
+            let b = _mm_packus_epi16(val, val);
+            // store result to dest
+            _mm_storel_epi64(d, b);
+            // shuffle sum into all 16-bit lanes
+            sum = _mm_shuffle_epi8(a, _mm_set1_epi16(0x0F_0E));
+        }
     }
 }
 

@@ -3,8 +3,8 @@ extern crate criterion;
 
 use criterion::Criterion;
 use footile::*;
-use pix::matte::Matte8;
 use pix::Raster;
+use pix::matte::Matte8;
 use pointy::Transform;
 
 fn fill_16(c: &mut Criterion) {

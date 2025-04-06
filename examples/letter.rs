@@ -1,7 +1,7 @@
 // letter.rs     Example plotting the letter C
 use footile::{FillRule, Path2D, Plotter};
-use pix::matte::Matte8;
 use pix::Raster;
+use pix::matte::Matte8;
 
 mod png;
 

@@ -1,7 +1,7 @@
 // drop.rs
 use footile::{FillRule, Path2D, Plotter};
-use pix::gray::{Graya8p, SGray8};
 use pix::Raster;
+use pix::gray::{Graya8p, SGray8};
 
 mod png;
 
